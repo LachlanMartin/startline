@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, User, Phone, ChevronDown, Check, AtSign, ShieldAlert, Fingerprint } from "lucide-react";
+import { X, Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, User, ChevronDown, Check, AtSign, ShieldAlert } from "lucide-react";
 import { signIn, signUp, signOut, resetPassword, confirmResetPassword, confirmSignIn } from "aws-amplify/auth";
 import { useAuthContext } from "@/context/AuthContext";
 import { validateUsername } from "@/lib/username-validation";
@@ -45,7 +45,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
   const [dobDay,          setDobDay]          = useState("");
   const [dobMonth,        setDobMonth]        = useState("");
   const [dobYear,         setDobYear]         = useState("");
-  const [phone,           setPhone]           = useState("");
+
   const [acceptedTerms,   setAcceptedTerms]   = useState(false);
   const [showTerms,       setShowTerms]       = useState(false);
   const [showPrivacy,     setShowPrivacy]     = useState(false);
@@ -58,7 +58,6 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
   const [usernameStatus,  setUsernameStatus]  = useState<"idle" | "checking" | "valid" | "invalid">("idle");
   const [usernameError,   setUsernameError]   = useState("");
 
-  // Two‑step sign‑in state
   const [checkingEmail,   setCheckingEmail]   = useState(false);
   const [userExists,      setUserExists]      = useState<boolean | null>(null);
   const [userStatus,      setUserStatus]      = useState<string | null>(null);
@@ -88,7 +87,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
       /* eslint-disable react-hooks/set-state-in-effect */
       setView("signin");
       setEmail(""); setFirstName(""); setLastName("");
-      setDobDay(""); setDobMonth(""); setDobYear(""); setPhone("");
+      setDobDay(""); setDobMonth(""); setDobYear("");
       setAcceptedTerms(false); setShowTerms(false); setShowPrivacy(false);
       setPassword(""); setConfirm("");
       setError(""); setShowPw(false);
@@ -118,8 +117,8 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
   }, [usernameStatus_]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // ── Email check ─────────────────────────────────────────────────────────────
-  const handleCheckEmail = async () => {
+  const handleCheckEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError("");
     if (!email.includes("@")) { setError("Please enter a valid email."); return; }
     setCheckingEmail(true);
@@ -130,9 +129,6 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
         body: JSON.stringify({ email }),
       });
       if (!res.ok) {
-        // Existence check unavailable (e.g. server lacks Cognito admin perms).
-        // Fall through to the password step — signIn() itself will report
-        // "no account" / "wrong password" accurately.
         setUserExists(true);
         setUserStatus("CONFIRMED");
         return;
@@ -143,18 +139,9 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
         setUserStatus(null);
       } else {
         setUserExists(true);
-        setUserStatus(data.status);
-        if (data.status === "CONFIRMED" || data.status === "UNCONFIRMED") {
-          // Show password field — for UNCONFIRMED users signIn() throws
-          // UserNotConfirmedException, which routes them to verify-email.
-          if (data.status === "UNCONFIRMED") setUserStatus("CONFIRMED");
-        } else {
-          // FORCE_CHANGE_PASSWORD or RESET_REQUIRED → start reset flow
-          setNewPwStep("initial");
-        }
+        setUserStatus(data.status === "UNCONFIRMED" ? "CONFIRMED" : data.status);
       }
     } catch {
-      // Network failure reaching our own API — same graceful fallback.
       setUserExists(true);
       setUserStatus("CONFIRMED");
     } finally {
@@ -228,47 +215,11 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
       } else if (errName === "UserNotConfirmedException") {
         onClose(); router.push("/auth/verify-email?email=" + encodeURIComponent(email));
       } else if (errName === "UserNotFoundException") {
-        setError("No account found with that email.");
+        setUserExists(false);
+        setError("");
       } else {
         setError(msg || "Something went wrong. Please try again.");
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Passkey sign-in ─────────────────────────────────────────────────────────
-  const handlePasskeySignIn = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      await signOut({ global: false }).catch(() => {});
-      const result = await signIn({
-        username: email,
-        options: { authFlowType: "USER_AUTH", preferredChallenge: "WEB_AUTHN" },
-      });
-
-      if (result.nextStep.signInStep === "CONFIRM_SIGN_IN_WITH_TOTP_CODE") {
-        setView("mfa"); setMfaStep("challenge"); return;
-      }
-      if (result.nextStep.signInStep === "CONTINUE_SIGN_IN_WITH_TOTP_SETUP") {
-        setTotpSetupUri(totpUri(result.nextStep.totpSetupDetails));
-        setView("mfa"); setMfaStep("setup"); return;
-      }
-      if (result.nextStep.signInStep === "CONTINUE_SIGN_IN_WITH_MFA_SELECTION") {
-        setView("mfa"); setMfaStep("select"); return;
-      }
-      if (result.nextStep.signInStep !== "DONE") {
-        setError("Additional verification required. Please contact support."); return;
-      }
-
-      await fetch("/api/user/auth/session", { method: "POST" });
-      await refresh();
-      onSuccess?.();
-      onClose();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "";
-      setError(msg || "Passkey sign-in failed. Try using your password.");
     } finally {
       setLoading(false);
     }
@@ -305,6 +256,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
     try {
       const result = await confirmSignIn({ challengeResponse: totpCode });
       if (result.nextStep.signInStep === "DONE") {
+        await fetch("/api/user/mfa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "enable" }) });
         await fetch("/api/user/auth/session", { method: "POST" });
         await refresh();
         onSuccess?.();
@@ -419,6 +371,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
         }
       } catch {}
       // Fallback: show the password field
+      setUserExists(true);
       setUserStatus("CONFIRMED");
       setNewPwStep("done");
     } catch (err: unknown) {
@@ -446,7 +399,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
     if (!/[A-Z]/.test(password)) { setError("Password must contain at least one uppercase letter."); return; }
     if (!/[a-z]/.test(password)) { setError("Password must contain at least one lowercase letter."); return; }
     if (!/[0-9]/.test(password)) { setError("Password must contain at least one number."); return; }
-    setFirstName(""); setLastName(""); setDobDay(""); setDobMonth(""); setDobYear(""); setPhone("");
+    setFirstName(""); setLastName(""); setDobDay(""); setDobMonth(""); setDobYear("");
     setAcceptedTerms(false); setShowTerms(false); setShowPrivacy(false);
     setView("onboarding");
   };
@@ -477,39 +430,25 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
     if (age < 13)  { setError("You must be at least 13 years old to create an account."); return; }
     if (age > 120) { setError("Please enter a valid date of birth."); return; }
 
-    if (!phone.trim()) { setError("Please enter your phone number."); return; }
     if (!acceptedTerms) { setError("You must accept the Terms & Conditions and Privacy Policy to continue."); return; }
-
-    const rawPhone  = phone.trim().replace(/[\s\-()]/g, "");
-    const e164Phone = rawPhone.startsWith("0")
-      ? "+61" + rawPhone.slice(1)
-      : rawPhone.startsWith("61")
-        ? "+" + rawPhone
-        : rawPhone.startsWith("+")
-          ? rawPhone
-          : "+61" + rawPhone;
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
+    const userAttributes: Record<string, string> = {
+      email,
+      name:      fullName,
+      birthdate: isoDate,
+    };
     setLoading(true);
     try {
       await signUp({
         username: email,
         password,
-        options: {
-          userAttributes: {
-            email,
-            name:         fullName,
-            phone_number: e164Phone,
-            birthdate:    isoDate,
-          },
-          autoSignIn: true,
-        },
+        options: { userAttributes, autoSignIn: true },
       });
       try {
         sessionStorage.setItem("startline_pending_name",  fullName);
         sessionStorage.setItem("startline_pending_dob",   isoDate);
-        sessionStorage.setItem("startline_pending_phone", e164Phone);
       } catch {}
       setError("");
       setView("username");
@@ -552,7 +491,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
     setError("");
     setResetCode(""); setNewPassword(""); setNewPwConfirm("");
     setResetSent(false); setNewPwStep("initial"); setChallengeFlow(false);
-    setView("signin"); setMfaStep("none"); setTotpCode(""); setTotpSetupUri(null);
+    setMfaStep("none"); setTotpCode(""); setTotpSetupUri(null);
   };
 
   const dobDayRef   = useRef<HTMLInputElement>(null);
@@ -612,7 +551,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
 
             {error && <div className={errCls}>{error}</div>}
 
-            <form onSubmit={(e) => { e.preventDefault(); handleCheckEmail(); }} className="space-y-4">
+            <form onSubmit={handleCheckEmail} className="space-y-4">
               <div>
                 <label htmlFor="signin-email" className={labelCls}>Email</label>
                 <div className="relative">
@@ -637,19 +576,6 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
                 )}
               </button>
             </form>
-
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-dark-lighter" /></div>
-              <div className="relative flex justify-center"><span className="bg-dark-darker px-3 font-headline text-[10px] uppercase tracking-widest text-muted-dark">— or —</span></div>
-            </div>
-
-            <button
-              onClick={() => { setEmail(""); handlePasskeySignIn(); }}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-md border border-dark-lighter font-headline text-[12px] font-bold uppercase tracking-widest text-muted hover:text-primary hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Fingerprint className="w-4 h-4" /> Sign in with Passkey
-            </button>
           </>
         )}
 
@@ -670,11 +596,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
               <button onClick={() => switchView("signup")} className={btnCls}>
                 Create account <ArrowRight className="w-4 h-4" />
               </button>
-              <button
-                type="button"
-                onClick={goBackToEmail}
-                className="w-full font-headline text-[11px] uppercase tracking-widest text-muted hover:text-primary transition-colors py-1"
-              >
+              <button type="button" onClick={goBackToEmail} className="w-full font-headline text-[11px] uppercase tracking-widest text-muted hover:text-primary transition-colors py-1">
                 Use a different email
               </button>
             </div>
@@ -726,114 +648,6 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
                 Use a different email
               </button>
             </form>
-          </>
-        )}
-
-        {/* ── Sign In – New password required (FORCE_CHANGE_PASSWORD) ── */}
-        {view === "signin" && userExists === true && userStatus !== "CONFIRMED" && !challengeFlow && (
-          <>
-            <div className="mb-6">
-              <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-2">Finish Setup</span>
-              <h2 className="font-headline text-4xl font-black italic tracking-tighter leading-[0.9] mb-2">
-                {newPwStep === "done" ? "Password<br /><span className='text-primary'>set.</span>" : "Set your<br /><span className='text-primary'>password.</span>"}
-              </h2>
-              <p className="text-muted text-[14px] leading-relaxed">
-                {newPwStep === "initial" && "Your account was created automatically. Let's set a password so you can sign in."}
-                {newPwStep === "sent" && "A verification code was sent to your email. Enter it below along with your new password."}
-                {newPwStep === "done" && "Password set successfully. You can now sign in."}
-              </p>
-            </div>
-
-            {error && <div className={errCls}>{error}</div>}
-
-            {newPwStep === "initial" && (
-              <button onClick={handleStartReset} disabled={loading} className={btnCls}>
-                {loading ? <><span className="w-2 h-2 bg-dark rounded-full animate-pulse-dot" /> Sending code…</> : <>Send verification code <ArrowRight className="w-4 h-4" /></>}
-              </button>
-            )}
-
-            {newPwStep === "sent" && (
-              <form onSubmit={(e) => { e.preventDefault(); handleCompleteReset(); }} className="space-y-3">
-                <div>
-                  <label htmlFor="reset-code" className={labelCls}>Verification Code</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-dark" />
-                    <input
-                      id="reset-code"
-                      type="text"
-                      inputMode="numeric"
-                      required
-                      value={resetCode}
-                      onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      placeholder="000000"
-                      className={inputCls + " tracking-[0.5em] text-center font-bold"}
-                      autoFocus
-                    />
-                  </div>
-                  <p className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-1">Enter the 6-digit code sent to {email}</p>
-                </div>
-                <div>
-                  <label htmlFor="reset-new-password" className={labelCls}>New Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-dark" />
-                    <input
-                      id="reset-new-password"
-                      type={showPw ? "text" : "password"}
-                      required
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Min 8 characters"
-                      className={inputCls + " pr-11"}
-                    />
-                    <button type="button" onClick={() => setShowPw(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-dark hover:text-primary transition-colors">
-                      {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label htmlFor="reset-confirm-password" className={labelCls}>Confirm Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-dark" />
-                    <input
-                      id="reset-confirm-password"
-                      type={showPw ? "text" : "password"}
-                      required
-                      value={newPwConfirm}
-                      onChange={(e) => setNewPwConfirm(e.target.value)}
-                      placeholder="Re-enter password"
-                      className={inputCls}
-                    />
-                  </div>
-                </div>
-                <button type="submit" disabled={loading || resetCode.length < 6} className={btnCls}>
-                  {loading ? <><span className="w-2 h-2 bg-dark rounded-full animate-pulse-dot" /> Setting password…</> : <>Set password <ArrowRight className="w-4 h-4" /></>}
-                </button>
-                <button type="button" onClick={handleStartReset} disabled={loading} className="w-full font-headline text-[11px] uppercase tracking-widest text-muted hover:text-primary transition-colors py-1">
-                  Resend code
-                </button>
-              </form>
-            )}
-
-            {newPwStep === "done" && (
-              <div className="space-y-3">
-                <div className="px-3 py-2.5 rounded-md bg-green-900/20 border border-green-500/30 text-green-400 font-headline text-[13px] flex items-center gap-2">
-                  <Check className="w-4 h-4 flex-shrink-0" />
-                  Password set successfully. Sign in with your new password.
-                </div>
-                <button
-                  onClick={() => { setUserStatus("CONFIRMED"); setPassword(newPassword); setNewPwStep("done"); }}
-                  className={btnCls}
-                >
-                  Sign in <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-
-            {(newPwStep === "initial" || newPwStep === "sent") && (
-              <button type="button" onClick={goBackToEmail} className="w-full font-headline text-[11px] uppercase tracking-widest text-muted hover:text-primary transition-colors py-1 mt-2">
-                Use a different email
-              </button>
-            )}
           </>
         )}
 
@@ -898,9 +712,9 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
             <div className="mb-6">
               <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-2">Two-Factor Authentication</span>
               <h2 className="font-headline text-4xl font-black italic tracking-tighter leading-[0.9] mb-2">
-                {mfaStep === "select" ? "Choose your<br /><span className='text-primary'>method.</span>" :
-                 mfaStep === "setup"  ? "Set up<br /><span className='text-primary'>MFA.</span>" :
-                                        "Enter your<br /><span className='text-primary'>code.</span>"}
+                {mfaStep === "select" ? <><span>Choose your</span><br /><span className="text-primary">method.</span></> :
+                 mfaStep === "setup"  ? <><span>Set up</span><br /><span className="text-primary">MFA.</span></> :
+                                        <><span>Enter your</span><br /><span className="text-primary">code.</span></>}
               </h2>
               <p className="text-muted text-[14px] leading-relaxed">
                 {mfaStep === "select" && "Select how you'd like to verify your identity."}
@@ -1111,15 +925,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
                 </div>
               </div>
 
-              {/* Phone */}
-              <div>
-                <label htmlFor="onboarding-phone" className={labelCls}>Phone Number</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-dark" />
-                  <input id="onboarding-phone" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+61 400 000 000" className={inputCls} />
-                </div>
-              </div>
-
+              
               {/* T&C */}
               <div className="pt-1 space-y-2">
                 <label className="flex items-start gap-3 cursor-pointer group">

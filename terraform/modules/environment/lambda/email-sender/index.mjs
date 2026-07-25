@@ -1,65 +1,17 @@
-import { KMSClient, DecryptCommand } from '@aws-sdk/client-kms'
-
-const kms = new KMSClient({})
-const FROM = 'Startline <events@startlineau.com>'
 const SITE = process.env.SITE_URL ?? 'https://startlineau.com'
 
-// ── Cognito trigger handler ───────────────────────────────────────────────────
-
 export const handler = async (event) => {
-  const { triggerSource, userPoolId, request } = event
-  const { userAttributes, code } = request
+  const { triggerSource, request } = event
+  const code = request.codeParameter
   if (!code) return event
 
-  const plainCode = await decrypt(code, userPoolId)
-  const email = userAttributes.email
-
-  if (
-    triggerSource === 'CustomEmailSender_SignUp' ||
-    triggerSource === 'CustomEmailSender_ResendCode' ||
-    triggerSource === 'CustomEmailSender_UpdateUserAttribute'
-  ) {
-    await sendEmail(
-      email,
-      `${plainCode} — Your Startline verification code`,
-      buildOtpHtml(plainCode),
-    )
-  } else if (triggerSource === 'CustomEmailSender_ForgotPassword') {
-    await sendEmail(
-      email,
-      'Reset your Startline password',
-      buildPasswordResetHtml(plainCode),
-    )
+  const isReset = triggerSource === 'CustomMessage_ForgotPassword'
+  event.response = {
+    emailSubject: isReset ? 'Reset your Startline password' : `${code} is your Startline verification code`,
+    emailMessage: isReset ? buildPasswordResetHtml(code) : buildOtpHtml(code),
   }
-
   return event
 }
-
-// ── KMS decryption ────────────────────────────────────────────────────────────
-
-async function decrypt(encrypted, userPoolId) {
-  const result = await kms.send(new DecryptCommand({
-    CiphertextBlob: Buffer.from(encrypted, 'base64'),
-    EncryptionContext: { SecretType: 'CODE', UserPoolId: userPoolId },
-  }))
-  return Buffer.from(result.Plaintext).toString()
-}
-
-// ── Resend delivery ───────────────────────────────────────────────────────────
-
-async function sendEmail(to, subject, html) {
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ from: FROM, to, subject, html }),
-  })
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`)
-}
-
-// ── OTP email ─────────────────────────────────────────────────────────────────
 
 function buildOtpHtml(code) {
   const tiles = code.split('').map(d => `
@@ -90,8 +42,6 @@ function buildOtpHtml(code) {
   `)
 }
 
-// ── Password reset email ──────────────────────────────────────────────────────
-
 function buildPasswordResetHtml(code) {
   const tiles = code.split('').map(d => `
     <td style="padding:0 4px;">
@@ -113,21 +63,19 @@ function buildPasswordResetHtml(code) {
       <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 auto 28px;">
         <tr>${tiles}</tr>
       </table>
-      <a href="${SITE}/customer/forgot-password" style="display:inline-block;background:linear-gradient(135deg,#C2EC77 0%,#B3E153 55%,#A4D62F 100%);color:#141414;font-family:'Chakra Petch',Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:13px 30px;border-radius:12px;box-shadow:3px 3px 0 rgba(90,140,0,0.6);text-decoration:none;">
+      <a href="${SITE}/auth/forgot-password" style="display:inline-block;background:linear-gradient(135deg,#C2EC77 0%,#B3E153 55%,#A4D62F 100%);color:#141414;font-family:'Chakra Petch',Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:13px 30px;border-radius:12px;box-shadow:3px 3px 0 rgba(90,140,0,0.6);text-decoration:none;">
         Reset Password
       </a>
       <div style="margin-top:24px;text-align:left;">
         ${noteBox('alert', 'This code expires in 24 hours', 'For security, the password reset code is only valid for a limited time. Request a new one if it has expired.')}
       </div>
       <div style="margin-top:12px;text-align:left;">
-        ${noteBox('shield', "Didn't request this?", "If you didn't request a password reset, you can safely ignore this email. Your password will not change.")}
+        ${noteBox('shield', "Didn't request this?", `If you didn't request a password reset, you can safely ignore this email. Your password will not change.`)}
       </div>
     </div>
     ${footer()}
   `)
 }
-
-// ── Shared HTML components ────────────────────────────────────────────────────
 
 function shell(content) {
   return `<!DOCTYPE html>

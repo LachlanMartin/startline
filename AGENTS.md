@@ -14,11 +14,11 @@ Next.js 15 (App Router) fitness event discovery platform. Three portals:
 - **Dev:** `pnpm dev` (Turbopack). **Build:** `pnpm build` (standalone `next.config.ts`). `@/*` → root.
 - **Docker:** PostgreSQL 15 on :5432 + Mailpit (SMTP :1025, UI :8026). Start: `docker compose up -d` on main checkout only.
 - **Worktree?** `git worktree list`. If worktree, Docker infra runs on main checkout — just `pnpm dev`, never `docker compose up`.
-- **Env vars:** Loaded via `.envrc` (gitignored) + direnv from AWS Secrets Manager (`startline/staging/app` for dev). See `terraform/` for secret names.
+- **Env vars:** Loaded from `.env.local` (gitignored). See `.env.example` + `terraform/` for setup steps.
 
 ## Environment variables
 
-Secrets in AWS Secrets Manager. `.envrc` at repo root fetches and exports to shell (gitignored, not in repo).
+Secrets in AWS Secrets Manager. `.env.local` at repo root (gitignored).
 
 | Secret | Contents |
 |---|---|
@@ -26,7 +26,7 @@ Secrets in AWS Secrets Manager. `.envrc` at repo root fetches and exports to she
 | `startline/prod/app` | Prod env vars (Cognito, Stripe live, S3) |
 | `startline/staging/app` | Staging env vars (non-prod Cognito, RDS, S3) |
 
-**Dev without direnv:** `aws secretsmanager get-secret-value --secret-id startline/staging/app --region ap-southeast-2 --query SecretString --output text` then export manually. Override `DATABASE_URL` to local Docker: `postgresql://postgres:postgres@localhost:5432/startline?schema=public`.
+**Setup:** `cp main-checkout/.env.local .env.local` in each worktree. Override `DATABASE_URL` to local Docker (`postgresql://postgres:postgres@localhost:5432/startline?schema=public`) if not using staging RDS.
 
 ## Auth (Cognito)
 
@@ -54,6 +54,7 @@ Old Cognito users from previous seeds not auto-removed — delete manually or vi
 - **Passkey** (`WEB_AUTHN`) via `authFlowType: "USER_AUTH"` — passkey sign-in in `SignInModal.tsx` passes `options: { authFlowType: "USER_AUTH", preferredChallenge: "WEB_AUTHN" }`.
 - Passkey = first factor that **skips second factor**. Password login still uses `USER_SRP_AUTH`.
 - Recovery codes: AES-256-GCM encrypted, stored in `User.recoveryCodes`. Managed via `lib/recovery-codes.ts` and `app/api/user/mfa/route.ts`.
+- Recovery codes removed — passkey sign-in or password reset are the recovery paths.
 - Security settings at `/settings/security` for users.
 
 ## Design system

@@ -18,6 +18,7 @@ import { getEventCoords } from "@/lib/australia-coords";
 import { useAuthContext } from "@/context/AuthContext";
 import EventMap from "@/components/EventMap";
 import type { EventMapHandle } from "@/components/EventMap";
+import OrganiserCardMeta from "@/components/OrganiserCardMeta";
 
 const DISCIPLINE_OPTIONS = EVENT_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }));
 const STATE_CHIP_OPTIONS  = STATE_OPTIONS.map((o) => ({ value: o.value, label: o.shortLabel }));
@@ -133,17 +134,27 @@ function EventCard({ event, selected, onSelect }: { event: UserEvent; selected: 
           </p>
         )}
 
-        <div className="flex items-center justify-between gap-2">
-          {event.fromPrice !== null && (
-            <span className="font-headline text-sm font-bold text-primary">From ${event.fromPrice}</span>
+        <div className="space-y-2">
+          {(event.organizer || event.organiser?.orgName) && (
+            <OrganiserCardMeta
+              organiserId={event.organiserId}
+              name={event.organizer ?? event.organiser!.orgName!}
+              rating={event.organiser?.rating}
+              stopPropagation
+            />
           )}
-          <Link
-            href={`/events/${event.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="ml-auto inline-flex items-center gap-1 font-headline text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
-          >
-            View Details →
-          </Link>
+          <div className="flex items-center justify-between gap-2">
+            {event.fromPrice !== null && (
+              <span className="font-headline text-sm font-bold text-primary">From ${event.fromPrice}</span>
+            )}
+            <Link
+              href={`/events/${event.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="ml-auto inline-flex items-center gap-1 font-headline text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
+            >
+              View Details →
+            </Link>
+          </div>
         </div>
       </div>
     </div>

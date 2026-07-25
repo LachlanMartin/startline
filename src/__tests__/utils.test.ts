@@ -1,5 +1,5 @@
 ﻿import { describe, it, expect } from "vitest";
-import { cn, formatEventDate, formatShortDate, formatTime, formatCompetitionFormat, truncateTitle, filterEvents, sortEventsByDate, sortEvents, getUpcomingEvents, getTotalUpcomingEvents } from "@/lib/utils";
+import { cn, formatEventDate, formatShortDate, formatTime, formatCompetitionFormat, truncateTitle, filterEvents, sortEventsByDate, sortEvents, getUpcomingEvents, getPastEvents, getTotalUpcomingEvents } from "@/lib/utils";
 import { addDays, format } from "date-fns";
 import type { UserEvent, FilterState } from "@/types";
 
@@ -180,6 +180,21 @@ describe("getUpcomingEvents", () => {
     const result = getUpcomingEvents(events, 2);
     expect(result).toHaveLength(2);
     expect(result[0].date).toBe(format(addDays(today, 30), "yyyy-MM-dd"));
+  });
+});
+
+describe("getPastEvents", () => {
+  it("returns past events most recent first", () => {
+    const today = new Date();
+    const events: UserEvent[] = [
+      { date: format(addDays(today, -90), "yyyy-MM-dd"), id: "old" } as UserEvent,
+      { date: format(addDays(today, -10), "yyyy-MM-dd"), id: "recent" } as UserEvent,
+      { date: format(addDays(today, 30), "yyyy-MM-dd"), id: "future" } as UserEvent,
+    ];
+    const result = getPastEvents(events, 10);
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe("recent");
+    expect(result[1].id).toBe("old");
   });
 });
 

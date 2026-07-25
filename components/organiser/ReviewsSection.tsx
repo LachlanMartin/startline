@@ -1,13 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { X, CheckCircle, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { X, CheckCircle, AlertCircle, Star } from "lucide-react";
+import { cn } from "@/lib/utils";
+import SignInModal from "@/components/SignInModal";
+import { useAuthContext } from "@/context/AuthContext";
+import { topRatedEventsFromReviews } from "@/lib/review-helpers";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface Review {
   id: string;
   reviewerName: string;
+  eventId?: string | null;
   eventTitle?: string | null;
   overallRating: number;
   atmosphereRating?: number | null;
@@ -19,17 +25,34 @@ export interface Review {
   createdAt: string;
 }
 
+export type ReviewEventOption = {
+  id: string;
+  title: string;
+  eventDate: string;
+};
+
 // ─── Star helpers ─────────────────────────────────────────────────────────────
 
 function Stars({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" | "lg" }) {
   const sz = size === "lg" ? "w-5 h-5" : size === "md" ? "w-4 h-4" : "w-3.5 h-3.5";
   return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map(i => (
-        <svg key={i} className={`${sz} ${i <= Math.round(rating) ? "text-yellow-400" : "text-dark-lighter"}`} fill="currentColor" viewBox="0 0 20 20">
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
+    <div className="flex items-center gap-0.5" aria-hidden>
+      {[1, 2, 3, 4, 5].map((i) => {
+        const fill = Math.min(1, Math.max(0, rating - (i - 1)));
+        return (
+          <span key={i} className={cn("relative inline-block", sz)}>
+            <Star className={cn(sz, "text-dark-lighter")} />
+            {fill > 0 && (
+              <span
+                className="absolute inset-0 overflow-hidden"
+                style={{ width: `${fill * 100}%` }}
+              >
+                <Star className={cn(sz, "text-primary fill-primary")} />
+              </span>
+            )}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -38,7 +61,7 @@ function InteractiveStars({ value, onChange }: { value: number; onChange: (v: nu
   const [hover, setHover] = useState(0);
   return (
     <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map(i => (
+      {[1, 2, 3, 4, 5].map((i) => (
         <button
           key={i}
           type="button"
@@ -46,25 +69,16 @@ function InteractiveStars({ value, onChange }: { value: number; onChange: (v: nu
           onMouseLeave={() => setHover(0)}
           onClick={() => onChange(i)}
           className="transition-transform hover:scale-110"
+          aria-label={`${i} stars`}
         >
-          <svg className={`w-7 h-7 transition-colors ${i <= (hover || value) ? "text-yellow-400" : "text-dark-lighter"}`} fill="currentColor" viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
+          <Star
+            className={cn(
+              "w-7 h-7 transition-colors",
+              i <= (hover || value) ? "text-primary fill-primary" : "text-dark-lighter"
+            )}
+          />
         </button>
       ))}
-    </div>
-  );
-}
-
-function RatingBar({ label, value }: { label: string; value: number | null | undefined }) {
-  if (!value) return null;
-  return (
-    <div className="flex items-center gap-3">
-      <span className="font-headline text-[11px] uppercase tracking-widest text-muted w-36 shrink-0">{label}</span>
-      <div className="flex-1 h-1.5 bg-dark-lighter rounded-full overflow-hidden">
-        <div className="h-full bg-yellow-400 rounded-full transition-all" style={{ width: `${(value / 5) * 100}%` }} />
-      </div>
-      <span className="font-headline text-[11px] font-bold text-light w-6 text-right">{value.toFixed(1)}</span>
     </div>
   );
 }
@@ -87,15 +101,22 @@ function ReviewCard({ r }: { r: Review }) {
   const isLong = r.body.length > 200;
   const body = expanded || !isLong ? r.body : r.body.slice(0, 200) + "…";
 
+  const subMetrics = [
+    { label: "Atmosphere", value: r.atmosphereRating },
+    { label: "Organisation", value: r.organisationRating },
+    { label: "Experience", value: r.experienceRating },
+  ].filter((m): m is { label: string; value: number } => typeof m.value === "number" && m.value > 0);
+
+  const eventLabel = r.eventTitle?.trim();
+
   return (
-    <div className="bg-dark border border-dark-lighter rounded-xl p-5 space-y-3">
+    <div className="bg-dark border border-dark-lighter rounded-xl p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          {/* Avatar initial */}
+        <div className="flex items-start gap-3 min-w-0">
           <div className="w-9 h-9 rounded-full bg-dark-lighter border border-dark-lighter flex items-center justify-center font-headline text-[14px] font-black text-light shrink-0">
             {r.reviewerName.charAt(0).toUpperCase()}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-headline text-[13px] font-bold text-light">{r.reviewerName}</span>
               {r.isVerified && (
@@ -104,50 +125,64 @@ function ReviewCard({ r }: { r: Review }) {
                 </span>
               )}
             </div>
-            {r.eventTitle && (
-              <div className="font-headline text-[10px] uppercase tracking-widest text-muted mt-0.5">
-                {r.eventTitle}
-              </div>
+            {eventLabel && (
+              r.eventId ? (
+                <Link
+                  href={`/events/${r.eventId}`}
+                  className="mt-0.5 inline-block font-headline text-[12px] font-medium uppercase tracking-widest text-muted hover:text-primary transition-colors line-clamp-1"
+                >
+                  {eventLabel}
+                </Link>
+              ) : (
+                <div className="mt-0.5 font-headline text-[12px] font-medium uppercase tracking-widest text-muted line-clamp-1">
+                  {eventLabel}
+                </div>
+              )
             )}
           </div>
         </div>
         <div className="text-right shrink-0">
-          <Stars rating={r.overallRating} size="sm" />
-          <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-1">{timeAgo(r.createdAt)}</div>
+          <div className="flex items-center justify-end gap-1.5">
+            <Stars rating={r.overallRating} size="sm" />
+            <span className="font-headline text-[13px] font-bold text-light tabular-nums">
+              {r.overallRating.toFixed(1)}
+            </span>
+          </div>
+          <div className="font-headline text-[10px] uppercase tracking-widest text-muted mt-1">
+            {timeAgo(r.createdAt)}
+          </div>
         </div>
       </div>
 
       <div>
-        <div className="font-headline text-[14px] font-bold text-light mb-1">{r.title}</div>
+        <div className="font-headline text-[15px] font-bold text-light mb-1">{r.title}</div>
         <p className="text-[13px] text-muted leading-relaxed">{body}</p>
         {isLong && (
-          <button onClick={() => setExpanded(v => !v)} className="text-[11px] font-headline font-bold uppercase tracking-widest text-primary mt-1 hover:underline">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-[11px] font-headline font-bold uppercase tracking-widest text-primary mt-1 hover:underline"
+          >
             {expanded ? "Show less" : "Read more"}
           </button>
         )}
       </div>
 
-      {/* Sub-ratings */}
-      {(r.atmosphereRating || r.organisationRating || r.experienceRating) && (
-        <div className="pt-3 border-t border-dark-lighter grid grid-cols-3 gap-3 text-center">
-          {r.atmosphereRating && (
-            <div>
-              <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mb-0.5">Atmosphere</div>
-              <div className="font-headline text-[13px] font-black text-yellow-400">{r.atmosphereRating}.0</div>
+      {subMetrics.length > 0 && (
+        <div className="pt-4 border-t border-dark-lighter grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {subMetrics.map(({ label, value }) => (
+            <div key={label} className="min-w-0">
+              <div className="font-headline text-[12px] font-medium text-light mb-1.5">
+                {label}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Stars rating={value} size="sm" />
+                <span className="font-headline text-[13px] font-bold text-light tabular-nums">
+                  {value.toFixed(1)}
+                </span>
+              </div>
             </div>
-          )}
-          {r.organisationRating && (
-            <div>
-              <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mb-0.5">Organisation</div>
-              <div className="font-headline text-[13px] font-black text-yellow-400">{r.organisationRating}.0</div>
-            </div>
-          )}
-          {r.experienceRating && (
-            <div>
-              <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mb-0.5">Experience</div>
-              <div className="font-headline text-[13px] font-black text-yellow-400">{r.experienceRating}.0</div>
-            </div>
-          )}
+          ))}
         </div>
       )}
     </div>
@@ -158,19 +193,19 @@ function ReviewCard({ r }: { r: Review }) {
 
 interface ModalProps {
   organiserId: string;
+  events: ReviewEventOption[];
   onClose: () => void;
   onSuccess: (r: Review) => void;
 }
 
-function WriteReviewModal({ organiserId, onClose, onSuccess }: ModalProps) {
+function WriteReviewModal({ organiserId, events, onClose, onSuccess }: ModalProps) {
   const [overall,  setOverall]  = useState(0);
   const [comms,    setComms]    = useState(0);
   const [org,      setOrg]      = useState(0);
   const [exp,      setExp]      = useState(0);
   const [title,    setTitle]    = useState("");
   const [body,     setBody]     = useState("");
-  const [name,     setName]     = useState("");
-  const [event,    setEvent]    = useState("");
+  const [eventId,  setEventId]  = useState("");
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState("");
   const [done,     setDone]     = useState(false);
@@ -179,7 +214,6 @@ function WriteReviewModal({ organiserId, onClose, onSuccess }: ModalProps) {
     if (!overall) { setError("Please select an overall rating."); return; }
     if (!title.trim()) { setError("Please add a review title."); return; }
     if (!body.trim()) { setError("Please write your review."); return; }
-    if (!name.trim()) { setError("Please enter your name."); return; }
 
     setSaving(true); setError("");
     try {
@@ -187,23 +221,36 @@ function WriteReviewModal({ organiserId, onClose, onSuccess }: ModalProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          overallRating:       overall,
+          overallRating: overall,
           atmosphereRating: comms || null,
-          organisationRating:  org   || null,
-          experienceRating:    exp   || null,
-          title, body, reviewerName: name, eventTitle: event || null,
+          organisationRating: org || null,
+          experienceRating: exp || null,
+          title,
+          body,
+          eventId: eventId || null,
         }),
       });
       const data = await res.json();
+      if (res.status === 401) {
+        setError("Sign in to write a review.");
+        return;
+      }
       if (!res.ok) { setError(data.error ?? "Something went wrong."); return; }
 
       setDone(true);
       const newReview: Review = {
         id: data.id ?? crypto.randomUUID(),
-        reviewerName: name, eventTitle: event || null,
-        overallRating: overall, atmosphereRating: comms || null,
-        organisationRating: org || null, experienceRating: exp || null,
-        title, body, isVerified: false, createdAt: new Date().toISOString(),
+        reviewerName: data.reviewerName ?? "Startline user",
+        eventId: data.eventId ?? (eventId || null),
+        eventTitle: data.eventTitle ?? events.find((e) => e.id === eventId)?.title ?? null,
+        overallRating: overall,
+        atmosphereRating: comms || null,
+        organisationRating: org || null,
+        experienceRating: exp || null,
+        title,
+        body,
+        isVerified: false,
+        createdAt: new Date().toISOString(),
       };
       setTimeout(() => { onSuccess(newReview); onClose(); }, 1800);
     } catch {
@@ -257,11 +304,14 @@ function WriteReviewModal({ organiserId, onClose, onSuccess }: ModalProps) {
                   <div key={label}>
                     <div className="font-headline text-[10px] uppercase tracking-widest text-muted mb-1.5">{label}</div>
                     <div className="flex gap-0.5">
-                      {[1,2,3,4,5].map(i => (
-                        <button key={i} type="button" onClick={() => onChange(i)}>
-                          <svg className={`w-4 h-4 transition-colors ${i <= value ? "text-yellow-400" : "text-dark-lighter hover:text-yellow-400/50"}`} fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <button key={i} type="button" onClick={() => onChange(i)} aria-label={`${label} ${i}`}>
+                          <Star
+                            className={cn(
+                              "w-4 h-4 transition-colors",
+                              i <= value ? "text-primary fill-primary" : "text-dark-lighter hover:text-primary/50"
+                            )}
+                          />
                         </button>
                       ))}
                     </div>
@@ -274,12 +324,18 @@ function WriteReviewModal({ organiserId, onClose, onSuccess }: ModalProps) {
                 <div className="font-headline text-[11px] font-bold uppercase tracking-widest text-light mb-1.5">
                   Event attended <span className="text-muted-dark font-normal">(optional)</span>
                 </div>
-                <input
-                  value={event}
-                  onChange={e => setEvent(e.target.value)}
-                  placeholder="e.g. Functional Fitness Championship Sydney 2025"
-                  className="w-full bg-dark-darker border border-dark-lighter rounded-md px-3 py-2.5 text-[14px] text-light placeholder:text-muted-dark focus:border-primary focus:outline-none transition-colors"
-                />
+                <select
+                  value={eventId}
+                  onChange={(e) => setEventId(e.target.value)}
+                  className="w-full bg-dark-darker border border-dark-lighter rounded-md px-3 py-2.5 text-[14px] text-light focus:border-primary focus:outline-none transition-colors"
+                >
+                  <option value="">Select an event…</option>
+                  {events.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.title}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Title */}
@@ -311,19 +367,6 @@ function WriteReviewModal({ organiserId, onClose, onSuccess }: ModalProps) {
                   rows={4}
                   placeholder="What was the event like? How was the organisation, communication, and overall experience?"
                   className="w-full bg-dark-darker border border-dark-lighter rounded-md px-3 py-2.5 text-[13px] text-light placeholder:text-muted-dark focus:border-primary focus:outline-none transition-colors resize-none"
-                />
-              </div>
-
-              {/* Name */}
-              <div>
-                <div className="font-headline text-[11px] font-bold uppercase tracking-widest text-light mb-1.5">
-                  Your name <span className="text-primary">*</span>
-                </div>
-                <input
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="First name + last initial is fine"
-                  className="w-full bg-dark-darker border border-dark-lighter rounded-md px-3 py-2.5 text-[14px] text-light placeholder:text-muted-dark focus:border-primary focus:outline-none transition-colors"
                 />
               </div>
 
@@ -359,35 +402,56 @@ function WriteReviewModal({ organiserId, onClose, onSuccess }: ModalProps) {
 interface Props {
   reviews: Review[];
   organiserId: string;
+  events: ReviewEventOption[];
   loading: boolean;
   onNewReview: (r: Review) => void;
+  /** Hide write-review CTAs (organiser portal twin). */
+  readOnly?: boolean;
 }
 
-export default function ReviewsSection({ reviews, organiserId, loading, onNewReview }: Props) {
+export default function ReviewsSection({
+  reviews,
+  organiserId,
+  events,
+  loading,
+  onNewReview,
+  readOnly = false,
+}: Props) {
+  const { status } = useAuthContext();
   const [modalOpen, setModalOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
+
+  function openWriteReview() {
+    if (readOnly) return;
+    if (status !== "authenticated") {
+      setSignInOpen(true);
+      return;
+    }
+    setModalOpen(true);
+  }
 
   const avgRating = reviews.length
     ? reviews.reduce((s, r) => s + r.overallRating, 0) / reviews.length
     : 0;
 
-  const avgComms = reviews.filter(r => r.atmosphereRating).length
-    ? reviews.filter(r => r.atmosphereRating).reduce((s, r) => s + (r.atmosphereRating ?? 0), 0) / reviews.filter(r => r.atmosphereRating).length
-    : null;
+  function avgSub(
+    pick: (r: Review) => number | null | undefined
+  ): { value: number; count: number } | null {
+    const vals = reviews.map(pick).filter((v): v is number => typeof v === "number" && v > 0);
+    if (!vals.length) return null;
+    return {
+      value: Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10,
+      count: vals.length,
+    };
+  }
 
-  const avgOrg = reviews.filter(r => r.organisationRating).length
-    ? reviews.filter(r => r.organisationRating).reduce((s, r) => s + (r.organisationRating ?? 0), 0) / reviews.filter(r => r.organisationRating).length
-    : null;
+  const metrics = [
+    { label: "Atmosphere", data: avgSub((r) => r.atmosphereRating) },
+    { label: "Organisation", data: avgSub((r) => r.organisationRating) },
+    { label: "Experience", data: avgSub((r) => r.experienceRating) },
+  ].filter((m): m is { label: string; data: { value: number; count: number } } => m.data != null);
 
-  const avgExp = reviews.filter(r => r.experienceRating).length
-    ? reviews.filter(r => r.experienceRating).reduce((s, r) => s + (r.experienceRating ?? 0), 0) / reviews.filter(r => r.experienceRating).length
-    : null;
-
-  // Distribution
-  const dist = [5, 4, 3, 2, 1].map(star => ({
-    star,
-    count: reviews.filter(r => Math.round(r.overallRating) === star).length,
-    pct: reviews.length ? Math.round((reviews.filter(r => Math.round(r.overallRating) === star).length / reviews.length) * 100) : 0,
-  }));
+  const topEvents = topRatedEventsFromReviews(reviews, 3);
 
   return (
     <div id="reviews">
@@ -408,12 +472,15 @@ export default function ReviewsSection({ reviews, organiserId, loading, onNewRev
             </div>
           )}
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 border border-dark-lighter hover:border-primary/60 text-muted hover:text-light font-headline text-[12px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-md transition-colors"
-        >
-          Write a review
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={openWriteReview}
+            className="flex items-center gap-2 border border-dark-lighter hover:border-primary/60 text-muted hover:text-light font-headline text-[12px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-md transition-colors"
+          >
+            Write a review
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -422,76 +489,128 @@ export default function ReviewsSection({ reviews, organiserId, loading, onNewRev
           <div className="font-headline text-[11px] text-muted uppercase tracking-widest">Loading reviews…</div>
         </div>
       ) : reviews.length === 0 ? (
-        /* Empty state */
         <div className="py-12 text-center border border-dashed border-dark-lighter rounded-xl">
           <div className="flex items-center justify-center gap-0.5 mb-3">
-            {[1,2,3,4,5].map(i => (
-              <svg key={i} className="w-6 h-6 text-dark-lighter" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Star key={i} className="w-6 h-6 text-dark-lighter" />
             ))}
           </div>
           <div className="font-headline text-[15px] font-black italic text-light mb-1">No reviews yet</div>
-          <div className="text-[13px] text-muted mb-5">Be the first to share your experience with this organiser.</div>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-2 bg-machined shadow-machined text-dark font-headline text-[12px] font-bold uppercase tracking-widest px-5 py-2.5 rounded-md hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform"
-          >
-            Write the first review
-          </button>
+          <div className={`text-[13px] text-muted ${readOnly ? "" : "mb-5"}`}>
+            {readOnly
+              ? "Reviews from participants will appear here."
+              : "Be the first to share your experience with this organiser."}
+          </div>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={openWriteReview}
+              className="inline-flex items-center gap-2 bg-machined shadow-machined text-dark font-headline text-[12px] font-bold uppercase tracking-widest px-5 py-2.5 rounded-md hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform"
+            >
+              Write the first review
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Rating summary */}
-          <div className="grid sm:grid-cols-[auto_1fr] gap-6 bg-dark border border-dark-lighter rounded-xl p-6">
-            {/* Left: big number */}
+          <div className="grid sm:grid-cols-[minmax(140px,auto)_1fr] gap-6 bg-dark border border-dark-lighter rounded-xl p-6">
             <div className="flex flex-col items-center justify-center text-center sm:pr-6 sm:border-r sm:border-dark-lighter">
               <div className="font-headline text-[52px] font-black italic leading-none text-light">{avgRating.toFixed(1)}</div>
-              <Stars rating={avgRating} size="md" />
-              <div className="font-headline text-[11px] uppercase tracking-widest text-muted mt-1.5">
-                {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+              <div className="mt-2">
+                <Stars rating={avgRating} size="md" />
+              </div>
+              <div className="font-headline text-[11px] text-muted mt-2">
+                <span className="font-bold text-light">{reviews.length}</span>
+                {" "}
+                {reviews.length === 1 ? "rating in total" : "ratings in total"}
               </div>
             </div>
 
-            {/* Right: breakdown */}
-            <div className="flex flex-col justify-center gap-3">
-              {/* Star distribution */}
-              <div className="space-y-1.5">
-                {dist.map(({ star, count, pct }) => (
-                  <div key={star} className="flex items-center gap-2">
-                    <span className="font-headline text-[10px] text-muted w-4 text-right">{star}</span>
-                    <svg className="w-3 h-3 text-yellow-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                    <div className="flex-1 h-2 bg-dark-lighter rounded-full overflow-hidden">
-                      <div className="h-full bg-yellow-400/70 rounded-full transition-all" style={{ width: `${pct}%` }} />
+            <div className="flex flex-col justify-center gap-6 min-w-0 w-full">
+              {metrics.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6 w-full">
+                  {metrics.map(({ label, data }) => (
+                    <div key={label} className="min-w-0">
+                      <div className="font-headline text-[14px] font-medium text-light mb-2">{label}</div>
+                      <div className="h-2.5 bg-dark-lighter rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all"
+                          style={{ width: `${(data.value / 5) * 100}%` }}
+                        />
+                      </div>
+                      <div className="mt-1.5 flex items-baseline gap-1.5">
+                        <span className="font-headline text-[14px] font-bold text-light tabular-nums">
+                          {data.value.toFixed(1)}
+                        </span>
+                        <span className="text-[12px] text-muted">
+                          ({data.count} {data.count === 1 ? "rating" : "ratings"})
+                        </span>
+                      </div>
                     </div>
-                    <span className="font-headline text-[10px] text-muted-dark w-6 text-right">{count}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="font-headline text-xs text-muted">No category ratings yet.</p>
+              )}
 
-              {/* Category ratings */}
-              {(avgComms || avgOrg || avgExp) && (
-                <div className="pt-3 border-t border-dark-lighter space-y-2">
-                  <RatingBar label="Atmosphere"     value={avgComms} />
-                  <RatingBar label="Organisation"   value={avgOrg}   />
-                  <RatingBar label="Experience"     value={avgExp}   />
+              {topEvents.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6 w-full pt-5 border-t border-dark-lighter">
+                  {topEvents.map((ev) => {
+                    const titleNode = ev.eventId ? (
+                      <Link
+                        href={`/events/${ev.eventId}`}
+                        className="font-headline text-[14px] font-medium text-light hover:text-primary transition-colors line-clamp-2"
+                      >
+                        {ev.eventTitle}
+                      </Link>
+                    ) : (
+                      <div className="font-headline text-[14px] font-medium text-light line-clamp-2">{ev.eventTitle}</div>
+                    );
+                    return (
+                      <div key={`${ev.eventId ?? ev.eventTitle}`} className="min-w-0">
+                        <div className="mb-2">{titleNode}</div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Stars rating={ev.average} size="sm" />
+                          <span className="font-headline text-[14px] font-bold text-light tabular-nums">
+                            {ev.average.toFixed(1)}
+                          </span>
+                          <span className="text-[12px] text-muted">
+                            ({ev.count} {ev.count === 1 ? "rating" : "ratings"})
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Review cards */}
           <div className="space-y-4">
-            {reviews.map(r => <ReviewCard key={r.id} r={r} />)}
+            {reviews.map((r) => (
+              <ReviewCard key={r.id} r={r} />
+            ))}
           </div>
         </div>
       )}
 
-      {modalOpen && (
+      {!readOnly && modalOpen && (
         <WriteReviewModal
           organiserId={organiserId}
+          events={events}
           onClose={() => setModalOpen(false)}
           onSuccess={onNewReview}
+        />
+      )}
+
+      {!readOnly && (
+        <SignInModal
+          isOpen={signInOpen}
+          onClose={() => setSignInOpen(false)}
+          onSuccess={() => {
+            setSignInOpen(false);
+            setModalOpen(true);
+          }}
         />
       )}
     </div>

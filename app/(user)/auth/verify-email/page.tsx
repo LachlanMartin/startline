@@ -91,7 +91,7 @@ function VerifyEmailForm() {
     setResending(true);
     try {
       await resendSignUpCode({ username: email });
-      setSuccess("A new code has been sent. Check your inbox and spam folder — look for an email from Amazon Cognito or no-reply@verificationemail.com.");
+      setSuccess("A new code has been sent.");
     } catch (err: unknown) {
       const errName = (err as { name?: string })?.name ?? "";
       const msg = err instanceof Error ? err.message : "";
@@ -148,10 +148,6 @@ function VerifyEmailForm() {
               {email ? <strong className="text-light">{email}</strong> : "your email"}.
               Enter it below to activate your account.
             </p>
-            <p className="text-muted text-[12px] leading-relaxed mb-8 text-center">
-              This code is sent by AWS Cognito (not Resend). Check spam/junk, and allow a minute or two for delivery.
-            </p>
-
             {error && (
               <div className="mb-5 px-4 py-3 rounded-md bg-red-900/20 border border-red-500/30 text-red-400 font-headline text-[13px]">
                 {error}

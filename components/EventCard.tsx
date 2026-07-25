@@ -6,6 +6,7 @@ import { EVENT_TYPE_LABELS, STATE_LABELS } from "@/types";
 import { cn, formatMediumDate, formatShortDate, formatTime, formatCompetitionFormat, stripHtml } from "@/lib/utils";
 import { getEventStatus } from "@/lib/event-status";
 import SaveEventButton from "./SaveEventButton";
+import OrganiserCardMeta from "@/components/OrganiserCardMeta";
 
 interface EventCardProps {
   event: UserEvent;
@@ -130,6 +131,15 @@ export default function EventCard({ event, variant = "default", cardClassName }:
           <p className="text-xs sm:text-sm font-medium text-muted border-l-2 border-dark-lighter pl-3 line-clamp-2 flex-1">
             {stripHtml(event.description)}
           </p>
+          {(event.organizer || event.organiser?.orgName) && (
+            <OrganiserCardMeta
+              organiserId={event.organiserId}
+              name={event.organizer ?? event.organiser!.orgName!}
+              rating={event.organiser?.rating}
+              className="mt-3"
+              nestedInLink
+            />
+          )}
         </div>
       </div>
     </Link>

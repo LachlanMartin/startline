@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 # Per-environment infrastructure: VPC + networking, RDS, Cognito, Amplify branch.
 #
 # One instance of this module is created per environment (prod, nonprod). The
@@ -264,18 +266,7 @@ resource "aws_scheduler_schedule" "daily_stop" {
   }
 }
 
-# ===== Cognito custom email sender =====
-
-resource "aws_kms_key" "cognito_email" {
-  description             = "Encrypts OTP codes passed from Cognito to the custom email Lambda"
-  deletion_window_in_days = 10
-  enable_key_rotation     = true
-
-  tags = {
-    Environment = local.environment_tag
-    Service     = var.project_name
-  }
-}
+# ===== Cognito custom message Lambda =====
 
 resource "aws_iam_role" "cognito_email_lambda" {
   name = "${var.project_name}-${var.name}-cognito-email-lambda"
@@ -300,18 +291,11 @@ resource "aws_iam_role_policy" "cognito_email_lambda" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["kms:Decrypt"]
-        Resource = aws_kms_key.cognito_email.arn
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
-        Resource = "arn:aws:logs:*:*:*"
-      },
-    ]
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+      Resource = "arn:aws:logs:*:*:*"
+    }]
   })
 }
 
@@ -329,12 +313,11 @@ resource "aws_lambda_function" "cognito_email" {
   architectures    = ["arm64"]
   filename         = data.archive_file.cognito_email_lambda.output_path
   source_code_hash = data.archive_file.cognito_email_lambda.output_base64sha256
-  timeout          = 30
+  timeout          = 5
 
   environment {
     variables = {
-      RESEND_API_KEY = coalesce(var.resend_api_key, "")
-      SITE_URL       = var.site_url
+      SITE_URL = var.site_url
     }
   }
 
@@ -381,11 +364,7 @@ resource "aws_cognito_user_pool" "this" {
   }
 
   lambda_config {
-    custom_email_sender {
-      lambda_arn     = aws_lambda_function.cognito_email.arn
-      lambda_version = "V1_0"
-    }
-    kms_key_id = aws_kms_key.cognito_email.arn
+    custom_message = aws_lambda_function.cognito_email.arn
   }
 
   schema {
@@ -406,6 +385,12 @@ resource "aws_cognito_user_pool" "this" {
   software_token_mfa_configuration {
     enabled = true
   }
+
+  device_configuration {
+    challenge_required_on_new_device      = false
+    device_only_remembered_on_user_prompt = true
+  }
+
   deletion_protection = var.cognito_deletion_protection ? "ACTIVE" : "INACTIVE"
 
   tags = {

@@ -14,5 +14,6 @@ describe("prisma", () => {
     expect(prisma.admin).toBeDefined();
     expect(prisma.review).toBeDefined();
     expect(prisma.registration).toBeDefined();
+    expect(prisma.organiserFollow).toBeDefined();
   });
 });

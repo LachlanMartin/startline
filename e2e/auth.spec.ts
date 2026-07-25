@@ -85,7 +85,6 @@ test.describe("auth modal — sign up", () => {
     await page.locator('input[aria-label="Day"]').fill(String(today.getDate()).padStart(2, "0"));
     await page.locator('input[aria-label="Month"]').fill(String(today.getMonth() + 1).padStart(2, "0"));
     await page.locator('input[aria-label="Year"]').fill(String(today.getFullYear() - 5));
-    await page.getByPlaceholder("+61 400 000 000").fill("0400123456");
     await page.locator('input[type="checkbox"]').check({ force: true });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
 
@@ -109,7 +108,6 @@ test.describe("auth modal — sign up", () => {
     await page.locator('input[aria-label="Day"]').fill("15");
     await page.locator('input[aria-label="Month"]').fill("06");
     await page.locator('input[aria-label="Year"]').fill("1995");
-    await page.getByPlaceholder("+61 400 000 000").fill("0400123456");
     await page.locator('input[type="checkbox"]').check({ force: true });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
 

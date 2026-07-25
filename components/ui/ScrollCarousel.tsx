@@ -123,7 +123,7 @@ export function ScrollCarousel({ title, eyebrow, viewAllHref, arrowTopClass = "t
 
         <div
           ref={scrollRef}
-          className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-2"
+          className="flex items-stretch gap-3 sm:gap-4 overflow-x-auto no-scrollbar py-2"
           style={{ scrollSnapType: "x mandatory" }}
         >
           {children}

@@ -138,6 +138,7 @@ export default function AdminLoginPage() {
     try {
       const result = await confirmSignIn({ challengeResponse: totpCode });
       if (result.nextStep.signInStep === "DONE") {
+        await fetch("/api/user/mfa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "enable" }) });
         await completeAdminSignIn();
       } else {
         setError("Verification failed. Please try again.");
