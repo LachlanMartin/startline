@@ -31,6 +31,22 @@ jobs:
           environment: ${{ env.ENV }}
           bootstrap-export-keys: ""
 
+      - name: Start staging RDS if stopped
+        if: env.ENV == 'staging'
+        shell: bash
+        run: |
+          STATUS=$(aws rds describe-db-instances \
+            --db-instance-identifier startline-staging-postgres \
+            --query 'DBInstances[0].DBInstanceStatus' --output text)
+          if [ "$STATUS" = "stopped" ]; then
+            echo "Starting staging RDS..."
+            aws rds start-db-instance --db-instance-identifier startline-staging-postgres
+            aws rds wait db-instance-available --db-instance-identifier startline-staging-postgres
+            echo "Staging RDS ready"
+          else
+            echo "Staging RDS status: $STATUS — no start needed"
+          fi
+
       - name: Resolve Amplify app ID
         id: amplify-app
         shell: bash
