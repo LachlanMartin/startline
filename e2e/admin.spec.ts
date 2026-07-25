@@ -4,17 +4,7 @@ import { adminLogin } from "./helpers";
 
 test.describe("admin login", () => {
   test("dev bypass login redirects to dashboard", async ({ page }) => {
-    await page.goto("/admin/login");
-    await page.waitForLoadState("networkidle");
-
-    await expect(page.locator("h1")).toContainText("Admin");
-    await expect(page.locator("h1")).toContainText("sign in");
-
-    await page.getByPlaceholder(/admin@startlineau/i).fill("admin@startline.test");
-    await page.locator('input[type="password"]').first().fill("Password123!");
-    await page.getByRole("button", { name: /sign in/i }).click();
-
-    await page.waitForURL("**/admin/dashboard**", { timeout: 30000 });
+    await adminLogin(page);
     await expect(page.locator("h1")).toContainText("Overview");
   });
 

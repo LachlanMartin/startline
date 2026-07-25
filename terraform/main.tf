@@ -180,6 +180,7 @@ module "env" {
   database_performance_insights_enabled = var.database_performance_insights_enabled
   database_secret_recovery_window_days  = var.database_secret_recovery_window_days
   enable_daily_stop                     = each.value.enable_daily_stop
+  database_ssl_mode                     = each.key == "staging" ? "no-verify" : "require"
 
   cognito_deletion_protection = each.value.cognito_deletion_protection
 
