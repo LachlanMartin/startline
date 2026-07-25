@@ -28,7 +28,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   lint:
-    continue-on-error: true
+    continue-on-error: false
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/startline?schema=public
@@ -44,7 +44,7 @@ jobs:
       - run: pnpm lint
 
   typecheck:
-    continue-on-error: true
+    continue-on-error: false
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/startline?schema=public
@@ -61,7 +61,7 @@ jobs:
       - run: pnpm typecheck
 
   build:
-    continue-on-error: true
+    continue-on-error: false
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/startline?schema=public
@@ -78,7 +78,7 @@ jobs:
       - run: pnpm build
 
   test:
-    continue-on-error: true
+    continue-on-error: false
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/startline?schema=public
@@ -95,7 +95,7 @@ jobs:
       - run: pnpm test
 
   e2e:
-    continue-on-error: true
+    continue-on-error: false
     runs-on: ubuntu-latest
     services:
       postgres:
