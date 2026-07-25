@@ -2,7 +2,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Calendar, ExternalLink, Trophy, Clock, Ticket } from "lucide-react";
-import { getAllEvents } from "@/lib/events";
+import { getAllEvents, getPublicEventById } from "@/lib/events";
 import { todayIso } from "@/lib/event-types";
 import { parsePrizePool } from "@/lib/prize-pool";
 import { sanitizeHtml } from "@/lib/sanitize-html";
@@ -19,6 +19,9 @@ import {
 } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import EventGallery from "@/components/EventGallery";
+import EventReviewsSection from "@/components/EventReviewsSection";
+import OrganiserRating from "@/components/OrganiserRating";
+import { getPublishedOrganiserReviews, averageOverallRating } from "@/lib/reviews";
 
 export const revalidate = 60;
 
@@ -33,8 +36,7 @@ export async function generateStaticParams() {
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const raw = await getAllEvents();
-  const found = raw.find((e: { id: string }) => e.id === id);
+  const found = await getPublicEventById(id);
   if (!found) notFound();
 
   const event = toUserEvent(found);
@@ -45,6 +47,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     const closes = drop.closes || drop.date;
     return { ...drop, closes, isClosed: !!closes && closes < today };
   });
+  const organiserReviews = await getPublishedOrganiserReviews(event.organiserId);
+  const organiserRating =
+    event.organiser?.rating ??
+    (() => {
+      const avg = averageOverallRating(organiserReviews);
+      return avg != null ? { average: avg, count: organiserReviews.length } : null;
+    })();
+  const organiserName = event.organizer ?? event.organiser?.orgName ?? "Organiser";
 
   return (
     <main className="min-h-screen bg-dark-darker pt-14">
@@ -164,6 +174,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               </div>
             )}
 
+            <EventReviewsSection
+              organiserId={event.organiserId}
+              organiserName={organiserName}
+              rating={organiserRating}
+              reviews={organiserReviews}
+            />
+
           </div>
 
           {/* ── Sidebar: CTAs + details — first on mobile so key facts aren't buried ── */}
@@ -280,8 +297,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                         <span className="block font-headline text-base font-black italic text-light group-hover:text-primary transition-colors leading-tight truncate">
                           {event.organizer}
                         </span>
-                        <span className="block font-headline text-[10px] font-medium uppercase tracking-widest text-muted mt-0.5">
-                          View profile &rarr;
+                        <span className="flex items-center gap-2 mt-0.5">
+                          <OrganiserRating rating={organiserRating} />
+                          <span className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
+                            View profile &rarr;
+                          </span>
                         </span>
                       </span>
                     </Link>

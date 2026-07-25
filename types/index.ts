@@ -75,6 +75,7 @@ export interface UserEvent {
     id: string;
     orgName: string | null;
     logoUrl: string | null;
+    rating?: { average: number; count: number } | null;
   };
 }
 

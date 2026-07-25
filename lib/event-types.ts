@@ -43,6 +43,7 @@ export interface PublicEvent {
     logoUrl: string | null;
     stripeAccountId: string | null;
     stripeOnboardingComplete: boolean;
+    rating?: { average: number; count: number } | null;
   };
 }
 

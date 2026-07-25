@@ -75,7 +75,14 @@ export function toUserEvent(event: PublicEvent): UserEvent {
     coverImageUrl: event.coverImageUrl,
     photos: Array.isArray(event.photos) ? event.photos : [],
     registrationCount: event.registrationCount,
-    organiser: event.organiser,
+    organiser: event.organiser
+      ? {
+          id: event.organiser.id,
+          orgName: event.organiser.orgName,
+          logoUrl: event.organiser.logoUrl,
+          rating: event.organiser.rating ?? null,
+        }
+      : undefined,
   };
 }
 

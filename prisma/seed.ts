@@ -370,6 +370,14 @@ async function main() {
     { id: "seed-event-033", status: "APPROVED" as const, title: "Étape du Tour 2026",            discipline: "cycling",   eventDate: "2026-07-12", startTime: "06:00", endTime: "16:00", venue: "Bourg d'Oisans",                city: "Bourg d'Oisans", state: "nsw", format: "individual", level: "open",  categories: ["Full Stage"], cap: 15000, waves: [{ label: "Entry", price: "80" }], tagline: "Ride a Tour stage", description: "Ride the same stage as the pros on the Tour de France route." },
     { id: "seed-event-034", status: "APPROVED" as const, title: "NYC Triathlon",                discipline: "triathlon", eventDate: "2026-07-19", startTime: "06:00", endTime: "14:00", venue: "Hudson River",                   city: "New York", state: "nsw", format: "individual", level: "open",  categories: ["Olympic", "Sprint"], cap: 4000, waves: [{ label: "Olympic", price: "350" }, { label: "Sprint", price: "200" }], tagline: "Swim in the Hudson", description: "Triathlon through New York City — swim in the Hudson, bike through Manhattan." },
     { id: "seed-event-035", status: "APPROVED" as const, title: "London Marathon",               discipline: "running",   eventDate: "2026-04-26", startTime: "09:00", endTime: "16:00", venue: "Greenwich Park to The Mall",      city: "London", state: "nsw", format: "individual", level: "open",  categories: ["Marathon"], cap: 50000, waves: [{ label: "Championship Entry", price: "250" }], tagline: "Run past Big Ben", description: "The iconic London Marathon from Greenwich to The Mall." },
+
+    // Apex Endurance — previous events (past dates for the organiser archive carousel)
+    { id: "seed-event-040", status: "APPROVED" as const, title: "The Apex Throwdown 2025",       discipline: "crossfit",  eventDate: "2025-08-16", startTime: "07:30", endTime: "17:00", venue: "Melbourne Sports & Aquatic Centre", city: "Melbourne", state: "vic", format: "individual", level: "open", categories: ["Scaled", "RX", "Elite"], cap: 400, waves: [{ label: "Early Bird", price: "95" }, { label: "General", price: "115" }], tagline: "Where it all started", description: "The third edition of Victoria's premier functional fitness competition.", coverImageUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80" },
+    { id: "seed-event-041", status: "APPROVED" as const, title: "Hybrid Hustle Series — Round 1", discipline: "hybrid",   eventDate: "2025-11-08", startTime: "08:00", endTime: "14:00", venue: "Kokoda Track Memorial Walkway", city: "Scoresby", state: "vic", format: "individual", level: "open", categories: ["Open Male", "Open Female"], cap: 150, waves: [{ label: "General Entry", price: "75" }], tagline: "Run. Lift. Repeat.", description: "Season opener for the Hybrid Hustle Series through the Dandenongs.", coverImageUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&q=80" },
+    { id: "seed-event-042", status: "APPROVED" as const, title: "Hybrid Hustle Series — Round 2", discipline: "hybrid",   eventDate: "2026-02-14", startTime: "08:00", endTime: "14:00", venue: "You Yangs Regional Park", city: "Little River", state: "vic", format: "individual", level: "open", categories: ["Open Male", "Open Female", "Masters 40+"], cap: 180, waves: [{ label: "General Entry", price: "80" }], tagline: "Dust, hills, and loaded carries", description: "Round 2 pushed athletes through the You Yangs trails and granite climbs.", coverImageUrl: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=1200&q=80" },
+    { id: "seed-event-043", status: "APPROVED" as const, title: "Apex Winter Classic",           discipline: "crossfit",  eventDate: "2026-06-07", startTime: "08:00", endTime: "16:00", venue: "CrossFit South Yarra", city: "Melbourne", state: "vic", format: "both", level: "open", categories: ["Individual", "Team of 2"], cap: 220, waves: [{ label: "Individual", price: "90" }, { label: "Team (per person)", price: "70" }], tagline: "Cold start. Hot finish.", description: "A one-day winter throwdown with three scored workouts and a packed spectator floor.", coverImageUrl: "https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=1200&q=80" },
+    { id: "seed-event-044", status: "APPROVED" as const, title: "Apex Bay Run",                 discipline: "running",   eventDate: "2026-03-22", startTime: "07:00", endTime: "11:00", venue: "Albert Park Lake", city: "Melbourne", state: "vic", format: "individual", level: "open", categories: ["5K", "10K", "Half Marathon"], cap: 1200, waves: [{ label: "5K", price: "35" }, { label: "10K", price: "45" }, { label: "Half", price: "65" }], tagline: "Flat and fast around the lake", description: "Apex's community run around Albert Park — perfect for PBs and first-timers.", coverImageUrl: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=1200&q=80" },
+    { id: "seed-event-045", status: "APPROVED" as const, title: "Apex Team Relay Challenge",    discipline: "hybrid",    eventDate: "2025-12-06", startTime: "09:00", endTime: "15:00", venue: "MSAC Outdoor Courts", city: "Melbourne", state: "vic", format: "team", level: "open", categories: ["Teams of 4"], cap: 80, waves: [{ label: "Team Entry", price: "280" }], tagline: "Four athletes. One finish line.", description: "A festive team relay mixing runs, carries, and partner workouts.", coverImageUrl: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=1200&q=80" },
   ];
 
   for (const e of seedEvents) {
@@ -378,11 +386,12 @@ async function main() {
       create: { id: e.id, organiserId: org.id, status: e.status, title: e.title, discipline: e.discipline, photos: [],
         tagline: e.tagline, description: e.description, eventDate: e.eventDate, startTime: e.startTime, endTime: e.endTime,
         venue: e.venue, city: e.city, state: e.state, format: e.format, level: e.level, categories: e.categories,
-        cap: e.cap, waves: e.waves, registrationType: "startline", feeStructure: "athlete" },
+        cap: e.cap, waves: e.waves, registrationType: "startline", feeStructure: "athlete",
+        ...("coverImageUrl" in e && e.coverImageUrl ? { coverImageUrl: e.coverImageUrl } : {}) },
     });
   }
 
-  console.log(`  Events: ${4 + seedEvents.length} (including 1 pending, 1 draft, 1 rejected)`);
+  console.log(`  Events: ${4 + seedEvents.length} (including 1 pending, 1 draft, 1 rejected, 6 past Apex events)`);
 
   // ── Reviews ──────────────────────────────────────────────────────────
 
@@ -513,6 +522,25 @@ async function main() {
     regCount++;
   }
   console.log(`  Registrations: ${regCount}`);
+
+  // ── Organiser follows ────────────────────────────────────────────────
+  const followerUserIds = [
+    userBySub[subsByEmail["user@startline.test"] ?? ""],
+    userBySub[subsByEmail["admin@startline.test"] ?? ""],
+  ].filter(Boolean) as string[];
+
+  let followCount = 0;
+  for (const userId of followerUserIds) {
+    await prisma.organiserFollow.upsert({
+      where: {
+        userId_organiserId: { userId, organiserId: org.id },
+      },
+      update: {},
+      create: { userId, organiserId: org.id },
+    });
+    followCount++;
+  }
+  console.log(`  Organiser follows: ${followCount}`);
 
   // ── Notifications ────────────────────────────────────────────────────
 

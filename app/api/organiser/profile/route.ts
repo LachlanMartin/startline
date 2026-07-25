@@ -16,6 +16,7 @@ export async function GET() {
         bio: true, logoUrl: true, logoPosition: true, coverImageUrl: true, coverPosition: true, photos: true,
         legalName: true, insuranceDeclared: true, dob: true,
         stripeAccountId: true, stripeOnboardingComplete: true,
+        _count: { select: { follows: true } },
       },
     });
 
@@ -23,7 +24,8 @@ export async function GET() {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    return NextResponse.json(organiser);
+    const { _count, ...rest } = organiser;
+    return NextResponse.json({ ...rest, followerCount: _count.follows });
   } catch {
     return NextResponse.json({ error: "Service unavailable." }, { status: 503 });
   }

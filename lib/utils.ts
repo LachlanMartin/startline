@@ -166,6 +166,15 @@ export function getUpcomingEvents(events: UserEvent[], limit = 10): UserEvent[] 
   return sortEventsByDate(upcoming).slice(0, limit);
 }
 
+/** Past events (before today), most recent first. */
+export function getPastEvents(events: UserEvent[], limit = 20): UserEvent[] {
+  const today = startOfDay(new Date());
+  const past = events.filter((e) => isBefore(startOfDay(parseISO(e.date)), today));
+  return [...past]
+    .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())
+    .slice(0, limit);
+}
+
 export function getTotalUpcomingEvents(events: UserEvent[]): number {
   const today = startOfDay(new Date());
   return events.filter((e) => isOnOrAfterToday(e.date, today)).length;

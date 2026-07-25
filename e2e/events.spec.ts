@@ -36,6 +36,23 @@ test.describe("event detail page", () => {
     await page.waitForLoadState("networkidle");
     await argosScreenshot(page, "event-detail");
   });
+
+  test("shows organiser reviews section when reviews exist", async ({ page }) => {
+    await page.goto("/events/seed-event-001");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: /^Reviews$/i })).toBeVisible();
+    await expect(page.getByText(/Reviews for/i)).toBeVisible();
+    await expect(page.getByText(/Apex Endurance Events/i).first()).toBeVisible();
+  });
+
+  test("event card shows organiser name and rating", async ({ page }) => {
+    await page.goto("/events");
+    await page.waitForLoadState("networkidle");
+    const organiserLink = page.getByRole("link", { name: /Apex Endurance Events/i }).first();
+    await expect(organiserLink).toBeVisible();
+    // Star rating chip is only rendered when the organiser has published reviews
+    await expect(page.getByLabel(/Rated .+ out of 5 from \d+ reviews/i).first()).toBeVisible();
+  });
 });
 
 test.describe("static pages", () => {

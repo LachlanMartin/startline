@@ -82,6 +82,7 @@ model Organiser {
   announcements Announcement[]
   notifications Notification[]
   registrations Registration[]
+  follows       OrganiserFollow[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -175,6 +176,8 @@ model Review {
   eventId     String?
   event       Event?    @relation(fields: [eventId], references: [id], onDelete: SetNull)
   eventTitle  String?
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Ratings 1–5
   overallRating       Int
@@ -191,6 +194,8 @@ model Review {
 
   createdAt DateTime @default(now())
 
+  @@index([organiserId])
+  @@index([userId])
   @@map("reviews")
 }
 
@@ -277,6 +282,20 @@ enum RegistrationStatus {
   REFUNDED
 }
 
+// ─── User → Organiser follows ─────────────────────────────────────────────────
+model OrganiserFollow {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organiserId String
+  organiser   Organiser @relation(fields: [organiserId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, organiserId])
+  @@index([organiserId])
+  @@map("organiser_follows")
+}
+
 // ─── User accounts ────────────────────────────────────────────────────────────
 // Every platform user has a User record. Organisers are users who also
 // have an associated Organiser profile (1:1).
@@ -299,6 +318,8 @@ model User {
 
   organiser     Organiser?
   registrations Registration[]
+  follows       OrganiserFollow[]
+  reviews       Review[]
 
   @@map("users")
 }
