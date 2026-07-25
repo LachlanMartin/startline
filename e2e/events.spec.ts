@@ -32,14 +32,14 @@ test.describe("events page", () => {
   test("list/map view toggle is present", async ({ page }) => {
     await page.goto("/events");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByTestId("view-mode-list")).toBeVisible();
-    await expect(page.getByTestId("view-mode-map")).toBeVisible();
+    await expect(page.getByTestId("view-mode-list").first()).toBeVisible();
+    await expect(page.getByTestId("view-mode-map").first()).toBeVisible();
   });
 
   test("switching to map mode shows map container", async ({ page }) => {
     await page.goto("/events");
     await page.waitForLoadState("networkidle");
-    await page.getByTestId("view-mode-map").click();
+    await page.getByTestId("view-mode-map").first().click();
     await expect(page.getByTestId("events-map")).toBeVisible();
   });
 });

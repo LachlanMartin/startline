@@ -27,7 +27,7 @@ export default defineConfig({
   webServer: process.env.CI
     ? undefined
     : {
-        command: "CI=true pnpm dev -p 3000",
+        command: "NEXT_PUBLIC_COGNITO_USER_POOL_ID=test NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk_test CI=true pnpm dev -p 3000",
         url: "http://localhost:3000/admin/login",
         reuseExistingServer: true,
         timeout: 90000,
