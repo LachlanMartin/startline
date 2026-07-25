@@ -164,7 +164,7 @@ resource "aws_secretsmanager_secret" "database" {
 
 locals {
   environment_tag = var.name == "prod" ? "Prod" : "Stage"
-  database_url    = "postgresql://${var.database_username}:${urlencode(random_password.db_master.result)}@${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/${var.database_name}?schema=public&sslmode=require"
+  database_url    = "postgresql://${var.database_username}:${urlencode(random_password.db_master.result)}@${aws_db_instance.postgres.address}:${aws_db_instance.postgres.port}/${var.database_name}?schema=public&sslmode=${var.database_ssl_mode}"
 }
 
 resource "aws_secretsmanager_secret_version" "database" {
@@ -380,7 +380,7 @@ resource "aws_cognito_user_pool" "this" {
     }
   }
 
-  mfa_configuration   = "OPTIONAL"
+  mfa_configuration = "OPTIONAL"
 
   software_token_mfa_configuration {
     enabled = true
@@ -586,7 +586,7 @@ resource "aws_s3_bucket_cors_configuration" "uploads" {
 # ===== CloudFront CDN for upload bucket =====
 
 resource "aws_wafv2_web_acl" "cdn" {
-  count = var.cdn_waf_enabled ? 1 : 0
+  count    = var.cdn_waf_enabled ? 1 : 0
   provider = aws.us_east_1
 
   name        = "${var.project_name}-${var.name}-cdn-waf"

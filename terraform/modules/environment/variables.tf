@@ -1,3 +1,9 @@
+variable "database_ssl_mode" {
+  description = "PostgreSQL SSL mode (require, no-verify, verify-full, etc.)"
+  type        = string
+  default     = "require"
+}
+
 variable "name" {
   description = "Short environment name (e.g. prod, nonprod). Used as a suffix in resource names and the Environment tag."
   type        = string
