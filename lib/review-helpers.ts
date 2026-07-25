@@ -15,7 +15,7 @@ export function averageOverallRating(
   ratings: Array<{ overallRating: number } | number>
 ): number | null {
   if (ratings.length === 0) return null;
-  const sum = ratings.reduce((acc, r) => {
+  const sum = ratings.reduce<number>((acc, r) => {
     const n = typeof r === "number" ? r : r.overallRating;
     return acc + n;
   }, 0);

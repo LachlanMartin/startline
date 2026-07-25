@@ -101,13 +101,11 @@ function ReviewCard({ r }: { r: Review }) {
   const isLong = r.body.length > 200;
   const body = expanded || !isLong ? r.body : r.body.slice(0, 200) + "…";
 
-  const subMetrics = (
-    [
-      { label: "Atmosphere", value: r.atmosphereRating },
-      { label: "Organisation", value: r.organisationRating },
-      { label: "Experience", value: r.experienceRating },
-    ] as const
-  ).filter((m): m is { label: string; value: number } => typeof m.value === "number" && m.value > 0);
+  const subMetrics = [
+    { label: "Atmosphere", value: r.atmosphereRating },
+    { label: "Organisation", value: r.organisationRating },
+    { label: "Experience", value: r.experienceRating },
+  ].filter((m): m is { label: string; value: number } => typeof m.value === "number" && m.value > 0);
 
   const eventLabel = r.eventTitle?.trim();
 
@@ -447,13 +445,11 @@ export default function ReviewsSection({
     };
   }
 
-  const metrics = (
-    [
-      { label: "Atmosphere", data: avgSub((r) => r.atmosphereRating) },
-      { label: "Organisation", data: avgSub((r) => r.organisationRating) },
-      { label: "Experience", data: avgSub((r) => r.experienceRating) },
-    ] as const
-  ).filter((m): m is { label: string; data: { value: number; count: number } } => m.data != null);
+  const metrics = [
+    { label: "Atmosphere", data: avgSub((r) => r.atmosphereRating) },
+    { label: "Organisation", data: avgSub((r) => r.organisationRating) },
+    { label: "Experience", data: avgSub((r) => r.experienceRating) },
+  ].filter((m): m is { label: string; data: { value: number; count: number } } => m.data != null);
 
   const topEvents = topRatedEventsFromReviews(reviews, 3);
 
