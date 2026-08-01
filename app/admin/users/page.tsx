@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, startTransition } from "react";
-import { Search, RefreshCw, Ban, CheckCircle2, Building2, UserX } from "lucide-react";
+import { Search, RefreshCw, Ban, CheckCircle2, Building2, UserX, Pencil } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import EditUserDialog from "@/components/admin/EditUserDialog";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +34,11 @@ function formatDate(iso: string) {
 function UserRowItem({
   user,
   onBanToggled,
+  onEdit,
 }: {
   user: UserRow;
   onBanToggled: (id: string, isBanned: boolean) => void;
+  onEdit: (id: string) => void;
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -102,7 +105,13 @@ function UserRowItem({
           </div>
         </div>
 
-        <div className="shrink-0 ml-auto pl-2">
+        <div className="shrink-0 ml-auto pl-2 flex items-center gap-1.5">
+          <button
+            onClick={() => onEdit(user.id)}
+            className="flex items-center gap-1.5 font-headline text-[12px] font-bold uppercase tracking-widest border border-dark-lighter text-muted px-3 py-2 rounded-md hover:border-primary/40 hover:text-light transition-colors"
+          >
+            <Pencil className="w-3.5 h-3.5" /> Edit
+          </button>
           <button
             onClick={handleToggleBan}
             disabled={loading}
@@ -132,6 +141,7 @@ export default function AdminUsersPage() {
   const [total,      setTotal]      = useState(0);
   const [page,       setPage]       = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async (q: string, p: number) => {
     try {
@@ -237,7 +247,7 @@ export default function AdminUsersPage() {
             )}
 
             {!loading && users.map((u) => (
-              <UserRowItem key={u.id} user={u} onBanToggled={handleBanToggled} />
+              <UserRowItem key={u.id} user={u} onBanToggled={handleBanToggled} onEdit={setEditingUserId} />
             ))}
           </Card>
 
@@ -267,6 +277,13 @@ export default function AdminUsersPage() {
           )}
         </div>
       </main>
+
+      <EditUserDialog
+        userId={editingUserId}
+        open={editingUserId !== null}
+        onClose={() => setEditingUserId(null)}
+        onSaved={() => startTransition(() => fetchUsers(query, page))}
+      />
     </div>
   );
 }

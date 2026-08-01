@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback, Suspense, startTransition } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import {
   MapPin, Calendar, Check, X, RefreshCw, ChevronDown, ChevronUp,
-  Pin, PinOff, Trash2, CheckSquare, Square,
+  Pin, PinOff, Trash2, CheckSquare, Square, Plus, Pencil,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -300,6 +301,14 @@ function EventRow({
                   : <><Pin className="w-3.5 h-3.5" /> Pin</>}
             </button>
           )}
+
+          {/* Edit */}
+          <Link
+            href={`/admin/events/${event.id}/edit`}
+            className="flex items-center gap-1.5 font-headline text-[12px] font-bold uppercase tracking-widest border border-dark-lighter text-muted px-3 py-2 rounded-md hover:border-primary/40 hover:text-light transition-colors"
+          >
+            <Pencil className="w-3.5 h-3.5" /> Edit
+          </Link>
 
           {/* Delete */}
           <button
@@ -613,12 +622,20 @@ function AdminEventsContent() {
                 Events.
               </h1>
             </div>
-            <button
-              onClick={() => fetchEvents(activeTab, page)}
-              className="self-start sm:self-end flex items-center gap-2 font-headline text-[12px] font-bold uppercase tracking-widest text-muted hover:text-light transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Refresh
-            </button>
+            <div className="flex items-center gap-3 self-start sm:self-end">
+              <Link
+                href="/admin/events/create"
+                className="flex items-center gap-2 font-headline text-[12px] font-bold uppercase tracking-widest bg-machined shadow-machined text-dark px-4 py-2.5 rounded-md hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-transform"
+              >
+                <Plus className="w-3.5 h-3.5" /> Create event
+              </Link>
+              <button
+                onClick={() => fetchEvents(activeTab, page)}
+                className="flex items-center gap-2 font-headline text-[12px] font-bold uppercase tracking-widest text-muted hover:text-light transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Refresh
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}
