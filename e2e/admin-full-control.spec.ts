@@ -126,16 +126,17 @@ test.describe("admin event creation", () => {
     const organiserId = await getApexOrganiserId(page);
     const title = `E2E Admin Event ${ts()}`;
 
-    await createEventViaApi(page, title, organiserId, true);
+    const eventId = await createEventViaApi(page, title, organiserId, true);
 
     // Verified organiser → auto-approved, so it appears on the Approved tab.
     await page.goto("/admin/events?status=APPROVED");
     await expect(page.getByText(title, { exact: false })).toBeVisible({ timeout: 10000 });
 
-    // The event is attributed to the organiser — visible in their events list.
-    const orgRes = await page.request.get("/api/organiser/events");
-    const orgEvents = await orgRes.json();
-    expect(orgEvents.some((e: { title: string }) => e.title === title)).toBeTruthy();
+    // The event is attributed to the chosen organiser (posted to their profile).
+    const evtRes = await page.request.get(`/api/admin/events/${eventId}`);
+    expect(evtRes.ok()).toBeTruthy();
+    const evt = await evtRes.json();
+    expect(evt.organiserId).toBe(organiserId);
 
     // Audit log records the create.
     const auditRes = await page.request.get("/api/admin/audit?action=CREATE_EVENT&limit=50");
