@@ -59,6 +59,9 @@ export default function EventCard({ event, className, cardClassName, onSelect, s
           <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
             <MapPin className="w-3 h-3 text-primary flex-shrink-0" />
             <span className="truncate">{event.city}, {STATE_LABELS[event.state]}</span>
+            {event.distance && (
+              <span data-testid="event-distance" className="ml-auto flex-shrink-0 text-primary font-bold">{event.distance} away</span>
+            )}
           </div>
           <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
             <Clock className="w-3 h-3 text-primary flex-shrink-0" />

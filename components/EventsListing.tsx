@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback, useLayoutEffect, Sus
 import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, MapPin, X, LayoutGrid, ChevronDown, Check, ArrowUpDown } from "lucide-react";
+import { Search, MapPin, X, LayoutGrid, ChevronDown, Check, ArrowUpDown, Locate, Loader2 } from "lucide-react";
 import type { UserEvent, FilterState, EventType, AustralianState, CompetitionFormat, ExperienceLevel, SortOption } from "@/types";
 import {
   EVENT_TYPE_LABELS, STATE_LABELS, STATE_OPTIONS, EVENT_TYPE_OPTIONS,
@@ -13,6 +13,7 @@ import {
 } from "@/types";
 import { filterEvents, sortEvents } from "@/lib/utils";
 import { toUserEvents } from "@/lib/user-events";
+import { eventDistance, formatDistance, DEFAULT_RADIUS_KM } from "@/lib/distance";
 import { getEventCoords } from "@/lib/australia-coords";
 import { useAuthContext } from "@/context/AuthContext";
 import EventMap from "@/components/EventMap";
@@ -114,6 +115,8 @@ function EventsListingInner() {
   const searchParams = useSearchParams();
   const [whatQuery,     setWhatQuery]     = useState(searchParams.get("what")  ?? "");
   const [whereQuery,    setWhereQuery]    = useState(searchParams.get("where") ?? "");
+  const [searchOrigin,  setSearchOrigin]  = useState<{ lat: number; lng: number } | null>(null);
+  const [isGeocoding,   setIsGeocoding]   = useState(false);
   const [typeFilters,   setTypeFilters]   = useState<EventType[]>(searchParams.get("type") ? [searchParams.get("type") as EventType] : []);
   const [stateFilters,  setStateFilters]  = useState<AustralianState[]>([]);
   const [formatFilters, setFormatFilters] = useState<CompetitionFormat[]>([]);
@@ -127,6 +130,64 @@ function EventsListingInner() {
   // Latches true the first time the Map tab is viewed, so EventMap mounts
   // once and then just toggles visibility (avoids re-init/re-fetch on every tab switch).
   const [mapEverViewed, setMapEverViewed] = useState(view === "map");
+
+  const locateMe = useCallback(() => {
+    if (!("geolocation" in navigator)) return;
+    setIsGeocoding(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setSearchOrigin({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setWhereQuery("Current location");
+        setIsGeocoding(false);
+      },
+      () => {
+        setSearchOrigin(null);
+        setWhereQuery("");
+        setIsGeocoding(false);
+      },
+      { timeout: 10000 }
+    );
+  }, []);
+
+  const handleWhereSearch = useCallback(async (raw?: string) => {
+    const q = (raw ?? whereQuery).trim();
+    if (!q) { setSearchOrigin(null); return; }
+    if (q.toLowerCase() === "current location") { locateMe(); return; }
+    setIsGeocoding(true);
+    try {
+      const res = await fetch(`/api/places/geocode?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      const result = data?.result;
+      if (result && typeof result.latitude === "number" && typeof result.longitude === "number") {
+        setSearchOrigin({ lat: result.latitude, lng: result.longitude });
+      } else {
+        // Geocode failed — fall back to substring matching.
+        setSearchOrigin(null);
+      }
+    } catch {
+      setSearchOrigin(null);
+    } finally {
+      setIsGeocoding(false);
+    }
+  }, [whereQuery, locateMe]);
+
+  const clearWhere = useCallback(() => {
+    setWhereQuery("");
+    setSearchOrigin(null);
+  }, []);
+
+  // Auto-search an initial ?where= param (e.g. from HeroSearch) once.
+  const didInitialWhere = useRef(false);
+  useEffect(() => {
+    if (didInitialWhere.current) return;
+    didInitialWhere.current = true;
+    const initial = searchParams.get("where");
+    if (!initial) return;
+    // Defer so the geocode fetch (and its setState) runs after this effect settles.
+    const t = setTimeout(() => handleWhereSearch(initial), 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close an open filter dropdown on outside click / Escape.
   useEffect(() => {
@@ -156,20 +217,37 @@ function EventsListingInner() {
     priceRange,
     dateRange:   dateFilter,
     searchQuery: whatQuery,
-  }), [typeFilters, stateFilters, formatFilters, levelFilters, priceRange, dateFilter, whatQuery]);
+    originLat:   searchOrigin?.lat,
+    originLng:   searchOrigin?.lng,
+    maxDistance: searchOrigin ? DEFAULT_RADIUS_KM : undefined,
+  }), [typeFilters, stateFilters, formatFilters, levelFilters, priceRange, dateFilter, whatQuery, searchOrigin]);
 
   const displayEvents = useMemo(() => {
     let results = filterEvents(allEvents, filterState);
-    results = sortEvents(results, sortBy);
-    if (whereQuery.trim()) {
-      const q = whereQuery.toLowerCase();
-      results = results.filter((e) => e.city.toLowerCase().includes(q) || e.state.toLowerCase().includes(q) || e.location.toLowerCase().includes(q));
+    if (searchOrigin) {
+      // Geocoded search — sort closest-first and stamp distance onto each event.
+      results = results
+        .map((e) => {
+          const dist = eventDistance(searchOrigin, e);
+          return { ...e, distance: dist === null ? undefined : formatDistance(dist) };
+        })
+        .sort((a, b) => {
+          const da = eventDistance(searchOrigin, a) ?? Infinity;
+          const db = eventDistance(searchOrigin, b) ?? Infinity;
+          return da - db;
+        });
+    } else {
+      results = sortEvents(results, sortBy);
+      if (whereQuery.trim()) {
+        const q = whereQuery.toLowerCase();
+        results = results.filter((e) => e.city.toLowerCase().includes(q) || e.state.toLowerCase().includes(q) || e.location.toLowerCase().includes(q));
+      }
     }
     return results;
-  }, [allEvents, filterState, whereQuery, sortBy]);
+  }, [allEvents, filterState, whereQuery, sortBy, searchOrigin]);
 
   function clearFilters() {
-    setWhatQuery(""); setWhereQuery("");
+    setWhatQuery(""); clearWhere();
     setTypeFilters([]); setStateFilters([]); setFormatFilters([]); setLevelFilters([]);
     setPriceRange(null); setDateFilter("all");
   }
@@ -252,8 +330,12 @@ function EventsListingInner() {
             <div className="flex items-center gap-1.5">
               <input type="text" placeholder="State, city, or suburb" value={whereQuery}
                 onChange={(e) => setWhereQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleWhereSearch()}
                 className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none" />
-              {whereQuery && <button onClick={() => setWhereQuery("")} className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
+              {isGeocoding
+                ? <Loader2 data-testid="geocoding-spinner" className="w-3.5 h-3.5 text-muted animate-spin flex-shrink-0" />
+                : <button onClick={locateMe} aria-label="Use my location" title="Use my location" className="text-muted hover:text-primary flex-shrink-0"><Locate className="w-3.5 h-3.5" /></button>}
+              {whereQuery && <button onClick={clearWhere} aria-label="Clear where" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
             </div>
           </div>
         </div>
@@ -277,8 +359,12 @@ function EventsListingInner() {
             <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
             <input type="text" placeholder="City or state" value={whereQuery}
               onChange={(e) => setWhereQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleWhereSearch()}
               className="flex-1 bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none" />
-            {whereQuery && <button onClick={() => setWhereQuery("")} className="text-muted"><X className="w-4 h-4" /></button>}
+            {isGeocoding
+              ? <Loader2 data-testid="geocoding-spinner" className="w-4 h-4 text-muted animate-spin flex-shrink-0" />
+              : <button onClick={locateMe} aria-label="Use my location" title="Use my location" className="text-muted hover:text-primary flex-shrink-0"><Locate className="w-4 h-4" /></button>}
+            {whereQuery && <button onClick={clearWhere} aria-label="Clear where" className="text-muted"><X className="w-4 h-4" /></button>}
           </div>
           <button onClick={() => setMobileSearch(false)} className="text-center font-headline text-xs uppercase tracking-widest text-muted py-1">Done</button>
         </div>
