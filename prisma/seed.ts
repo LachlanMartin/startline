@@ -261,10 +261,10 @@ async function main() {
     }
     const record = await prisma.user.upsert({
       where: { cognitoSub: sub },
-      update: user.email === "user@startline.test"
+      update: user.email === "jade.nguyen@startline.test"
         ? {
             name: user.displayName,
-            username: "user",
+            username: "jade-nguyen",
             bio: "Hybrid athlete based in Sydney. Chasing PBs and start lines.",
             city: "Sydney",
             state: "nsw",
@@ -275,11 +275,11 @@ async function main() {
         cognitoSub: sub,
         email: user.email,
         name: user.displayName,
-        username: user.email === "user@startline.test"
-          ? "user"
-          : user.email.split("@")[0].replace(/[^a-z0-9_]/gi, "_").toLowerCase(),
+        username: user.email === "jade.nguyen@startline.test"
+          ? "jade-nguyen"
+          : user.email.split("@")[0].replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/^-+|-+$/g, ""),
         ...(user.isAdmin ? { mfaEnabled: true } : {}),
-        ...(user.email === "user@startline.test"
+        ...(user.email === "jade.nguyen@startline.test"
           ? {
               bio: "Hybrid athlete based in Sydney. Chasing PBs and start lines.",
               city: "Sydney",

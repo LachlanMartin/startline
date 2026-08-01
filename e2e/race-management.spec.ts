@@ -465,7 +465,7 @@ test.describe("athlete refund requests", () => {
 
 test.describe("athlete public profile race history", () => {
   test("renders race history for seeded athlete", async ({ page }) => {
-    await page.goto("/profile/jade_nguyen");
+    await page.goto("/profile/jade-nguyen");
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading", { name: /jade nguyen/i })).toBeVisible();
     await expect(page.getByText(/race history/i)).toBeVisible();
