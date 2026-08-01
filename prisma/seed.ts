@@ -151,6 +151,8 @@ async function main() {
 
   await prisma.adminAuditLog.deleteMany();
   await prisma.registration.deleteMany();
+  await prisma.savedEvent.deleteMany();
+  await prisma.organiserFollow.deleteMany();
   await prisma.review.deleteMany();
   await prisma.announcement.deleteMany();
   await prisma.notification.deleteMany();
@@ -588,7 +590,69 @@ async function main() {
   }
   console.log(`  Registrations: ${regCount}`);
 
+  // ── Seeded-user race history ────────────────────────────────────────────
+  // user@startline.test gets a spread of completed events (different
+  // disciplines + states) so the profile KStats and timeline have data.
+  // admin@startline.test gets a couple so an admin account has history too.
+  const userSeedId = userBySub[subsByEmail["user@startline.test"] ?? ""];
+  const adminSeedId = userBySub[subsByEmail["admin@startline.test"] ?? ""];
+  const organiserSeedId = userBySub[subsByEmail["organiser@startline.test"] ?? ""];
+
+  const historyRegs: {
+    id: string;
+    userId: string | undefined;
+    eventId: string;
+    finishTime?: string | null;
+    result?: string | null;
+  }[] = [
+    { id: "seed-history-user-001", userId: userSeedId, eventId: "seed-event-040", result: "12th", finishTime: "02:14:37" },
+    { id: "seed-history-user-002", userId: userSeedId, eventId: "seed-event-042", result: "8th",  finishTime: "01:47:22" },
+    { id: "seed-history-user-003", userId: userSeedId, eventId: "seed-event-044", result: "1st",  finishTime: "00:42:10" },
+    { id: "seed-history-user-004", userId: userSeedId, eventId: "seed-event-022", result: "24th", finishTime: null },
+    { id: "seed-history-user-005", userId: userSeedId, eventId: "seed-event-006", result: "157th", finishTime: "04:28:51" },
+    { id: "seed-history-user-006", userId: userSeedId, eventId: "seed-event-024", result: "19th", finishTime: null },
+    { id: "seed-history-admin-001", userId: adminSeedId, eventId: "seed-event-041", result: "3rd", finishTime: "01:23:40" },
+    { id: "seed-history-admin-002", userId: adminSeedId, eventId: "seed-event-043", result: "DNF", finishTime: null },
+    { id: "seed-history-organiser-001", userId: organiserSeedId, eventId: "seed-event-040", result: "5th", finishTime: "02:01:12" },
+    { id: "seed-history-organiser-002", userId: organiserSeedId, eventId: "seed-event-044", result: "2nd", finishTime: "00:39:58" },
+  ];
+
+  let historyCount = 0;
+  for (const h of historyRegs) {
+    if (!h.userId) continue;
+    const owner = (await prisma.event.findUnique({ where: { id: h.eventId }, select: { organiserId: true } }))?.organiserId;
+    if (!owner) continue;
+    await prisma.registration.upsert({
+      where: { id: h.id },
+      update: {},
+      create: {
+        id: h.id,
+        userId: h.userId,
+        eventId: h.eventId,
+        organiserId: owner,
+        athleteName: "Seed Athlete",
+        athleteEmail: h.userId === userSeedId
+          ? "user@startline.test"
+          : h.userId === adminSeedId
+            ? "admin@startline.test"
+            : "organiser@startline.test",
+        waveLabel: "General",
+        amountCents: 0,
+        platformFeeCents: 0,
+        feeStructure: "athlete",
+        status: "CONFIRMED",
+        finishTime: h.finishTime ?? null,
+        result: h.result ?? null,
+      },
+    });
+    historyCount++;
+  }
+  if (historyCount > 0) console.log(`  Seeded-user race history: ${historyCount}`);
+
   // ── Organiser follows ────────────────────────────────────────────────
+  // user@ and admin@ follow Apex. organiser@ (the E2E bypass user) owns
+  // Apex so cannot follow it — it follows Coastal instead, which gives the
+  // /activity "Following" tab a row for that account.
   const followerUserIds = [
     userBySub[subsByEmail["user@startline.test"] ?? ""],
     userBySub[subsByEmail["admin@startline.test"] ?? ""],
@@ -605,7 +669,38 @@ async function main() {
     });
     followCount++;
   }
+
+  const organiserUserFollowId = userBySub[subsByEmail["organiser@startline.test"] ?? ""];
+  if (organiserUserFollowId && coastalOrg) {
+    await prisma.organiserFollow.upsert({
+      where: {
+        userId_organiserId: { userId: organiserUserFollowId, organiserId: coastalOrg.id },
+      },
+      update: {},
+      create: { userId: organiserUserFollowId, organiserId: coastalOrg.id },
+    });
+    followCount++;
+  }
   console.log(`  Organiser follows: ${followCount}`);
+
+  // ── Saved events ───────────────────────────────────────────────────────
+  if (userSeedId) {
+    const savedEventIds = [
+      "seed-event-001", // The Apex Throwdown 2026
+      "seed-event-005", // Sydney Harbour 10K
+      "seed-event-017", // Noosa Triathlon 2026
+    ];
+    let savedCount = 0;
+    for (const eventId of savedEventIds) {
+      await prisma.savedEvent.upsert({
+        where: { userId_eventId: { userId: userSeedId, eventId } },
+        update: {},
+        create: { userId: userSeedId, eventId },
+      });
+      savedCount++;
+    }
+    console.log(`  Saved events: ${savedCount}`);
+  }
 
   // ── Notifications ────────────────────────────────────────────────────
 
