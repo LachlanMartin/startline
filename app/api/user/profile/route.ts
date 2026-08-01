@@ -20,6 +20,18 @@ export async function GET() {
       bio: true, profilePicUrl: true, isPublic: true,
       city: true, state: true,
       organiser: { select: { id: true, orgName: true, logoUrl: true, verified: true } },
+      registrations: {
+        where: { status: "CONFIRMED" },
+        select: {
+          id: true, eventId: true,
+          category: true,
+          resultDistance: true, resultTime: true, resultPlacement: true,
+          isPersonalBest: true, isTopResult: true,
+          event: { select: { title: true, discipline: true, eventDate: true, city: true, state: true } },
+        },
+        orderBy: { event: { eventDate: "desc" } },
+        take: 20,
+      },
     },
   });
   if (!user) {

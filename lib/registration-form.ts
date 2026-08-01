@@ -8,6 +8,8 @@ export interface RegistrationFormData {
   emergencyContactName: string;
   emergencyContactPhone: string;
   medicalNotes: string;
+  /** Optional self-reported estimated finish time, entered as "h:mm" or plain minutes. */
+  estimatedFinish: string;
   waiverAccepted: boolean;
 }
 
@@ -51,6 +53,33 @@ export interface CompactParticipant {
   med?: string;
   /** Ticket tier (wave label) this participant's ticket belongs to. */
   wav?: string;
+  /** Estimated finish time in whole minutes. */
+  eft?: number;
+}
+
+/**
+ * Parse a finish estimate into whole minutes. Accepts "h:mm" (e.g. "3:30" → 210),
+ * or a plain minutes number (e.g. "45" → 45). Returns null for blank/invalid input.
+ */
+export function parseFinishToMinutes(input: string): number | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  const colon = raw.match(/^(\d{1,2}):([0-5]?\d)$/);
+  if (colon) {
+    return parseInt(colon[1], 10) * 60 + parseInt(colon[2], 10);
+  }
+  if (/^\d{1,4}$/.test(raw)) {
+    return parseInt(raw, 10);
+  }
+  return null;
+}
+
+/** Format whole minutes back to "h:mm" (e.g. 210 → "3:30", 45 → "0:45"). */
+export function formatFinishMinutes(minutes: number | null | undefined): string {
+  if (minutes == null || minutes < 0) return "";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h}:${String(m).padStart(2, "0")}`;
 }
 
 /** One line of a mixed-tier ticket selection: how many tickets of each tier. */
@@ -226,6 +255,7 @@ export function createEmptyParticipant(): RegistrationFormData {
     emergencyContactName: "",
     emergencyContactPhone: "",
     medicalNotes: "",
+    estimatedFinish: "",
     waiverAccepted: false,
   };
 }
@@ -241,6 +271,7 @@ export function compactParticipant(data: RegistrationFormData): CompactParticipa
     ecn: data.emergencyContactName.trim(),
     ecp: data.emergencyContactPhone.trim(),
     ...(data.medicalNotes.trim() ? { med: data.medicalNotes.trim().slice(0, MAX_MEDICAL_NOTES_LENGTH) } : {}),
+    ...(parseFinishToMinutes(data.estimatedFinish) != null ? { eft: parseFinishToMinutes(data.estimatedFinish)! } : {}),
   };
 }
 
@@ -255,6 +286,7 @@ export function expandCompactParticipant(compact: CompactParticipant): Registrat
     emergencyContactName: compact.ecn,
     emergencyContactPhone: compact.ecp,
     medicalNotes: compact.med ?? "",
+    estimatedFinish: formatFinishMinutes(compact.eft),
     waiverAccepted: true,
   };
 }

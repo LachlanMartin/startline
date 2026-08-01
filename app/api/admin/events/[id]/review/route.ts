@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/amplify-server";
 import { sendEventApprovedEmail, sendEventRejectedEmail } from "@/lib/email";
 import { writeAuditLog } from "@/lib/audit";
+import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -27,7 +28,8 @@ export async function POST(
       where:  { id },
       select: {
         id: true, title: true, status: true, registrationType: true,
-        organiser: { select: { id: true, email: true, stripeOnboardingComplete: true } },
+        eventDate: true, city: true,
+        organiser: { select: { id: true, email: true, orgName: true, stripeOnboardingComplete: true } },
       },
     });
 
@@ -86,6 +88,14 @@ export async function POST(
       sendEventApprovedEmail(organiserEmail, event.title).catch((err) =>
         console.error("Failed to send approval email:", err),
       );
+      notifyOrganiserFollowers({
+        organiserId,
+        eventId: id,
+        eventTitle: event.title,
+        organiserName: event.organiser.orgName,
+        eventDate: event.eventDate || null,
+        city: event.city || null,
+      }).catch((err) => console.error("Follower notify failed:", err));
     } else {
       sendEventRejectedEmail(organiserEmail, event.title, reason?.trim()).catch((err) =>
         console.error("Failed to send rejection email:", err),

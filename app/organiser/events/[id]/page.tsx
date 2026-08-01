@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, MapPin, Calendar, Pencil, AlertCircle, Clock, CheckCircle, XCircle, FileText, Send } from "lucide-react";
+import {
+  Skeleton, PageHeaderSkeleton, PageShellSkeleton,
+} from "@/components/ui/skeleton";
 
 type EventStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "ARCHIVED";
 
@@ -143,13 +146,16 @@ export default function EventStatusPage({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-dark-darker">
-        <main className="pt-14">
-          <div className="max-w-[900px] mx-auto px-6 py-16 text-center">
-            <div className="w-5 h-5 border-2 border-dark-lighter border-t-primary rounded-full animate-spin mx-auto" />
-          </div>
-        </main>
-      </div>
+      <PageShellSkeleton maxWidth="max-w-[900px]" className="pt-14 px-6">
+        <Skeleton className="h-3 w-28 mb-6" />
+        <PageHeaderSkeleton actions={1} />
+        <Skeleton className="h-48 w-full rounded-2xl mb-4" />
+        <div className="space-y-3">
+          <Skeleton className="h-20 w-full rounded-2xl" />
+          <Skeleton className="h-20 w-full rounded-2xl" />
+          <Skeleton className="h-32 w-full rounded-2xl" />
+        </div>
+      </PageShellSkeleton>
     );
   }
 
@@ -231,7 +237,7 @@ export default function EventStatusPage({
               )}
               {isRejected && (
                 <Link
-                  href={`/organiser/new-listing?id=${event.id}`}
+                  href={`/organiser/new-listing?id=${event.id}&from=${encodeURIComponent(`/organiser/events/${event.id}`)}`}
                   className="inline-flex items-center gap-2 bg-gradient-to-br from-[rgb(194,236,119)] to-[rgb(179,225,83)] text-dark font-headline text-[11px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-lg shadow-machined hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform"
                 >
                   <Pencil className="w-3.5 h-3.5" /> Edit &amp; resubmit
@@ -239,7 +245,7 @@ export default function EventStatusPage({
               )}
               {!isRejected && (
                 <Link
-                  href={`/organiser/new-listing?id=${event.id}`}
+                  href={`/organiser/new-listing?id=${event.id}&from=${encodeURIComponent(`/organiser/events/${event.id}`)}`}
                   className="inline-flex items-center gap-2 border border-dark-lighter bg-transparent text-light font-headline text-[11px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-lg hover:border-primary hover:bg-dark-light transition-colors"
                 >
                   <Pencil className="w-3.5 h-3.5" /> Edit event

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, startTransition } from "react";
 import { Search, RefreshCw, Ban, CheckCircle2, Building2, UserX, Pencil } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import EditUserDialog from "@/components/admin/EditUserDialog";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -227,12 +228,7 @@ export default function AdminUsersPage() {
           </form>
 
           <Card className="overflow-hidden">
-            {loading && (
-              <div className="p-12 text-center">
-                <div className="w-5 h-5 border-2 border-dark-lighter border-t-primary rounded-full animate-spin mx-auto mb-3" />
-                <div className="font-headline text-sm text-muted uppercase tracking-widest">Loading…</div>
-              </div>
-            )}
+            {loading && <TableSkeleton rows={6} cols={4} className="p-6" />}
 
             {!loading && users.length === 0 && (
               <div className="p-12 text-center">

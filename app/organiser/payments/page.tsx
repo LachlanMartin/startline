@@ -6,6 +6,9 @@ import { Suspense } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, AlertCircle, CreditCard, ArrowRight, ExternalLink, ShieldCheck, RefreshCw, UserCog } from "lucide-react";
 import Link from "next/link";
+import {
+  Skeleton, PageHeaderSkeleton, PageShellSkeleton,
+} from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -139,13 +142,11 @@ function PaymentsContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-dark-darker">
-        <main className="pt-14">
-          <div className="max-w-[760px] mx-auto px-6 py-16 text-center">
-            <div className="w-5 h-5 border-2 border-dark-lighter border-t-primary rounded-full animate-spin mx-auto" />
-          </div>
-        </main>
-      </div>
+      <PageShellSkeleton maxWidth="max-w-[760px]" className="pt-14 px-6">
+        <PageHeaderSkeleton actions={0} />
+        <Skeleton className="h-40 w-full rounded-2xl mb-4" />
+        <Skeleton className="h-56 w-full rounded-2xl" />
+      </PageShellSkeleton>
     );
   }
 

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import SignInModal from "@/components/SignInModal";
 import { useAuthContext } from "@/context/AuthContext";
 import { topRatedEventsFromReviews } from "@/lib/review-helpers";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -484,9 +485,18 @@ export default function ReviewsSection({
       </div>
 
       {loading ? (
-        <div className="py-8 text-center">
-          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-          <div className="font-headline text-[11px] text-muted uppercase tracking-widest">Loading reviews…</div>
+        <div className="py-4 space-y-4" role="status" aria-label="Loading reviews">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="border border-dark-lighter rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+              <Skeleton className="h-3 w-3/4" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          ))}
         </div>
       ) : reviews.length === 0 ? (
         <div className="py-12 text-center border border-dashed border-dark-lighter rounded-xl">

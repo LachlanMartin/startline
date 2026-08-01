@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { getEventCoords } from "@/lib/australia-coords";
+import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -56,6 +58,10 @@ export async function PATCH(
       }
     }
 
+    const nextStatus = submit
+      ? (session.verified ? "APPROVED" : "PENDING")
+      : "DRAFT";
+
     const updated = await prisma.event.update({
       where: { id },
       data: {
@@ -89,9 +95,26 @@ export async function PATCH(
         accessibilityInfo: data.accessibilityInfo ?? undefined,
         coverImageUrl:     data.coverImageUrl     ?? undefined,
         photos:            Array.isArray(data.photos) ? data.photos : undefined,
-        status:            submit ? "PENDING" : "DRAFT",
+        status:            nextStatus,
       },
     });
+
+    // Existing was DRAFT (enforced above); notify when submit goes straight to live.
+    if (updated.status === "APPROVED") {
+      prisma.organiser
+        .findUnique({ where: { id: updated.organiserId }, select: { orgName: true } })
+        .then((org) =>
+          notifyOrganiserFollowers({
+            organiserId: updated.organiserId,
+            eventId: updated.id,
+            eventTitle: updated.title,
+            organiserName: org?.orgName,
+            eventDate: updated.eventDate || null,
+            city: updated.city || null,
+          }),
+        )
+        .catch((err) => console.error("Follower notify failed:", err));
+    }
 
     return NextResponse.json({ id: updated.id, status: updated.status });
   } catch (err) {

@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { archivePastEvents } from "@/lib/archive-events";
 import { getEventCoords } from "@/lib/australia-coords";
+import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
 export async function GET() {
   await archivePastEvents();
   const session = await getOrganiserSession();
@@ -90,6 +91,22 @@ export async function POST(req: NextRequest) {
         photos:           Array.isArray(body.photos) ? body.photos : [],
       },
     });
+
+    if (event.status === "APPROVED") {
+      prisma.organiser
+        .findUnique({ where: { id: event.organiserId }, select: { orgName: true } })
+        .then((org) =>
+          notifyOrganiserFollowers({
+            organiserId: event.organiserId,
+            eventId: event.id,
+            eventTitle: event.title,
+            organiserName: org?.orgName,
+            eventDate: event.eventDate || null,
+            city: event.city || null,
+          }),
+        )
+        .catch((err) => console.error("Follower notify failed:", err));
+    }
 
     return NextResponse.json({ id: event.id, status: event.status });
   } catch (err) {

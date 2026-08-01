@@ -53,7 +53,6 @@ test.describe("new listing wizard", () => {
     await page.waitForTimeout(500);
     await page.getByText("Pick start date").click();
     await page.getByRole("button", { name: /today/i }).click();
-    await page.getByRole("button", { name: /\d{4}/i }).first().click();
     const timeInputs3 = page.locator('input[type="time"]');
     await timeInputs3.first().fill("09:00");
     const addrInput3 = page.getByPlaceholder(/start typing an address/i);
@@ -73,7 +72,6 @@ test.describe("new listing wizard", () => {
     await page.waitForTimeout(500);
     await page.getByText("Pick start date").click();
     await page.getByRole("button", { name: /today/i }).click();
-    await page.getByRole("button", { name: /\d{4}/i }).first().click();
     const timeInputs4 = page.locator('input[type="time"]');
     await timeInputs4.first().fill("09:00");
     const addrInput4 = page.getByPlaceholder(/start typing an address/i);
@@ -101,7 +99,6 @@ test.describe("new listing wizard", () => {
 
     await page.getByText("Pick start date").click();
     await page.getByRole("button", { name: /today/i }).click();
-    await page.getByRole("button", { name: /\d{4}/i }).first().click();
     const timeInputs = page.locator('input[type="time"]');
     await timeInputs.first().fill("09:00");
     const addrInput = page.getByPlaceholder(/start typing an address/i);

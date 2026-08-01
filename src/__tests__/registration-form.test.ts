@@ -21,6 +21,7 @@ describe("registration form validation", () => {
     emergencyContactName: "Jamie Rossi",
     emergencyContactPhone: "0400000001",
     medicalNotes: "",
+    estimatedFinish: "",
     waiverAccepted: true,
   };
 
@@ -58,6 +59,7 @@ describe("registration form validation", () => {
       emergencyContactName: "",
       emergencyContactPhone: "",
       medicalNotes: "",
+      estimatedFinish: "",
       waiverAccepted: false,
     });
 

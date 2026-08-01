@@ -3,11 +3,23 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Calendar, Check, X, AlertCircle, Trophy, Timer } from "lucide-react";
+import { MapPin, Calendar, Check, X, AlertCircle } from "lucide-react";
 import { STATE_OPTIONS, STATE_LABELS } from "@/types";
 import type { AustralianState } from "@/types";
-import { formatDiscipline, formatLongDate } from "@/lib/utils";
+import { formatDiscipline, formatMediumDate } from "@/lib/utils";
 import { useAuthContext } from "@/context/AuthContext";
+
+type RaceRegistration = {
+  id: string;
+  eventId: string;
+  category: string | null;
+  resultDistance: string | null;
+  resultTime: string | null;
+  resultPlacement: string | null;
+  isPersonalBest: boolean;
+  isTopResult: boolean;
+  event: { title: string; discipline: string; eventDate: string; city: string; state: string };
+};
 
 type UserData = {
   id: string;
@@ -20,27 +32,7 @@ type UserData = {
   city: string | null;
   state: string | null;
   organiser: { id: string; orgName: string | null; logoUrl: string | null; verified: boolean } | null;
-};
-
-type RaceHistory = {
-  completed: number;
-  statesRaced: number;
-  disciplines: number;
-  registrations: {
-    id: string;
-    finishTime: string | null;
-    result: string | null;
-    event: {
-      id: string;
-      title: string;
-      discipline: string;
-      eventDate: string;
-      city: string;
-      state: string;
-      coverImageUrl: string | null;
-      organiser: { id: string; orgName: string | null };
-    };
-  }[];
+  registrations?: RaceRegistration[];
 };
 
 function KStat({ n, l }: { n: number; l: string }) {
@@ -62,7 +54,6 @@ export default function ProfilePage() {
 
   const [userData, setUserData] = useState<UserData | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [history, setHistory] = useState<RaceHistory | null>(null);
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -114,7 +105,6 @@ export default function ProfilePage() {
       .then(data => {
         if (!data) return;
         setUserData(data);
-        setHistory(data.history ?? null);
         setEditName(data.name ?? "");
         setEditUsername(data.username ?? "");
         setEditBio(data.bio ?? "");
@@ -410,103 +400,104 @@ export default function ProfilePage() {
 
             {/* Stats + history */}
             <div>
+              {(() => {
+                const withResults = (userData?.registrations ?? []).filter(
+                  (r) => r.resultTime || r.resultPlacement,
+                );
+                const statesRaced = new Set(
+                  withResults.map((r) => r.event.state).filter(Boolean),
+                ).size;
+                const disciplines = new Set(
+                  withResults.map((r) => r.event.discipline).filter(Boolean),
+                ).size;
 
-              {/* KStats */}
-              <div className="flex gap-3.5 flex-wrap mb-10">
-                <KStat n={history?.completed ?? 0} l="Events Completed" />
-                <KStat n={history?.statesRaced ?? 0} l="States Raced" />
-                <KStat n={history?.disciplines ?? 0} l="Disciplines" />
-              </div>
-
-              {/* Race History */}
-              <div className="flex items-baseline justify-between mb-4">
-                <h3 className="font-headline text-2xl font-black italic tracking-tighter text-light">
-                  Race History
-                </h3>
-                <span className="font-headline text-[10.5px] font-bold uppercase tracking-widest text-muted-dark">
-                  {history?.completed ?? 0} {history?.completed === 1 ? "event" : "events"}
-                </span>
-              </div>
-
-              {profileLoading ? (
-                <div className="space-y-4">
-                  {[0, 1].map((i) => (
-                    <div key={i} className="flex items-start gap-4 animate-pulse">
-                      <div className="w-3 h-3 rounded-full bg-dark-lighter mt-1 flex-shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <div className="w-40 h-3 bg-dark-lighter rounded" />
-                        <div className="w-64 h-5 bg-dark-lighter rounded" />
-                        <div className="w-48 h-3 bg-dark-lighter rounded" />
-                      </div>
+                return (
+                  <>
+                    <div className="flex gap-3.5 flex-wrap mb-10">
+                      <KStat n={withResults.length} l="Events Completed" />
+                      <KStat n={statesRaced} l="States Raced" />
+                      <KStat n={disciplines} l="Disciplines" />
                     </div>
-                  ))}
-                </div>
-              ) : history && history.registrations.length > 0 ? (
-                <ol className="relative border-l-2 border-dark-lighter ml-2 space-y-6">
-                  {history.registrations.map((reg) => (
-                    <li key={reg.id} className="relative pl-6">
-                      <span className="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full bg-primary border-2 border-dark-darker" />
-                      <Link href={`/events/${reg.event.id}`} className="group block">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted">
-                              {formatLongDate(reg.event.eventDate)}
-                            </p>
-                            <h4 className="font-headline text-lg font-black italic tracking-tighter text-light group-hover:text-primary transition-colors leading-tight mt-0.5">
-                              {reg.event.title}
-                            </h4>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
-                              <span className="flex items-center gap-1.5 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
-                                <Trophy className="w-3 h-3 text-primary" />
-                                {formatDiscipline(reg.event.discipline)}
-                              </span>
-                              <span className="flex items-center gap-1.5 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
-                                <MapPin className="w-3 h-3 text-primary" />
-                                {reg.event.city}, {STATE_LABELS[reg.event.state as AustralianState]}
-                              </span>
-                              {reg.event.organiser?.orgName && (
-                                <span className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
-                                  {reg.event.organiser.orgName}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {(reg.finishTime || reg.result) && (
-                            <div className="text-right flex-shrink-0">
-                              {reg.result && (
-                                <span className="block font-headline text-base font-black italic text-primary leading-none">
-                                  {reg.result}
-                                </span>
-                              )}
-                              {reg.finishTime && (
-                                <span className="flex items-center justify-end gap-1 font-headline text-[11px] font-bold uppercase tracking-widest text-light mt-1">
-                                  <Timer className="w-3 h-3 text-primary" />
-                                  {reg.finishTime}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </Link>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 gap-3 border border-dashed border-dark-lighter rounded-2xl">
-                  <p className="font-headline text-lg font-black italic tracking-tighter text-light">
-                    No race history yet.
-                  </p>
-                  <p className="font-headline text-sm text-muted text-center max-w-xs leading-relaxed">
-                    Completed events will appear here once you&apos;ve finished a race.
-                  </p>
-                  <Link
-                    href="/events"
-                    className="mt-2 font-headline text-[11px] font-bold uppercase tracking-widest text-primary hover:underline"
-                  >
-                    Find Events
-                  </Link>
-                </div>
-              )}
+
+                    <div className="flex items-baseline justify-between mb-4">
+                      <h3 className="font-headline text-2xl font-black italic tracking-tighter text-light">
+                        Race History
+                      </h3>
+                      <span className="font-headline text-[10.5px] font-bold uppercase tracking-widest text-muted-dark">
+                        {withResults.length} {withResults.length === 1 ? "event" : "events"}
+                      </span>
+                    </div>
+
+                    {withResults.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-16 gap-3 border border-dashed border-dark-lighter rounded-2xl">
+                        <p className="font-headline text-lg font-black italic tracking-tighter text-light">
+                          No race history yet.
+                        </p>
+                        <p className="font-headline text-sm text-muted text-center max-w-xs leading-relaxed">
+                          Completed events will appear here once race results are available.
+                        </p>
+                        <Link
+                          href="/events"
+                          className="mt-2 font-headline text-[11px] font-bold uppercase tracking-widest text-primary hover:underline"
+                        >
+                          Find Events
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto border border-dark-lighter rounded-xl bg-dark">
+                        <table className="w-full min-w-[640px] border-collapse">
+                          <thead>
+                            <tr className="border-b border-dark-lighter">
+                              {["Event", "Discipline", "Date", "Division", "Time", "Place"].map((h) => (
+                                <th
+                                  key={h}
+                                  className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted-dark text-left px-3.5 py-3"
+                                >
+                                  {h}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {withResults.map((reg) => (
+                              <tr key={reg.id} className="border-b border-dark-lighter last:border-0">
+                                <td className="py-4 px-3.5">
+                                  <Link
+                                    href={`/events/${reg.eventId}`}
+                                    className="font-headline text-[14px] font-bold italic tracking-tighter text-light hover:text-primary transition-colors"
+                                  >
+                                    {reg.event.title}
+                                  </Link>
+                                </td>
+                                <td className="py-4 px-3.5">
+                                  <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 border border-primary/20 rounded px-2 py-0.5">
+                                    {formatDiscipline(reg.event.discipline)}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-3.5 font-headline text-[12px] text-muted whitespace-nowrap">
+                                  {formatMediumDate(reg.event.eventDate)}
+                                </td>
+                                <td className="py-4 px-3.5 font-headline text-[13px] text-muted-light whitespace-nowrap">
+                                  {reg.category?.trim() || reg.resultDistance || "—"}
+                                </td>
+                                <td className="py-4 px-3.5 font-headline text-[13px] font-bold text-light whitespace-nowrap">
+                                  {reg.resultTime ?? "—"}
+                                  {reg.isPersonalBest && (
+                                    <span className="ml-1.5 font-black text-primary text-[10px] uppercase tracking-widest">PB</span>
+                                  )}
+                                </td>
+                                <td className={`py-4 px-3.5 font-headline font-bold text-[13px] whitespace-nowrap ${reg.isTopResult ? "text-primary" : "text-muted"}`}>
+                                  {reg.resultPlacement ?? "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
           </div>

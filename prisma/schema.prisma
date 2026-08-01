@@ -126,8 +126,13 @@ model Event {
   cap        Int?
   minAge     Int    @default(16)
 
-  // Step 4 — tickets
+  // Step 4 — tickets (pricing tiers — NOT start waves)
   waves             Json
+  // DEPRECATED — organiser start waves are moving to the StartWave table
+  // (see startWaveRows). Kept during the transition so existing readers keep
+  // working; drop once every consumer reads the relation. Was: JSON array of
+  // heat definitions (start time, capacity, match conditions).
+  startWaves        Json?
   inclusions        String?
   extras            String?
   activations       String?
@@ -161,11 +166,45 @@ model Event {
   announcements Announcement[]
   registrations Registration[]
   savedEvents   SavedEvent[]
+  startWaveRows StartWave[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("events")
+}
+
+// ─── Start waves (heats) ──────────────────────────────────────────────────────
+// Organiser-defined start groups. Distinct from the ticket tiers in Event.waves:
+// a start wave is a physical heat with a start time, an optional capacity, and
+// optional match conditions (finish-time band / gender / age band) used to seed
+// athletes in by pace. Registrations link here via Registration.startWaveId.
+model StartWave {
+  id        String  @id @default(uuid())
+  eventId   String
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  label     String
+  startTime String? // "HH:mm", falls back to the event start time when null
+  capacity  Int?    // null = unlimited
+
+  // Match conditions — an athlete must satisfy every condition that is set.
+  finishMin Int?      // whole minutes, inclusive lower bound
+  finishMax Int?      // whole minutes, inclusive upper bound
+  genders   String[]  // empty = any gender
+  ageMin    Int?      // inclusive
+  ageMax    Int?      // inclusive
+
+  sortOrder Int @default(0) // preserves the organiser's wave order
+
+  registrations Registration[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, label])
+  @@index([eventId])
+  @@map("start_waves")
 }
 
 enum EventStatus {
@@ -266,7 +305,22 @@ model Registration {
   medicalNotes          String?
   waiverAccepted        Boolean @default(false)
   category     String?
+  // Ticket tier bought at checkout (pricing). Distinct from the start wave below.
   waveLabel    String?
+  // Organiser-assigned start wave (heat). This is the "wave" athletes see and are
+  // notified about. Seeded by the wave builder's conditions, or set by hand.
+  // startWaveId is the source of truth (FK to StartWave); startWaveLabel is a
+  // denormalised mirror kept during the JSON→table transition and will be dropped.
+  startWaveId    String?
+  startWave      StartWave? @relation(fields: [startWaveId], references: [id], onDelete: SetNull)
+  startWaveLabel String?
+  // The start wave the athlete was last notified about. Lets organisers reshuffle
+  // waves silently and only message athletes whose wave changed since last time.
+  waveNotifiedLabel String?
+  // Athlete's self-reported estimated finish time, in whole minutes. Used to seed
+  // athletes into start waves by pace. Null when not provided.
+  estimatedFinishMinutes Int?
+  bibNumber    String?
 
   // Money is stored in integer cents (AUD) to avoid float rounding.
   amountCents      Int @default(0) // ticket price paid by the athlete
@@ -276,22 +330,32 @@ model Registration {
   status                RegistrationStatus @default(CONFIRMED)
   stripePaymentIntentId String?
 
-  // Race results — populated by the organiser after the event (issue #201)
-  finishTime String? // finish time, ISO "HH:MM:SS"
-  result     String? // position e.g. "1st", "42nd", "DNF"
+  // Race results — organiser-entered (race management) + legacy profile fields
+  resultDistance  String?
+  resultTime      String?
+  resultPlacement String?
+  isPersonalBest  Boolean @default(false)
+  isTopResult     Boolean @default(false)
+  finishTime      String? // legacy / alternate finish time
+  result          String? // legacy position e.g. "1st", "42nd", "DNF"
 
   createdAt DateTime @default(now())
 
+  @@unique([eventId, bibNumber])
   @@index([eventId])
   @@index([organiserId])
+  @@index([startWaveId])
   @@index([stripePaymentIntentId])
   @@map("registrations")
 }
 
 enum RegistrationStatus {
   CONFIRMED
-  CANCELLED
+  // Athlete has asked for a refund. They drop out of wave assignment and no
+  // longer count against capacity; an admin processes the actual Stripe refund.
+  REFUND_REQUESTED
   REFUNDED
+  CANCELLED
 }
 
 // ─── User → Organiser follows ─────────────────────────────────────────────────
@@ -347,8 +411,32 @@ model User {
   follows       OrganiserFollow[]
   savedEvents   SavedEvent[]
   reviews       Review[]
+  notifications UserNotification[]
 
   @@map("users")
+}
+
+// ─── Athlete notifications ────────────────────────────────────────────────────
+// Delivered to signed-in athletes (e.g. when an organiser publishes wave changes).
+model UserNotification {
+  id        String               @id @default(uuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      UserNotificationType
+  title     String
+  body      String
+  eventId   String?
+  read      Boolean              @default(false)
+  createdAt DateTime             @default(now())
+
+  @@index([userId])
+  @@map("user_notifications")
+}
+
+enum UserNotificationType {
+  WAVE_UPDATE
+  ORGANISER_EVENT_LIVE
+  ORGANISER_REFUND_REQUEST
 }
 
 model WaitlistSubscriber {
