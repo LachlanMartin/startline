@@ -1,4 +1,9 @@
 import "dotenv/config";
+import { config as loadEnvLocal } from "dotenv";
+// Next.js loads `.env.local` (gitignored, holds the staging Cognito pool + any
+// local overrides) with higher precedence than `.env`. Mirror that here so
+// `prisma db seed` reaches the same staging auth pool the app uses.
+loadEnvLocal({ path: ".env.local", override: true });
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
@@ -120,11 +125,17 @@ async function ensureCognitoUsers(): Promise<void> {
         Username: user.email,
         GroupName: "admins",
       }));
-      await cognito.send(new AdminSetUserMFAPreferenceCommand({
-        UserPoolId: userPoolId,
-        Username: user.email,
-        SoftwareTokenMfaSettings: { Enabled: true, PreferredMfa: true },
-      }));
+      // Best-effort: SOFTWARE_TOKEN_MFA needs pool-level delivery config that
+      // may not be set on a given pool. Seeding must not fail because of it.
+      try {
+        await cognito.send(new AdminSetUserMFAPreferenceCommand({
+          UserPoolId: userPoolId,
+          Username: user.email,
+          SoftwareTokenMfaSettings: { Enabled: true, PreferredMfa: true },
+        }));
+      } catch (e) {
+        console.warn(`  WARN: could not enable SOFTWARE_TOKEN_MFA for ${user.email}:`, (e as Error).message?.split("\n")[0]);
+      }
     }
   }
   console.log(`  Cognito: ${created} created, ${SEED_USERS.length - created} already existed`);
