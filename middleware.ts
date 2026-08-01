@@ -27,6 +27,10 @@ const ADMIN_PROTECTED = [
   "/admin/events",
   "/admin/organisers",
   "/admin/reviews",
+  "/admin/users",
+  "/admin/registrations",
+  "/admin/analytics",
+  "/admin/audit",
   "/admin/payouts",
 ];
 

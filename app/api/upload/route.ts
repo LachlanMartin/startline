@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { getOrganiserSession } from "@/lib/amplify-server";
+import { getOrganiserSession, getAdminSession } from "@/lib/amplify-server";
 
 const useS3 = !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY);
 
 export async function POST(req: NextRequest) {
-  const session = await getOrganiserSession();
+  const session = (await getOrganiserSession()) ?? (await getAdminSession());
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
   const formData = await req.formData();
