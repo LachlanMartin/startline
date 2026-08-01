@@ -9,7 +9,7 @@ export async function GET() {
   }
 
   if (session.groups.includes("admins")) {
-    return NextResponse.json({ role: "admin" });
+    return NextResponse.json({ role: "admin", hasOrganiser: false });
   }
 
   const user = await prisma.user.findUnique({
@@ -17,9 +17,6 @@ export async function GET() {
     include: { organiser: { select: { id: true } } },
   });
 
-  if (user?.organiser) {
-    return NextResponse.json({ role: "organiser" });
-  }
-
-  return NextResponse.json({ role: "user" });
+  const hasOrganiser = Boolean(user?.organiser);
+  return NextResponse.json({ role: hasOrganiser ? "organiser" : "user", hasOrganiser });
 }
