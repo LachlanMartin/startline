@@ -16,7 +16,7 @@ Startline uses a single Next.js 15 codebase with **three portals** served under 
 |---|---|---|---|
 | **Athlete Site** | `startlineau.com` | `/app/(user)/` | Public event browsing, search, registration, reviews |
 | **Organiser Portal** | `organiser.startlineau.com` | `/app/organiser/` | Event management, onboarding, listings, payments, dashboard |
-| **Admin Portal** | `organiser.startlineau.com/admin` | `/app/admin/` | Event approval, organiser management, analytics, audit log |
+| **Admin Portal** | `admin.startlineau.com` | `/app/admin/` | Event approval, organiser management, analytics, audit log |
 
 The organiser landing page (`/organiser-landing/`) is served at the root of the organiser domain via URL rewriting in `middleware.ts`.
 
@@ -26,7 +26,9 @@ Routing between portals is handled by [middleware.ts](/middleware.ts). In **prod
 
 - `startlineau.com` → athlete site (default)
 - `organiser.startlineau.com` → organiser portal, with `/` rewritten to `/organiser-landing`
-- Protected paths (defined in `ORGANISER_PROTECTED` and `ADMIN_PROTECTED` arrays) require valid Cognito JWT tokens
+- `admin.startlineau.com` → admin portal, with unauthenticated access redirected to `/admin/login`
+
+Protected paths (defined in `ORGANISER_PROTECTED` and `ADMIN_PROTECTED` arrays) require valid Cognito JWT tokens. Admin routes additionally verify the user belongs to the `admins` Cognito group.
 
 In **development mode** (`NODE_ENV=development` or `NEXT_PUBLIC_AUTH_BYPASS=true`), all domain checks are skipped and everything runs on `localhost:3000`. This also enables auth bypass for PR previews on Amplify.
 

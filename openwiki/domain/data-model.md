@@ -13,7 +13,7 @@ The data layer uses **Prisma ORM v7** against **PostgreSQL 15**. The schema is d
 ## Core Entities
 
 ### User (`users`)
-Every platform user has a User record, created on first Cognito login. Users can optionally create an Organiser profile (1:1). Fields include name, username (public handle), bio, profile picture, city/state (for map centering), ban status, MFA toggle (`mfaEnabled`), and encrypted recovery codes (`recoveryCodes`).
+Every platform user has a User record, created on first Cognito login. Users can optionally create an Organiser profile (1:1). Fields include name, username (public handle), bio, profile picture, city/state (for map centering), ban status, and MFA toggle (`mfaEnabled`).
 
 ### Organiser (`organisers`)
 Linked 1:1 to a User. Holds business-specific fields:
@@ -47,6 +47,9 @@ Supports group registration (up to 10 participants per checkout via `MAX_REGISTR
 
 ### Review (`reviews`)
 Athlete reviews of **organisers** (required) with an overall rating (1–5) plus optional atmosphere, organisation, and experience sub-ratings. Each review optionally links to one of the organiser's approved events (title denormalised into `eventTitle`). Reviews are authored by signed-in users (`userId`, with `reviewerName` derived from their display name). `isPublished` controls public visibility (new reviews are created published), while `isVerified` marks verified reviews (not set on creation).
+
+### OrganiserFollow (`organiser_follows`)
+Junction table linking a User to an Organiser they follow, with a `@@unique([userId, organiserId])` constraint preventing duplicates. Public follow counts and organiser stats (registrations, followers, events hosted) are aggregated in [`/lib/organiser-follows.ts`](/lib/organiser-follows.ts). A public follow/unfollow API is exposed at `/app/api/public/organisers/[id]/follow/route.ts`.
 
 ### Supporting Entities
 - **Notification**: Organiser notifications for event approvals, rejections, and new registrations
