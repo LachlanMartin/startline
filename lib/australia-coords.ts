@@ -28,6 +28,13 @@ export const CITY_COORDS: Record<string, [number, number]> = {
   "byron bay":  [-28.6474, 153.6020],
   "noosa":      [-26.3957, 153.0656],
   "surfers paradise": [-28.0067, 153.4291],
+  "scoresby":   [-37.9006, 145.2390],
+  "little river": [-37.9534, 144.4374],
+  "yering":     [-37.6819, 145.3686],
+  "uluru":      [-25.3444, 131.0369],
+  "kiama":      [-34.6701, 150.8585],
+  "busselton":  [-33.6524, 115.3475],
+  "mount barker": [-35.0706, 138.8583],
 };
 
 export const STATE_CENTERS: Record<string, [number, number]> = {

@@ -21,6 +21,8 @@ export interface PublicEvent {
   address: string | null;
   city: string;
   state: string;
+  latitude: number | null;
+  longitude: number | null;
   format: string;
   level: string;
   categories: unknown;

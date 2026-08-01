@@ -121,6 +121,19 @@ test.describe("new listing wizard", () => {
 
     await argosScreenshot(page, "new-listing-review");
   });
+
+  test("location preview map shows empty state before address is selected", async ({ page }) => {
+    await organiserLogin(page);
+    await page.goto("/organiser/new-listing");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByPlaceholder(/Apex Throwdown/i).fill("Map Preview Test Event");
+    await page.getByRole("button", { name: /^continue$/i }).click();
+
+    await expect(page.getByText(/when and where/i)).toBeVisible();
+    await expect(page.getByTestId("location-preview-empty")).toBeVisible();
+    await expect(page.getByText(/select an address above to preview the location/i)).toBeVisible();
+  });
 });
 
 test.describe("organiser dashboard", () => {

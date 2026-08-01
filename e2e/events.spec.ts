@@ -28,6 +28,20 @@ test.describe("events page", () => {
     await expect(page.getByText("Event", { exact: true })).toBeVisible();
     await expect(page.getByText("Where", { exact: true })).toBeVisible();
   });
+
+  test("list/map view toggle is present", async ({ page }) => {
+    await page.goto("/events");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByTestId("view-mode-list").first()).toBeVisible();
+    await expect(page.getByTestId("view-mode-map").first()).toBeVisible();
+  });
+
+  test("switching to map mode shows map container", async ({ page }) => {
+    await page.goto("/events");
+    await page.waitForLoadState("networkidle");
+    await page.getByTestId("view-mode-map").first().click();
+    await expect(page.getByTestId("events-map")).toBeVisible();
+  });
 });
 
 test.describe("event detail page", () => {
@@ -46,9 +60,9 @@ test.describe("event detail page", () => {
   });
 
   test("event card shows organiser name and rating", async ({ page }) => {
-    await page.goto("/events");
+    await page.goto("/events?view=list");
     await page.waitForLoadState("networkidle");
-    const organiserLink = page.getByRole("link", { name: /Apex Endurance Events/i }).first();
+    const organiserLink = page.getByRole("button", { name: /Apex Endurance Events/i }).first();
     await expect(organiserLink).toBeVisible();
     // Star rating chip is only rendered when the organiser has published reviews
     await expect(page.getByLabel(/Rated .+ out of 5 from \d+ reviews/i).first()).toBeVisible();

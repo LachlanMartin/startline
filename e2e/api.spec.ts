@@ -71,10 +71,12 @@ test.describe("stripe webhook", () => {
 test.describe("profile API", () => {
   // Bypass is cookie-based now, not env-var-based. Without the __e2e_bypass
   // cookie this endpoint returns 401.
-  test("GET /api/organiser/profile", async ({ request }) => {
-    const res = await request.get("/api/organiser/profile");
+  test("GET /api/organiser/profile", async ({ playwright }) => {
+    const ctx = await playwright.request.newContext({ baseURL: "http://localhost:3000" });
+    const res = await ctx.get("/api/organiser/profile");
     expect(res.status()).toBe(401);
     const body = await res.json();
     expect(body.error).toContain("Unauthorised");
+    await ctx.dispose();
   });
 });

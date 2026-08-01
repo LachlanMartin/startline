@@ -41,11 +41,12 @@
     "date-fns": "^3.6.0",
     "jose": "^6.2.2",
     "lucide-react": "^0.469.0",
-    "maplibre-gl": "^5.24.0",
+    "mapbox-gl": "^3.25.0",
     "next": "^15.1.0",
     "pg": "^8.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-map-gl": "^8.1.1",
     "resend": "^6.9.4",
     "stripe": "^22.2.0",
     "tailwind-merge": "^3.5.0"

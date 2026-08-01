@@ -7,6 +7,8 @@ export type AddressResult = {
   city:    string;
   state:   string;
   venue:   string;
+  latitude?:  number;
+  longitude?: number;
 };
 
 interface PlaceResult {
@@ -81,6 +83,9 @@ export default function AddressAutocomplete({
           city: g.city,
           state: g.stateCode,
           venue: "",
+          ...(g.latitude != null && g.longitude != null
+            ? { latitude: g.latitude, longitude: g.longitude }
+            : {}),
         });
       }
     } catch {

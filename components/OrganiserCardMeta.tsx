@@ -11,6 +11,8 @@ type Props = {
   name: string;
   rating?: Rating | null;
   className?: string;
+  /** Override the name text colour classes (default: text-muted hover:text-primary) */
+  nameClassName?: string;
   /** Stop card click handlers when the organiser control is used */
   stopPropagation?: boolean;
   /**
@@ -26,13 +28,16 @@ export default function OrganiserCardMeta({
   name,
   rating,
   className,
+  nameClassName,
   stopPropagation = false,
   nestedInLink = false,
 }: Props) {
   const router = useRouter();
   const href = `/organisers/${organiserId}`;
-  const nameClass =
-    "font-headline text-[10px] font-medium uppercase tracking-widest text-muted hover:text-primary transition-colors truncate min-w-0 text-left";
+  const nameClass = cn(
+    "font-headline text-[10px] font-medium uppercase tracking-widest transition-colors truncate min-w-0 text-left",
+    nameClassName ?? "text-muted hover:text-primary",
+  );
 
   return (
     <div className={cn("flex items-center gap-2 min-w-0", className)}>

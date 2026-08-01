@@ -12,6 +12,7 @@ import {
 import { encodePrizePool, parsePrizePool, normalisePrizeAmount } from "@/lib/prize-pool";
 import AddressAutocomplete  from "@/components/ui/AddressAutocomplete";
 import SuburbAutocomplete   from "@/components/ui/SuburbAutocomplete";
+import LocationPreviewMap   from "@/components/organiser/LocationPreviewMap";
 
 /* ── Step definitions ───────────────────────────────────────── */
 const STEPS = [
@@ -53,6 +54,8 @@ interface FormState {
   address: string;
   city: string;
   state: AusState;
+  latitude: number | null;
+  longitude: number | null;
   waves: Wave[];
   prizeMoney: boolean;
   prizeMoneyAmount: string;
@@ -71,7 +74,7 @@ const INITIAL: FormState = {
   title: "", discipline: "", description: "",
   format: "", level: "", categories: [], cap: "", minAge: "",
   date: "", endDate: "", startTime: "", endTime: "",
-  venue: "", address: "", city: "", state: "",
+  venue: "", address: "", city: "", state: "", latitude: null, longitude: null,
   waves: [{ label: "", price: "", closes: "", startTime: "" }],
   prizeMoney: false, prizeMoneyAmount: "", prizeMoneyDetails: "",
   refundPolicy: "",
@@ -610,16 +613,25 @@ function WhenStep({ form, update }: { form: FormState; update: (p: Partial<FormS
       <Field label="Street address" required>
         <AddressAutocomplete
           value={form.address} onChange={raw => update({ address: raw })}
-          onSelect={({ address, city, state, venue }) => {
+          onSelect={({ address, city, state, venue, latitude, longitude }) => {
             update({
               ...(address && { address }),
               ...(city    && { city }),
               ...(state   && { state: state as typeof form.state }),
               ...(venue   && { venue }),
+              ...(latitude != null && longitude != null ? { latitude, longitude } : {}),
             });
           }}
           placeholder="Start typing an address…"
           className={inputCls}
+        />
+      </Field>
+
+      <Field label="Location preview" hint="Updates when you select an address">
+        <LocationPreviewMap
+          latitude={form.latitude}
+          longitude={form.longitude}
+          label={[form.venue, form.city, form.state?.toUpperCase()].filter(Boolean).join(", ") || undefined}
         />
       </Field>
 
@@ -1525,6 +1537,8 @@ export default function NewListingPage() {
           address:           e.address        ?? "",
           city:              e.city           ?? "",
           state:             e.state          ?? "",
+          latitude:          e.latitude       ?? null,
+          longitude:         e.longitude      ?? null,
           waves:             Array.isArray(e.waves) && e.waves.length
             ? e.waves.map((w: Wave) => ({ label: w.label ?? "", price: w.price ?? "", closes: w.closes ?? "", startTime: w.startTime ?? "" }))
             : [{ label: "", price: "", closes: "", startTime: "" }],
@@ -1612,6 +1626,8 @@ export default function NewListingPage() {
         address:           form.address,
         city:              form.city,
         state:             form.state,
+        latitude:          form.latitude,
+        longitude:         form.longitude,
         format:            form.format,
         level:             form.level,
         categories:        form.categories,

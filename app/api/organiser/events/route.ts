@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { archivePastEvents } from "@/lib/archive-events";
+import { getEventCoords } from "@/lib/australia-coords";
 export async function GET() {
   await archivePastEvents();
   const session = await getOrganiserSession();
@@ -69,6 +70,8 @@ export async function POST(req: NextRequest) {
         address:          body.address           ?? null,
         city:             body.city              ?? "",
         state:            body.state             ?? "",
+        latitude:         body.latitude          ?? (body.city && body.state ? getEventCoords(body.city, body.state)[0] : null),
+        longitude:        body.longitude         ?? (body.city && body.state ? getEventCoords(body.city, body.state)[1] : null),
         format:           body.format            ?? "",
         level:            body.level             ?? "",
         categories:       body.categories        ?? [],
