@@ -18,7 +18,7 @@ jobs:
         with:
           aws-role-arn: ${{ vars.AWS_ROLE_ARN_READONLY }}
           environment: prod
-          bootstrap-export-keys: DEEPSEEK_API_KEY
+          bootstrap-export-keys: OPENCODE_ZEN_API_KEY
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -31,9 +31,9 @@ jobs:
         continue-on-error: true
         env:
           OPENWIKI_PROVIDER: openai-compatible
-          OPENAI_COMPATIBLE_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
-          OPENAI_COMPATIBLE_BASE_URL: https://api.deepseek.com/v1
-          OPENWIKI_MODEL_ID: deepseek-chat
+          OPENAI_COMPATIBLE_API_KEY: ${{ env.OPENCODE_ZEN_API_KEY }}
+          OPENAI_COMPATIBLE_BASE_URL: https://opencode.ai/zen/v1
+          OPENWIKI_MODEL_ID: deepseek-v4-flash-free
         run: |
           openwiki --update -p "Review the code changes and update the openwiki/ docs to reflect any new or changed patterns, APIs, data models, or architecture. Keep the existing style and structure."
       - name: Detect stale docs
