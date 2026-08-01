@@ -1852,7 +1852,7 @@ export default function EventFormWizard({
             </div>
 
             {/* Live preview sidebar */}
-            <aside className="hidden lg:block border-l border-dark-lighter bg-dark p-6 sticky top-[152px] h-[calc(100vh-152px)] overflow-y-auto">
+            <aside className="hidden lg:block border-l border-dark-lighter bg-dark p-6 sticky top-[152px] h-[calc(100dvh-152px)] overflow-y-auto">
               <LivePreview form={form} />
             </aside>
           </div>
