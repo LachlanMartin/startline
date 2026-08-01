@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  User, LogOut, Building2, Shield, Menu, X, ChevronDown,
+  User, LogOut, Building2, Shield, ShieldCheck, Menu, X, ChevronDown,
 } from "lucide-react";
 import SignInModal from "@/components/SignInModal";
 import { useAuthContext } from "@/context/AuthContext";
@@ -21,16 +21,14 @@ const USER_NAV: NavItem[] = [
 export default function NavBar() {
   const router   = useRouter();
   const pathname = usePathname();
-  const { user, memberships, organiserCount, status, logout } = useAuthContext();
+  const { user, role, organiserCount, status, logout } = useAuthContext();
 
   const [isMenuOpen,   setIsMenuOpen]   = useState(false);
   const [isSignInOpen, setIsSignInOpen] = useState(false);
   const [isUserOpen,   setIsUserOpen]   = useState(false);
-  const [isOrgOpen,    setIsOrgOpen]    = useState(false);
   const [profileName,  setProfileName]  = useState<string | null>(null);
 
   const userRef = useRef<HTMLDivElement>(null);
-  const orgRef  = useRef<HTMLDivElement>(null);
   const navRef  = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,37 +50,48 @@ export default function NavBar() {
   }, [status, organiserCount]);
 
   useEffect(() => {
-    if (!isUserOpen && !isOrgOpen && !isMenuOpen) return;
+    if (!isUserOpen && !isMenuOpen) return;
     const handler = (e: MouseEvent) => {
-      if (userRef.current  && !userRef.current.contains(e.target as Node))  setIsUserOpen(false);
-      if (orgRef.current   && !orgRef.current.contains(e.target as Node))   setIsOrgOpen(false);
-      if (navRef.current   && !navRef.current.contains(e.target as Node))   setIsMenuOpen(false);
+      if (userRef.current && !userRef.current.contains(e.target as Node)) setIsUserOpen(false);
+      if (navRef.current  && !navRef.current.contains(e.target as Node))  setIsMenuOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [isUserOpen, isOrgOpen, isMenuOpen]);
+  }, [isUserOpen, isMenuOpen]);
 
   const handleSignOut = async () => {
     await logout();
     router.push("/");
   };
 
-  const switchOrganiser = async (organiserId: string) => {
-    try {
-      await fetch("/api/organiser/switch-org", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ organiserId }),
-      });
-    } catch {}
-    setIsOrgOpen(false);
-    router.push("/organiser/dashboard");
-  };
-
   if (pathname?.startsWith("/admin/login")) return null;
 
   const displayName = profileName ?? user?.email ?? "";
   const initial     = displayName[0]?.toUpperCase() ?? "A";
+  const hasOrganiser = organiserCount > 0;
+  const isAdmin      = role === "admin";
+
+  const portalLinks = (
+    <>
+      {(hasOrganiser || isAdmin) && (
+        <>
+          <div className="border-t border-white/10" />
+          {hasOrganiser && (
+            <Link href="/organiser/dashboard" onClick={() => setIsUserOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+              <Building2 className="w-4 h-4 text-primary/70" /> Organiser Portal
+            </Link>
+          )}
+          {isAdmin && (
+            <Link href="/admin/dashboard" onClick={() => setIsUserOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+              <ShieldCheck className="w-4 h-4 text-primary/70" /> Admin Portal
+            </Link>
+          )}
+        </>
+      )}
+    </>
+  );
 
   return (
     <>
@@ -112,37 +121,6 @@ export default function NavBar() {
           {/* ── Right side ── */}
           <div className="flex items-center gap-1 shrink-0">
 
-            {/* Manage organisation */}
-            {status === "authenticated" && organiserCount > 0 && (
-              <div ref={orgRef} className="relative hidden md:block">
-                {organiserCount === 1 ? (
-                  <Link href="/organiser/dashboard"
-                    className="flex items-center gap-2 h-8 px-3 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-dark bg-primary hover:brightness-95 transition-all">
-                    <Building2 className="w-3.5 h-3.5" /> Manage
-                  </Link>
-                ) : (
-                  <>
-                    <button onClick={() => { setIsOrgOpen(o => !o); setIsUserOpen(false); }}
-                      className="flex items-center gap-2 h-8 px-3 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-dark bg-primary hover:brightness-95 transition-all">
-                      <Building2 className="w-3.5 h-3.5" /> Manage
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOrgOpen ? "rotate-180" : ""}`} />
-                    </button>
-                    {isOrgOpen && (
-                      <div className="absolute right-0 top-full mt-1 w-64 bg-dark-darker/95 backdrop-blur-xl border border-white/[0.05] rounded-xl shadow-2xl overflow-hidden">
-                        {memberships.map((m) => (
-                          <button key={m.organiserId} onClick={() => switchOrganiser(m.organiserId)}
-                            className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors text-left">
-                            <Building2 className="w-4 h-4 shrink-0 text-primary/70" />
-                            <span className="truncate">{m.organiserName ?? "Organisation"}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
             {/* Desktop: unauthenticated */}
             {status !== "authenticated" && (
               <button onClick={() => setIsSignInOpen(true)} disabled={status === "loading"}
@@ -154,7 +132,7 @@ export default function NavBar() {
             {/* Desktop: authenticated user menu */}
             {status === "authenticated" && (
               <div ref={userRef} className="hidden md:block relative">
-                <button onClick={() => { setIsUserOpen(o => !o); setIsOrgOpen(false); }}
+                <button onClick={() => setIsUserOpen(o => !o)}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
                   <span className="w-7 h-7 rounded-lg bg-primary text-dark font-headline font-black italic text-sm flex items-center justify-center shrink-0">
                     {initial}
@@ -166,7 +144,7 @@ export default function NavBar() {
                 </button>
 
                 {isUserOpen && (
-                  <div className="absolute right-0 top-full mt-1 min-w-[180px] bg-dark-darker/95 backdrop-blur-xl border border-white/[0.05] rounded-xl shadow-2xl overflow-hidden">
+                  <div className="absolute right-0 top-full mt-1 min-w-[200px] bg-dark-darker/95 backdrop-blur-xl border border-white/[0.05] rounded-xl shadow-2xl overflow-hidden">
                     <Link href="/profile" onClick={() => setIsUserOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                       <User className="w-4 h-4" /> Profile
@@ -176,6 +154,8 @@ export default function NavBar() {
                       className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                       <Shield className="w-4 h-4" /> Security
                     </Link>
+
+                    {portalLinks}
 
                     <div className="border-t border-white/10" />
                     <button onClick={handleSignOut}
@@ -211,21 +191,20 @@ export default function NavBar() {
                 );
               })}
 
-              {status === "authenticated" && organiserCount > 0 && (
+              {status === "authenticated" && (hasOrganiser || isAdmin) && (
                 <>
                   <div className="border-t border-white/10 my-1.5" />
-                  {organiserCount === 1 ? (
+                  {hasOrganiser && (
                     <Link href="/organiser/dashboard" onClick={() => setIsMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors">
-                      <Building2 className="w-4 h-4" /> Manage Organisation
+                      <Building2 className="w-4 h-4" /> Organiser Portal
                     </Link>
-                  ) : (
-                    memberships.map((m) => (
-                      <button key={m.organiserId} onClick={() => { setIsMenuOpen(false); switchOrganiser(m.organiserId); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors text-left">
-                        <Building2 className="w-4 h-4" /> {m.organiserName ?? "Organisation"}
-                      </button>
-                    ))
+                  )}
+                  {isAdmin && (
+                    <Link href="/admin/dashboard" onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors">
+                      <ShieldCheck className="w-4 h-4" /> Admin Portal
+                    </Link>
                   )}
                 </>
               )}
