@@ -800,6 +800,10 @@ async function main() {
         status: "CONFIRMED",
         finishTime: h.finishTime ?? null,
         result: h.result ?? null,
+        // New-style result fields (race management / public profile table)
+        resultTime: h.finishTime ?? null,
+        resultPlacement: h.result ?? null,
+        resultDistance: "5K",
       },
     });
     historyCount++;

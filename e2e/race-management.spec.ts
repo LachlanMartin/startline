@@ -470,8 +470,8 @@ test.describe("athlete public profile race history", () => {
     await expect(page.getByRole("heading", { name: /jade nguyen/i })).toBeVisible();
     await expect(page.getByText(/race history/i)).toBeVisible();
     await expect(page.getByRole("columnheader", { name: /^division$/i })).toBeVisible();
-    // Seeded result on Sydney Harbour 10K
-    await expect(page.getByText(/41:05|sydney harbour/i).first()).toBeVisible();
+    // Seeded result on Apex Bay Run (Jade Nguyen's race history)
+    await expect(page.getByText(/apex bay run|00:42:10/i).first()).toBeVisible();
   });
 
   test("shows not-found for unknown username", async ({ page }) => {
