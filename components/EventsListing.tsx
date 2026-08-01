@@ -97,18 +97,38 @@ function EventsListingInner() {
       .catch(() => {});
   }, []);
 
-  // Fetch user location for map centering
+  // Default map to the user's area: device GPS first, then profile city/state,
+  // then fall back to the Australia-wide view. Runs once on mount.
   useEffect(() => {
-    if (status !== "authenticated") return;
-    fetch("/api/user/profile")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.city && data?.state) {
-          const [lat, lng] = getEventCoords(data.city, data.state);
-          setInitialCenter({ lng, lat, zoom: 5 });
-        }
-      })
-      .catch(() => {});
+    let cancelled = false;
+
+    function tryProfileFallback() {
+      if (status !== "authenticated") return;
+      fetch("/api/user/profile")
+        .then((r) => r.json())
+        .then((data) => {
+          if (!cancelled && data?.city && data?.state) {
+            const [lat, lng] = getEventCoords(data.city, data.state);
+            setInitialCenter({ lng, lat, zoom: 8 });
+          }
+        })
+        .catch(() => {});
+    }
+
+    if (!navigator.geolocation) {
+      tryProfileFallback();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (!cancelled) setInitialCenter({ lng: pos.coords.longitude, lat: pos.coords.latitude, zoom: 10 });
+      },
+      () => tryProfileFallback(),
+      { timeout: 5000, maximumAge: 300_000 },
+    );
+
+    return () => { cancelled = true; };
   }, [status]);
 
   const searchParams = useSearchParams();
