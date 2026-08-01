@@ -13,6 +13,8 @@ import { useAuthContext } from "@/context/AuthContext";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
+const DASHBOARD: NavItem = { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard };
+
 const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Content",
@@ -32,7 +34,6 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Overview",
     items: [
-      { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
       { href: "/admin/payouts", label: "Payouts", icon: Send },
       { href: "/admin/audit", label: "Audit log", icon: ScrollText },
@@ -76,7 +77,7 @@ export default function AdminNavBar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-darker/80 backdrop-blur-xl border-b-2 border-[#818cf8]">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-darker/80 backdrop-blur-xl border-b-2 border-primary">
         <div className="flex items-center justify-between h-14 max-w-[1200px] mx-auto px-4 sm:px-6 gap-4">
 
           {/* ── Logo + badge ── */}
