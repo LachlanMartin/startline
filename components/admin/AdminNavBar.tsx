@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, CalendarDays, Users, UserCircle, ClipboardList, Star,
-  BarChart2, ScrollText, ShieldCheck, LogOut, Menu, X, ChevronDown,
+  BarChart2, Send, ScrollText, ShieldCheck, LogOut, Menu, X, ChevronDown,
 } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
 
@@ -20,6 +20,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/registrations", label: "Registrations", icon: ClipboardList },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
+  { href: "/admin/payouts", label: "Payouts", icon: Send },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
 ];
 

@@ -2,11 +2,24 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
+import Image from "next/image";
+import { RefreshCw, UserCheck } from "lucide-react";
 import type { UserEvent } from "@/types";
-import { getSavedEventIds, getRegisteredEventIds } from "@/lib/client-lists";
+import { getRegisteredEventIds } from "@/lib/client-lists";
+import { fetchSavedEventIds } from "@/lib/client-lists";
 import { toUserEvents } from "@/lib/user-events";
+import { useAuthContext } from "@/context/AuthContext";
 import EventCard from "@/components/EventCard";
+
+type FollowingOrganiser = {
+  followId: string;
+  id: string;
+  orgName: string | null;
+  logoUrl: string | null;
+  followers: number;
+  eventsHosted: number;
+  registrations: number;
+};
 
 function RegisteredCard({ event }: { event: UserEvent }) {
   return (
@@ -40,7 +53,64 @@ function RegisteredCard({ event }: { event: UserEvent }) {
   );
 }
 
-function EmptyState({ tab }: { tab: "registered" | "saved" }) {
+function OrganiserCard({
+  organiser,
+  onUnfollow,
+}: {
+  organiser: FollowingOrganiser;
+  onUnfollow: (followId: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function unfollow() {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/public/organisers/${organiser.id}/follow`, {
+        method: "DELETE",
+      });
+      if (res.ok) onUnfollow(organiser.followId);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col bg-dark border border-dark-lighter rounded-2xl p-5">
+      <Link href={`/organisers/${organiser.id}`} className="group flex items-center gap-4">
+        <span className="relative w-14 h-14 rounded-xl overflow-hidden bg-dark-lighter shrink-0">
+          {organiser.logoUrl ? (
+            <Image src={organiser.logoUrl} alt={`${organiser.orgName} logo`} fill className="object-cover" sizes="56px" />
+          ) : (
+            <span className="w-full h-full flex items-center justify-center font-headline text-xl font-black italic text-primary">
+              {(organiser.orgName ?? "O").charAt(0)}
+            </span>
+          )}
+        </span>
+        <span className="min-w-0">
+          <span className="block font-headline text-lg font-black italic tracking-tighter text-light group-hover:text-primary transition-colors leading-tight truncate">
+            {organiser.orgName ?? "Organiser"}
+          </span>
+          <span className="flex items-center gap-2 mt-1 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
+            <span>{organiser.followers} followers</span>
+            <span className="text-muted-dark">·</span>
+            <span>{organiser.eventsHosted} events</span>
+          </span>
+        </span>
+      </Link>
+      <button
+        type="button"
+        onClick={unfollow}
+        disabled={busy}
+        className="mt-4 inline-flex items-center justify-center gap-2 h-10 rounded-xl border border-dark-lighter text-muted hover:text-light hover:border-primary/50 font-headline text-[11px] font-bold uppercase tracking-widest transition-colors"
+      >
+        <UserCheck className="w-4 h-4" />
+        {busy ? "Unfollowing..." : "Unfollow"}
+      </button>
+    </div>
+  );
+}
+
+function EmptyState({ tab }: { tab: "registered" | "saved" | "following" }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-3">
       <p className="font-headline text-xl font-black italic tracking-tighter text-light">
@@ -49,24 +119,29 @@ function EmptyState({ tab }: { tab: "registered" | "saved" }) {
       <p className="font-headline text-sm text-muted text-center max-w-xs leading-relaxed">
         {tab === "registered"
           ? "Register your interest in events to see them here."
-          : "Save events with the heart icon to find them later."}
+          : tab === "saved"
+            ? "Save events with the heart icon to find them later."
+            : "Follow organisers to keep up with their upcoming events."}
       </p>
       <Link
-        href="/events"
+        href={tab === "following" ? "/organisers" : "/events"}
         className="mt-2 font-headline text-[11px] font-bold uppercase tracking-widest text-primary hover:underline"
       >
-        Browse Events
+        {tab === "following" ? "Browse Organisers" : "Browse Events"}
       </Link>
     </div>
   );
 }
 
 export default function ActivityPage() {
-  const [activeTab, setActiveTab] = useState<"registered" | "saved">("registered");
-  const [savedIds, setSavedIds] = useState(() => getSavedEventIds());
+  const { status } = useAuthContext();
+  const [activeTab, setActiveTab] = useState<"registered" | "saved" | "following">("registered");
+  const [savedIds, setSavedIds] = useState<string[]>([]);
   const [registeredIds, setRegisteredIds] = useState(() => getRegisteredEventIds());
+  const [following, setFollowing] = useState<FollowingOrganiser[]>([]);
   const [events, setEvents] = useState<UserEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+  const [followingLoading, setFollowingLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/events")
@@ -74,25 +149,33 @@ export default function ActivityPage() {
       .then(data => { setEvents(Array.isArray(data) ? toUserEvents(data) : []); })
       .catch(() => {})
       .finally(() => setEventsLoading(false));
+  }, []);
 
-    function onStorage(e: StorageEvent) {
-      if (e.key === "startline_saved_events" || e.key === "startline_registered_interest") {
-        setSavedIds(getSavedEventIds());
-        setRegisteredIds(getRegisteredEventIds());
-        fetch("/api/events")
-          .then(r => r.ok ? r.json() : [])
-          .then(data => { setEvents(Array.isArray(data) ? toUserEvents(data) : []); })
-          .catch(() => {});
-      }
-    }
-    function onLocalChange() {
-      setSavedIds(getSavedEventIds());
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let cancelled = false;
+    Promise.all([fetchSavedEventIds(), fetch("/api/user/following").then(r => r.ok ? r.json() : null)])
+      .then(([ids, followingData]) => {
+        if (cancelled) return;
+        setSavedIds(ids);
+        if (followingData?.organisers) setFollowing(followingData.organisers);
+      })
+      .finally(() => setFollowingLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
+
+  function onStorage(e: StorageEvent) {
+    if (e.key === "startline_registered_interest") {
       setRegisteredIds(getRegisteredEventIds());
-      fetch("/api/events")
-        .then(r => r.ok ? r.json() : [])
-        .then(data => { setEvents(Array.isArray(data) ? toUserEvents(data) : []); })
-        .catch(() => {});
     }
+  }
+  function onLocalChange() {
+    setRegisteredIds(getRegisteredEventIds());
+  }
+
+  useEffect(() => {
     window.addEventListener("storage", onStorage);
     window.addEventListener("startline-lists-changed", onLocalChange);
     return () => {
@@ -103,7 +186,17 @@ export default function ActivityPage() {
 
   const savedEvents = events.filter((e) => savedIds.includes(String(e.id)));
   const registeredEvents = events.filter((e) => registeredIds.includes(String(e.id)));
-  const tabEvents = activeTab === "registered" ? registeredEvents : savedEvents;
+
+  const tabCounts = {
+    registered: registeredEvents.length,
+    saved: savedEvents.length,
+    following: following.length,
+  };
+  const tabLabels: Record<string, string> = {
+    registered: "Registered",
+    saved: "Saved",
+    following: "Following",
+  };
 
   return (
     <main className="min-h-screen bg-dark-darker">
@@ -119,7 +212,7 @@ export default function ActivityPage() {
               Your race<br /><span className="text-primary">calendar.</span>
             </h1>
             <p className="font-headline text-[15px] text-muted max-w-[460px] leading-relaxed mt-4">
-              Everything you&apos;ve entered and everything you&apos;ve saved. Keep your start lines in one place.
+              Everything you&apos;ve entered, saved, and who you follow. Keep your start lines in one place.
             </p>
           </div>
           <Link
@@ -135,7 +228,7 @@ export default function ActivityPage() {
           {[
             { n: registeredEvents.length, l: "Registered" },
             { n: savedEvents.length, l: "Saved" },
-            { n: 0, l: "Completed" },
+            { n: following.length, l: "Following" },
           ].map(({ n, l }) => (
             <div
               key={l}
@@ -152,9 +245,8 @@ export default function ActivityPage() {
 
         {/* Tab pills */}
         <div className="flex gap-2.5 mb-6">
-          {(["registered", "saved"] as const).map((id) => {
+          {(["registered", "saved", "following"] as const).map((id) => {
             const on = activeTab === id;
-            const count = id === "registered" ? registeredEvents.length : savedEvents.length;
             return (
               <button
                 key={id}
@@ -165,11 +257,11 @@ export default function ActivityPage() {
                     : "bg-transparent border border-dark-lighter text-muted hover:text-light"
                 }`}
               >
-                {id}
+                {tabLabels[id]}
                 <span
                   className={`font-headline text-[11px] font-bold ${on ? "text-primary" : "text-muted-dark"}`}
                 >
-                  {count}
+                  {tabCounts[id]}
                 </span>
               </button>
             );
@@ -177,11 +269,32 @@ export default function ActivityPage() {
         </div>
 
         {/* Grid */}
-        {eventsLoading ? (
+        {activeTab === "following" ? (
+          followingLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <RefreshCw className="w-5 h-5 text-muted animate-spin" />
+            </div>
+          ) : following.length === 0 ? (
+            <EmptyState tab="following" />
+          ) : (
+            <div
+              className="grid gap-5"
+              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}
+            >
+              {following.map((o) => (
+                <OrganiserCard
+                  key={o.followId}
+                  organiser={o}
+                  onUnfollow={(followId) => setFollowing((prev) => prev.filter((x) => x.followId !== followId))}
+                />
+              ))}
+            </div>
+          )
+        ) : eventsLoading ? (
           <div className="flex items-center justify-center py-20">
             <RefreshCw className="w-5 h-5 text-muted animate-spin" />
           </div>
-        ) : tabEvents.length === 0 ? (
+        ) : (activeTab === "registered" ? registeredEvents : savedEvents).length === 0 ? (
           <EmptyState tab={activeTab} />
         ) : (
           <div

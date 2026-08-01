@@ -89,6 +89,9 @@ export interface FilterState {
   priceRange: [number, number] | null;
   dateRange: "this-month" | "next-3" | "all";
   searchQuery: string;
+  originLat?: number;
+  originLng?: number;
+  maxDistance?: number;
 }
 
 export type SortOption = "date" | "price-asc" | "price-desc" | "popular";

@@ -22,11 +22,46 @@ export async function GET() {
       organiser: { select: { id: true, orgName: true, logoUrl: true, verified: true } },
     },
   });
+  if (!user) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
+  const registrations = await prisma.registration.findMany({
+    where: { userId: session.sub, status: "CONFIRMED" },
+    orderBy: { event: { eventDate: "asc" } },
+    select: {
+      id: true,
+      finishTime: true,
+      result: true,
+      event: {
+        select: {
+          id: true,
+          title: true,
+          discipline: true,
+          eventDate: true,
+          city: true,
+          state: true,
+          coverImageUrl: true,
+          organiser: { select: { id: true, orgName: true } },
+        },
+      },
+    },
+  });
+
+  const completed = registrations.length;
+  const statesRaced = new Set(registrations.map((r) => r.event.state)).size;
+  const disciplines = new Set(registrations.map((r) => r.event.discipline)).size;
 
   return NextResponse.json({
     ...user,
     mobile: session.phoneNumber,
     dateOfBirth: session.birthdate,
+    history: {
+      completed,
+      statesRaced,
+      disciplines,
+      registrations,
+    },
   });
 }
 

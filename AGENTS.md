@@ -74,7 +74,7 @@ shadcn/ui components via `npx shadcn@latest add <component>`. Use `cn()` from `l
 ## Testing
 
 ```
-pnpm lint              # ESLint — 0 errors (warnings OK for <img> on QR codes)
+pnpm lint              # ESLint — 0 errors, 0 warnings
 pnpm test              # Vitest unit tests (77 tests, 8 files)
 pnpm test:watch        # Vitest watch mode
 pnpm test:e2e          # Playwright (needs Docker PostgreSQL + dev server)

@@ -7,8 +7,8 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   User, LogOut, Building2, ShieldCheck, Shield, Plus, Settings, Bell,
   CheckCircle2, XCircle, Menu, X, LayoutDashboard, CalendarDays,
-  CreditCard, BookOpen, ArrowLeft, ChevronDown, Users, Star,
-  UserCircle, ClipboardList, BarChart2, ScrollText,
+  BookOpen, ChevronDown, Users, Star,
+  UserCircle, ClipboardList, BarChart2, ScrollText, Send,
 } from "lucide-react";
 import SignInModal from "@/components/SignInModal";
 import { useAuthContext, type Role } from "@/context/AuthContext";
@@ -38,6 +38,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/registrations", label: "Registrations", icon: ClipboardList },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
+  { href: "/admin/payouts", label: "Payouts", icon: Send },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
 ];
 
@@ -74,12 +75,10 @@ const NOTIF_ICON: Record<Notification["type"], React.ReactNode> = {
   NEW_REGISTRATION: <User         className="w-4 h-4 text-blue-400" />,
 };
 
-const CUSTOMER_URL = process.env.NODE_ENV === "development" ? "/" : "https://startlineau.com";
-
 export default function NavBar() {
   const router   = useRouter();
   const pathname = usePathname();
-  const { user, role, status, logout } = useAuthContext();
+  const { user, role, hasOrganiser, status, logout } = useAuthContext();
   const { open: openSettingsModal } = useSettings();
 
   const [isMenuOpen,   setIsMenuOpen]   = useState(false);
@@ -188,8 +187,8 @@ export default function NavBar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 h-14 bg-dark-darker/80 backdrop-blur-xl border-b border-white/[0.05]">
-        <div className="flex items-center justify-between h-full max-w-[1200px] mx-auto px-4 sm:px-6 gap-4">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-darker/80 backdrop-blur-xl border-b border-white/[0.05]">
+        <div className="flex items-center justify-between h-14 max-w-[1200px] mx-auto px-4 sm:px-6 gap-4">
 
           {/* ── Logo + Role badge ── */}
           <Link href="/" className="shrink-0 py-1 flex items-center gap-2">
@@ -238,7 +237,7 @@ export default function NavBar() {
                 )}
               </div>
             ) : (
-              (role === "organiser" ? ORGANISER_NAV : USER_NAV).map(({ href, label }) => {
+              USER_NAV.map(({ href, label }) => {
                 const isActive = href === "/" ? pathname === "/" : pathname?.startsWith(href) ?? false;
                 return (
                   <Link key={label} href={href}
@@ -365,16 +364,6 @@ export default function NavBar() {
                       </>
                     )}
 
-                    {role === "organiser" && (
-                      <>
-                        <div className="border-t border-white/10" />
-                        <Link href={CUSTOMER_URL} onClick={() => setIsUserOpen(false)}
-                          className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary/80 hover:text-primary hover:bg-white/5 transition-colors">
-                          <ArrowLeft className="w-4 h-4" /> Switch to User
-                        </Link>
-                      </>
-                    )}
-
                     <div className="border-t border-white/10" />
                     <button onClick={handleSignOut}
                       className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-red-400/80 hover:text-red-400 hover:bg-white/5 transition-colors">
@@ -394,9 +383,32 @@ export default function NavBar() {
           </div>
         </div>
 
+        {/* ── Organiser secondary bar ── */}
+        {hasOrganiser && (
+          <div className="h-9 flex items-center border-t border-white/[0.05]">
+            <div className="flex items-center gap-0.5 max-w-[1200px] mx-auto px-4 sm:px-6 w-full overflow-x-auto">
+              <span className="shrink-0 flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-primary/70">
+                <Building2 className="w-3 h-3" /> Organiser
+              </span>
+              {ORGANISER_NAV.map(({ href, label }) => {
+                const isActive = href === "/organiser/listings"
+                  ? pathname === href || (pathname?.startsWith(href + "/") ?? false)
+                  : pathname?.startsWith(href) ?? false;
+                return (
+                  <Link key={href} href={href}
+                    className={`shrink-0 px-3 py-1.5 rounded-md font-headline text-[11px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors duration-150
+                      ${isActive ? "bg-white/15 text-white" : "text-white/50 hover:text-white hover:bg-white/10"}`}>
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── Mobile dropdown ── */}
         {isMenuOpen && (
-          <div className="md:hidden bg-dark-darker/95 backdrop-blur-xl border-t border-white/[0.05] max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
+          <div className={`md:hidden bg-dark-darker/95 backdrop-blur-xl border-t border-white/[0.05] overflow-y-auto ${hasOrganiser ? "max-h-[calc(100dvh-5.75rem)]" : "max-h-[calc(100dvh-3.5rem)]"}`}>
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-1.5">
               {role && (() => {
                 const BadgeIcon = ROLE_BADGE[role].icon;
@@ -408,7 +420,7 @@ export default function NavBar() {
                 );
               })()}
 
-              {(role === "organiser" ? ORGANISER_NAV : role === "admin" ? ADMIN_NAV : USER_NAV).map(({ href, label, icon: Icon }) => {
+              {(role === "admin" ? ADMIN_NAV : USER_NAV).map(({ href, label, icon: Icon }) => {
                 const isActive = href === "/" ? pathname === "/" : pathname?.startsWith(href) ?? false;
                 return (
                   <Link key={label} href={href} onClick={() => setIsMenuOpen(false)}
@@ -440,12 +452,6 @@ export default function NavBar() {
               <div className="border-t border-white/10 mt-1.5 pt-3 pb-2">
                 {status === "authenticated" ? (
                   <>
-                    {role === "organiser" && (
-                      <Link href={CUSTOMER_URL} onClick={() => setIsMenuOpen(false)}
-                        className="w-full flex items-center justify-center gap-2 h-10 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-primary/80 border border-white/10 hover:text-primary hover:border-primary/30 transition-colors mb-2">
-                        <ArrowLeft className="w-3.5 h-3.5" /> Switch to User
-                      </Link>
-                    )}
                     <button onClick={() => { setIsMenuOpen(false); handleSignOut(); }}
                       className="w-full flex items-center justify-center gap-2 h-10 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-red-400/80 border border-white/10 hover:text-red-400 hover:border-red-400/30 transition-colors">
                       <LogOut className="w-3.5 h-3.5" /> Sign Out
@@ -463,43 +469,8 @@ export default function NavBar() {
         )}
       </nav>
 
-      {/* ── Mobile bottom nav (organiser only) ── */}
-      {role === "organiser" && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-dark border-t border-dark-lighter" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-          <div className="flex items-stretch h-16">
-            {[
-              { href: "/organiser/dashboard", label: "Home", icon: LayoutDashboard },
-              { href: "/organiser/listings", label: "Listings", icon: CalendarDays },
-              null,
-              { href: "/organiser/payments", label: "Payments", icon: CreditCard },
-              { href: "/organiser/profile", label: "Profile", icon: User },
-            ].map((item, i) => {
-              if (item === null) {
-                return (
-                  <div key="fab" className="flex-1 flex items-center justify-center">
-                    <Link href="/organiser/new-listing" aria-label="Create new listing"
-                      className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95
-                        ${pathname?.startsWith("/organiser/new-listing") ? "bg-primary/80 ring-2 ring-primary/40" : "bg-primary"}`}>
-                      <Plus className="w-6 h-6 text-dark" strokeWidth={2.5} />
-                    </Link>
-                  </div>
-                );
-              }
-              const isActive = item.href === "/organiser/listings"
-                ? pathname === item.href || (pathname?.startsWith(item.href + "/") ?? false)
-                : pathname === item.href;
-              return (
-                <Link key={item.href} href={item.href}
-                  className={`flex-1 flex flex-col items-center justify-center gap-1 min-h-[44px] transition-colors
-                    ${isActive ? "text-primary" : "text-muted"}`}>
-                  <item.icon className="w-[22px] h-[22px]" strokeWidth={isActive ? 2.5 : 2} />
-                  <span className="font-headline text-[10px] uppercase tracking-widest font-bold">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-      )}
+      {/* Reserves the organiser bar's height in flow so fixed nav never overlaps content */}
+      {hasOrganiser && <div className="h-9" />}
 
       <SignInModal isOpen={isSignInOpen} onClose={() => setIsSignInOpen(false)} />
     </>

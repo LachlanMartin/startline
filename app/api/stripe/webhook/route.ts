@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import prisma from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { sendRegistrationConfirmationEmail } from "@/lib/email";
+import { parseParticipantsFromMetadata, parseWavePricing } from "@/lib/stripe-webhook";
 import {
   expandCompactParticipant,
   athleteNameFromParticipant,
@@ -16,43 +17,6 @@ function getWebhookSecret(): string {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) throw new Error("STRIPE_WEBHOOK_SECRET is not configured.");
   return secret;
-}
-
-function parseParticipantsFromMetadata(meta: Stripe.Metadata): CompactParticipant[] {
-  const participantCount = parseInt(meta.participantCount ?? "0", 10);
-  if (participantCount > 0) {
-    const participants: CompactParticipant[] = [];
-    for (let i = 0; i < participantCount; i++) {
-      const raw = meta[`participant${i}`];
-      if (!raw) continue;
-      participants.push(JSON.parse(raw) as CompactParticipant);
-    }
-    if (participants.length > 0) return participants;
-  }
-
-  if (meta.firstName || meta.userName) {
-    return [{
-      fn: meta.firstName ?? meta.userName?.split(" ")[0] ?? "",
-      ln: meta.lastName ?? meta.userName?.split(" ").slice(1).join(" ") ?? "",
-      dob: meta.dateOfBirth ?? "",
-      em: (meta.userEmail ?? "").toLowerCase(),
-      mob: meta.mobile ?? "",
-      ecn: meta.emergencyContactName ?? "",
-      ecp: meta.emergencyContactPhone ?? "",
-    }];
-  }
-
-  return [];
-}
-
-/** Per-tier pricing map written by checkout: { [waveLabel]: { p: priceCents, f: feeCents } }. */
-function parseWavePricing(meta: Stripe.Metadata): Record<string, { p: number; f: number }> {
-  if (!meta.wavePricing) return {};
-  try {
-    return JSON.parse(meta.wavePricing) as Record<string, { p: number; f: number }>;
-  } catch {
-    return {};
-  }
 }
 
 export async function POST(req: NextRequest) {

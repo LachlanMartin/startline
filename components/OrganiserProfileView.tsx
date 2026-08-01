@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
-import { MapPin } from "lucide-react";
 import type { UserEvent } from "@/types";
 import type { PublicReview } from "@/lib/reviews";
 import type { OrganiserPublicStats } from "@/lib/organiser-follows";
@@ -11,6 +10,7 @@ import OrganiserReviewsClient from "@/components/OrganiserReviewsClient";
 import OrganiserRating from "@/components/OrganiserRating";
 import OrganiserFollowSection from "@/components/OrganiserFollowSection";
 import OrganiserEditProfileButton from "@/components/OrganiserEditProfileButton";
+import EventMap from "@/components/EventMap";
 import { ScrollCarousel } from "@/components/ui/ScrollCarousel";
 
 export type OrganiserProfileData = {
@@ -190,12 +190,7 @@ export default function OrganiserProfileView({
             </div>
 
             <div className="lg:sticky lg:top-20 h-[320px] lg:h-[min(70vh,640px)] rounded-2xl border border-dark-lighter bg-dark overflow-hidden">
-              <div className="h-full flex flex-col items-center justify-center gap-2 px-6 text-center">
-                <MapPin className="w-6 h-6 text-primary/60" />
-                <p className="font-headline text-xs font-bold uppercase tracking-widest text-muted">
-                  Map coming soon
-                </p>
-              </div>
+              <EventMap events={upcoming} selectedId={null} />
             </div>
           </div>
         </div>

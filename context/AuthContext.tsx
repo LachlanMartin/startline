@@ -13,27 +13,30 @@ export type AuthUser = {
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 type AuthContextValue = {
-  user:    AuthUser | null;
-  role:    Role | null;
-  status:  AuthStatus;
-  loading: boolean;
-  refresh: () => Promise<void>;
-  logout:  () => Promise<void>;
+  user:         AuthUser | null;
+  role:         Role | null;
+  hasOrganiser: boolean;
+  status:       AuthStatus;
+  loading:      boolean;
+  refresh:      () => Promise<void>;
+  logout:       () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue>({
-  user:    null,
-  role:    null,
-  status:  "loading",
-  loading: true,
-  refresh: async () => {},
-  logout:  async () => {},
+  user:         null,
+  role:         null,
+  hasOrganiser: false,
+  status:       "loading",
+  loading:      true,
+  refresh:      async () => {},
+  logout:       async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user,   setUser]   = useState<AuthUser | null>(null);
-  const [role,   setRole]   = useState<Role | null>(null);
-  const [status, setStatus] = useState<AuthStatus>("loading");
+  const [user,         setUser]         = useState<AuthUser | null>(null);
+  const [role,         setRole]         = useState<Role | null>(null);
+  const [hasOrganiser, setHasOrganiser] = useState(false);
+  const [status,       setStatus]       = useState<AuthStatus>("loading");
 
   const hydrate = useCallback(async () => {
     if (process.env.NODE_ENV === "development" && typeof document !== "undefined" && document.cookie.includes("__e2e_bypass=1")) {
@@ -82,7 +85,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetch("/api/user/role")
       .then(r => (r.ok ? r.json() : null))
       .then(data => {
-        if (!cancelled && data?.role) setRole(data.role);
+        if (!cancelled && data?.role) {
+          setRole(data.role);
+          setHasOrganiser(Boolean(data.hasOrganiser));
+        }
       })
       .catch(() => {});
     return () => {
@@ -101,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         value={{
           user,
           role,
+          hasOrganiser,
           status,
           loading: status === "loading",
           refresh: hydrate,

@@ -28,7 +28,8 @@ function useIsClient() {
 interface EventMapProps {
   events: UserEvent[];
   selectedId: string | null;
-  onMarkerClick: (id: string) => void;
+  /** Optional — defaults to a noop for read-only embeds (e.g. organiser profile). */
+  onMarkerClick?: (id: string) => void;
   initialCenter?: { lng: number; lat: number; zoom: number };
 }
 
@@ -98,7 +99,7 @@ const EventMap = forwardRef<EventMapHandle, EventMapProps>(function EventMap(
   ref,
 ) {
   const mapRef = useRef<MapRef | null>(null);
-  const onMarkerClickRef = useRef(onMarkerClick);
+  const onMarkerClickRef = useRef(onMarkerClick ?? (() => {}));
   const hasFramedInitial = useRef(false);
   const lastFlownIdRef = useRef<string | null>(null);
   const filterKeyRef = useRef("");
@@ -111,7 +112,7 @@ const EventMap = forwardRef<EventMapHandle, EventMapProps>(function EventMap(
   const [activeMapStyle, setActiveMapStyle] = useState(mapStyle);
 
   useEffect(() => {
-    onMarkerClickRef.current = onMarkerClick;
+    onMarkerClickRef.current = onMarkerClick ?? (() => {});
   }, [onMarkerClick]);
 
   useEffect(() => {
@@ -316,7 +317,7 @@ const EventMap = forwardRef<EventMapHandle, EventMapProps>(function EventMap(
 
                   <button
                     type="button"
-                    onClick={() => onMarkerClick(event.id)}
+                    onClick={() => onMarkerClick?.(event.id)}
                     className={`shrink-0 rounded-full border-2 border-white/90 shadow-[0_0_0_2px_rgba(0,0,0,0.35)] transition-all ${
                       isSelected
                         ? "w-5 h-5 bg-primary scale-125 shadow-[0_0_0_4px_rgba(179,225,83,0.35)]"
