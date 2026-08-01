@@ -261,13 +261,32 @@ async function main() {
     }
     const record = await prisma.user.upsert({
       where: { cognitoSub: sub },
-      update: {},
+      update: user.email === "user@startline.test"
+        ? {
+            name: user.displayName,
+            username: "user",
+            bio: "Hybrid athlete based in Sydney. Chasing PBs and start lines.",
+            city: "Sydney",
+            state: "nsw",
+            isPublic: true,
+          }
+        : {},
       create: {
         cognitoSub: sub,
         email: user.email,
         name: user.displayName,
-        username: user.email.split("@")[0].replace(/[^a-z0-9_]/gi, "_").toLowerCase(),
+        username: user.email === "user@startline.test"
+          ? "user"
+          : user.email.split("@")[0].replace(/[^a-z0-9_]/gi, "_").toLowerCase(),
         ...(user.isAdmin ? { mfaEnabled: true } : {}),
+        ...(user.email === "user@startline.test"
+          ? {
+              bio: "Hybrid athlete based in Sydney. Chasing PBs and start lines.",
+              city: "Sydney",
+              state: "nsw",
+              isPublic: true,
+            }
+          : {}),
       },
     });
     userBySub[sub] = record.id;
@@ -405,6 +424,12 @@ async function main() {
       { label: "General",    price: "115", closes: "2026-07-15", startTime: "",      qty: 150 },
       { label: "Late Entry", price: "135", closes: "2026-08-07", startTime: "09:00", qty: 90  },
     ],
+    // Organiser-built start waves (heats) banded by estimated finish time.
+    startWaves: [
+      { id: "sw-a", label: "Wave A", startTime: "07:30", capacity: null, finishMin: null, finishMax: 50, genders: [], ageMin: null, ageMax: null },
+      { id: "sw-b", label: "Wave B", startTime: "07:45", capacity: null, finishMin: 51, finishMax: 75, genders: [], ageMin: null, ageMax: null },
+      { id: "sw-c", label: "Wave C", startTime: "08:00", capacity: null, finishMin: 76, finishMax: null, genders: [], ageMin: null, ageMax: null },
+    ],
     inclusions: "Event t-shirt, finisher medal, post-event party, online score tracking",
     extras: "Prize pool: 8,000 — Awarded to podium finishers per division", activations: "Vendor expo Friday evening.",
     refundPolicy: "Full refund 30+ days out. 50% refund 14–30 days. Deferrals accepted. Free transfer to another athlete until 7 August 2026.",
@@ -426,6 +451,30 @@ async function main() {
     update: apexThrowdown,
     create: { id: "seed-event-001", organiserId: org.id, ...apexThrowdown },
   });
+
+  // Mirror the event's JSON start waves into the StartWave table — the new source
+  // of truth. Idempotent via the (eventId, label) unique key. Registrations below
+  // link to these by id as well as carrying the denormalised label.
+  const startWaveIdByLabel: Record<string, string> = {};
+  for (let i = 0; i < apexThrowdown.startWaves.length; i++) {
+    const w = apexThrowdown.startWaves[i];
+    const swData = {
+      startTime: w.startTime || null,
+      capacity: w.capacity,
+      finishMin: w.finishMin,
+      finishMax: w.finishMax,
+      genders: w.genders,
+      ageMin: w.ageMin,
+      ageMax: w.ageMax,
+      sortOrder: i,
+    };
+    const sw = await prisma.startWave.upsert({
+      where:  { eventId_label: { eventId: event1.id, label: w.label } },
+      update: swData,
+      create: { eventId: event1.id, label: w.label, ...swData },
+    });
+    startWaveIdByLabel[w.label] = sw.id;
+  }
 
   const event2 = await prisma.event.upsert({
     where: { id: "seed-event-002" }, update: {},
@@ -633,10 +682,17 @@ async function main() {
     const wave = waveOptions[i % waveOptions.length];
     const amountCents = wave.price * 100;
     const email = name.toLowerCase().replace(/[^a-z]+/g, ".") + "@example.com";
+    // Demo pace/age/gender data so organisers can try sorting athletes into waves.
+    const estimatedFinishMinutes = 32 + i * 6; // 32, 38, 44 … a clean spread
+    const gender = ["Male", "Female", "Non-binary"][i % 3];
+    const dateOfBirth = `${1980 + ((i * 3) % 30)}-06-15`;
+    // Start wave banded by finish time (matches the seeded startWaves conditions).
+    const startWaveLabel =
+      estimatedFinishMinutes <= 50 ? "Wave A" : estimatedFinishMinutes <= 75 ? "Wave B" : "Wave C";
 
     await prisma.registration.upsert({
       where:  { id: `seed-reg-${String(i + 1).padStart(3, "0")}` },
-      update: {},
+      update: { bibNumber: String(i + 1), estimatedFinishMinutes, gender, dateOfBirth, startWaveLabel, startWaveId: startWaveIdByLabel[startWaveLabel] },
       create: {
         id: `seed-reg-${String(i + 1).padStart(3, "0")}`,
         eventId: event1.id,
@@ -644,6 +700,12 @@ async function main() {
         athleteName: name,
         athleteEmail: email,
         waveLabel: wave.label,
+        startWaveLabel,
+        startWaveId: startWaveIdByLabel[startWaveLabel],
+        bibNumber: String(i + 1),
+        gender,
+        dateOfBirth,
+        estimatedFinishMinutes,
         amountCents,
         platformFeeCents: platformFeeCents(amountCents),
         feeStructure: "athlete",
@@ -656,6 +718,7 @@ async function main() {
   const extraRegs = [
     { name: "Nina Vasquez", email: "nina@example.com", wave: "Early Bird", price: 95, status: "CANCELLED" as const },
     { name: "Dylan Cross", email: "dylan@example.com", wave: "General", price: 115, status: "REFUNDED" as const },
+    { name: "Priya Nair", email: "priya@example.com", wave: "General", price: 115, status: "REFUND_REQUESTED" as const },
     { name: "Aisha Kazemi", email: "aisha@example.com", wave: "Late Entry", price: 135, status: "CONFIRMED" as const },
     { name: "Oscar De Luca", email: "oscar@example.com", wave: "Early Bird", price: 95, status: "CONFIRMED" as const },
   ];
@@ -706,6 +769,9 @@ async function main() {
     { id: "seed-history-admin-002", userId: adminSeedId, eventId: "seed-event-043", result: "DNF", finishTime: null },
     { id: "seed-history-organiser-001", userId: organiserSeedId, eventId: "seed-event-040", result: "5th", finishTime: "02:01:12" },
     { id: "seed-history-organiser-002", userId: organiserSeedId, eventId: "seed-event-044", result: "2nd", finishTime: "00:39:58" },
+    // Upcoming and unraced, so the athlete-side refund-request flow has something
+    // it is actually allowed to act on (past events can no longer be refunded).
+    { id: "seed-history-organiser-003", userId: organiserSeedId, eventId: "seed-event-005", result: null, finishTime: null },
   ];
 
   let historyCount = 0;
@@ -840,6 +906,56 @@ async function main() {
       savedCount++;
     }
     console.log(`  Saved events: ${savedCount}`);
+  }
+
+  // ── Athlete race results (user@startline.test public profile demo) ──
+  const athleteUserSub = subsByEmail["user@startline.test"];
+  const athleteUserId = athleteUserSub ? userBySub[athleteUserSub] : null;
+  if (athleteUserId) {
+    const athleteResults = [
+      { id: "seed-reg-athlete-001", eventId: event1.id,       wave: "Late Entry", price: 135, distance: "Full Division", time: "1:08:22", placement: "12th / 340", pb: true,  top: true,  bib: "101" },
+      { id: "seed-reg-athlete-002", eventId: "seed-event-005", wave: "General",   price: 55,  distance: "10km",          time: "41:05",   placement: "8th / 512",  pb: true,  top: true,  bib: "88" },
+      { id: "seed-reg-athlete-003", eventId: "seed-event-014", wave: "1.2K",      price: 35,  distance: "2.5km",         time: "38:47",   placement: "45th / 310", pb: false, top: false, bib: "210" },
+    ];
+    for (const r of athleteResults) {
+      const amountCents = r.price * 100;
+      await prisma.registration.upsert({
+        where: { id: r.id },
+        update: {
+          resultDistance: r.distance,
+          resultTime: r.time,
+          resultPlacement: r.placement,
+          isPersonalBest: r.pb,
+          isTopResult: r.top,
+          bibNumber: r.bib,
+          userId: athleteUserId,
+          finishTime: r.time,
+          result: r.placement,
+        },
+        create: {
+          id: r.id,
+          eventId: r.eventId,
+          organiserId: org.id,
+          userId: athleteUserId,
+          athleteName: "Test User",
+          athleteEmail: "user@startline.test",
+          waveLabel: r.wave,
+          bibNumber: r.bib,
+          amountCents,
+          platformFeeCents: platformFeeCents(amountCents),
+          feeStructure: "athlete",
+          status: "CONFIRMED",
+          resultDistance: r.distance,
+          resultTime: r.time,
+          resultPlacement: r.placement,
+          isPersonalBest: r.pb,
+          isTopResult: r.top,
+          finishTime: r.time,
+          result: r.placement,
+        },
+      });
+    }
+    console.log(`  Athlete race results (demo): ${athleteResults.length}`);
   }
 
   // ── Notifications ────────────────────────────────────────────────────

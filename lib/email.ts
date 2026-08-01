@@ -117,6 +117,86 @@ export async function sendEventApprovedEmail(email: string, eventTitle: string) 
   });
 }
 
+// ── Wave update (athlete) ─────────────────────────────────────────────────────
+export interface WaveUpdateEmailData {
+  athleteName?: string | null;
+  eventTitle: string;
+  eventId: string;
+  waveLabel: string;
+  waveTime?: string | null; // start time for the wave, if known
+  eventDate?: string | null;
+}
+
+export async function sendWaveUpdateEmail(to: string, data: WaveUpdateEmailData) {
+  const resend = getResend();
+  if (!resend) return;
+  const greeting = data.athleteName ? `Hi ${escapeHtml(data.athleteName.split(" ")[0])},` : "Hi,";
+  const when = [data.eventDate, data.waveTime].filter(Boolean).join(" · ");
+  await resend.emails.send({
+    from: getEmailFrom(),
+    to,
+    subject: `Your start wave for ${data.eventTitle}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#141414">
+        <p style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7AA820">Start wave update</p>
+        <h2 style="margin:4px 0 12px">You're in the ${escapeHtml(data.waveLabel)} wave</h2>
+        <p style="font-size:15px;line-height:1.6">${greeting}</p>
+        <p style="font-size:15px;line-height:1.6">
+          Your start wave for <strong>${escapeHtml(data.eventTitle)}</strong> is
+          <strong>${escapeHtml(data.waveLabel)}</strong>${when ? `, ${escapeHtml(when)}` : ""}.
+        </p>
+        <p style="font-size:14px;line-height:1.6;color:#555">
+          Please arrive in good time for your wave. If anything changes, we'll let you know.
+        </p>
+        <a href="${SITE}/activity" style="display:inline-block;margin:16px 0;background:#B3E153;color:#141414;font-weight:700;padding:12px 24px;border-radius:6px;text-decoration:none">
+          View your registration
+        </a>
+      </div>
+    `,
+  });
+}
+
+// ── Followed organiser event live ─────────────────────────────────────────────
+export interface FollowedOrganiserEventEmailData {
+  followerName?: string | null;
+  organiserName: string;
+  eventTitle: string;
+  eventId: string;
+  eventDate?: string | null;
+  city?: string | null;
+}
+
+export async function sendFollowedOrganiserEventEmail(
+  to: string,
+  data: FollowedOrganiserEventEmailData,
+) {
+  const resend = getResend();
+  if (!resend) return;
+  const greeting = data.followerName
+    ? `Hi ${escapeHtml(data.followerName.split(" ")[0])},`
+    : "Hi,";
+  const meta = [data.eventDate, data.city].filter(Boolean).join(" · ");
+  await resend.emails.send({
+    from: getEmailFrom(),
+    to,
+    subject: `${data.organiserName} posted ${data.eventTitle}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#141414">
+        <p style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7AA820">New event</p>
+        <h2 style="margin:4px 0 12px">${escapeHtml(data.organiserName)} just went live</h2>
+        <p style="font-size:15px;line-height:1.6">${greeting}</p>
+        <p style="font-size:15px;line-height:1.6">
+          <strong>${escapeHtml(data.organiserName)}</strong> posted
+          <strong>${escapeHtml(data.eventTitle)}</strong>${meta ? ` — ${escapeHtml(meta)}` : ""}.
+        </p>
+        <a href="${SITE}/events/${encodeURIComponent(data.eventId)}" style="display:inline-block;margin:16px 0;background:#B3E153;color:#141414;font-weight:700;padding:12px 24px;border-radius:6px;text-decoration:none">
+          View event
+        </a>
+      </div>
+    `,
+  });
+}
+
 // ── Event rejected ────────────────────────────────────────────────────────────
 export async function sendEventRejectedEmail(email: string, eventTitle: string, reason?: string) {
   const resend = getResend();

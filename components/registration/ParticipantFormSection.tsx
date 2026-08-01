@@ -147,6 +147,22 @@ export default function ParticipantFormSection({
               <ChevronDown className="w-4 h-4 text-muted-dark absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </RegisterField>
+          <div className="sm:col-span-2">
+            <RegisterField label="Estimated finish time" htmlFor={id("estFinish")}>
+              <input
+                id={id("estFinish")}
+                type="text"
+                inputMode="numeric"
+                value={participant.estimatedFinish}
+                onChange={(e) => onChange("estimatedFinish", e.target.value)}
+                placeholder="e.g. 0:45 or 3:30"
+                className={registerInputCls()}
+              />
+              <p className="mt-1.5 text-[11.5px] text-muted-dark leading-relaxed">
+                Optional. Roughly how long you expect to take (hours:minutes). Organisers use this to seed start waves by pace.
+              </p>
+            </RegisterField>
+          </div>
         </div>
       </div>
 

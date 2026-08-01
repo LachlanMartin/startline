@@ -1,18 +1,19 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   Plus, Trash2, MapPin, RefreshCw, Search,
-  MoreHorizontal, Pencil, LayoutDashboard,
+  MoreHorizontal, Pencil, LayoutDashboard, Copy,
   ArrowUp, ArrowDown, ArrowUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 type EventStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "ARCHIVED";
 
@@ -69,6 +70,7 @@ const SORT_LABELS: Record<SortField, string> = { status: "Status", date: "Date",
 // ── Actions dropdown ────────────────────────────────────────────────────────
 function ActionsMenu({ event, onDelete }: { event: EventRow; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const ref             = useRef<HTMLDivElement>(null);
   const router          = useRouter();
 
@@ -80,6 +82,22 @@ function ActionsMenu({ event, onDelete }: { event: EventRow; onDelete: () => voi
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
+
+  const handleDuplicate = async (e: ReactMouseEvent) => {
+    e.stopPropagation();
+    if (duplicating) return;
+    setDuplicating(true);
+    try {
+      const res = await fetch(`/api/organiser/events/${event.id}/duplicate`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.id) throw new Error(data?.error || "Duplicate failed");
+      setOpen(false);
+      router.push(`/organiser/new-listing?id=${data.id}&from=${encodeURIComponent("/organiser/listings")}`);
+    } catch (err) {
+      console.error(err);
+      setDuplicating(false);
+    }
+  };
 
   return (
     <div ref={ref} className="relative">
@@ -100,10 +118,17 @@ function ActionsMenu({ event, onDelete }: { event: EventRow; onDelete: () => voi
             <LayoutDashboard className="w-4 h-4" /> View dashboard
           </button>
           <button
-            onClick={e => { e.stopPropagation(); setOpen(false); router.push(`/organiser/new-listing?id=${event.id}`); }}
+            onClick={e => { e.stopPropagation(); setOpen(false); router.push(`/organiser/new-listing?id=${event.id}&from=${encodeURIComponent("/organiser/listings")}`); }}
             className="w-full flex items-center gap-2.5 px-4 py-3 text-[13px] text-white/70 hover:bg-white/5 transition-colors font-headline font-bold uppercase tracking-widest"
           >
             <Pencil className="w-4 h-4" /> Edit event
+          </button>
+          <button
+            onClick={handleDuplicate}
+            disabled={duplicating}
+            className="w-full flex items-center gap-2.5 px-4 py-3 text-[13px] text-white/70 hover:bg-white/5 transition-colors font-headline font-bold uppercase tracking-widest disabled:opacity-50"
+          >
+            <Copy className="w-4 h-4" /> {duplicating ? "Duplicating…" : "Duplicate listing"}
           </button>
           <div className="my-1 border-t border-dark-lighter" />
           <button
@@ -287,12 +312,7 @@ export default function ListingsPage() {
               <div className="col-span-1 text-right">Actions</div>
             </div>
 
-            {loading && (
-              <div className="p-12 text-center">
-                <div className="w-6 h-6 border-2 border-dark-lighter border-t-primary rounded-full animate-spin mx-auto mb-3" />
-                <div className="font-headline text-sm text-muted-dark uppercase tracking-widest">Loading…</div>
-              </div>
-            )}
+            {loading && <TableSkeleton rows={5} cols={4} className="p-6" />}
 
             {!loading && filtered.map((e, i) => {
               const s     = STATUS_STYLE[e.status];

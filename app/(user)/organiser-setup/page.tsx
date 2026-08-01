@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Check, Building2, ShieldCheck, CreditCard, Users } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
+import {
+  Skeleton, PageHeaderSkeleton, PageShellSkeleton,
+} from "@/components/ui/skeleton";
 
 export default function OrganiserSetupPage() {
   const router = useRouter();
@@ -37,9 +40,11 @@ export default function OrganiserSetupPage() {
 
   if (status === "loading") {
     return (
-      <main className="min-h-screen bg-dark-darker flex items-center justify-center pt-20">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </main>
+      <PageShellSkeleton maxWidth="max-w-lg">
+        <PageHeaderSkeleton actions={0} />
+        <Skeleton className="h-40 w-full rounded-2xl mb-4" />
+        <Skeleton className="h-12 w-full rounded-lg" />
+      </PageShellSkeleton>
     );
   }
 
