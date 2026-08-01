@@ -55,6 +55,21 @@ export default function LocationPreviewMap({
 
   const containerClass = `relative overflow-hidden rounded-xl border border-dark-lighter bg-dark min-h-[220px] ${className}`;
 
+  // Empty state first — before an address is selected there's nothing to
+  // show on a map, so this renders regardless of the Mapbox token.
+  if (!hasCoords) {
+    return (
+      <div className={containerClass} data-testid="location-preview-empty">
+        <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-2 px-6 text-center">
+          <MapPin className="w-5 h-5 text-muted" />
+          <p className="font-headline text-[11px] uppercase tracking-widest text-muted">
+            Select an address above to preview the location
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!mapboxToken) {
     return (
       <div className={containerClass}>
@@ -73,19 +88,6 @@ export default function LocationPreviewMap({
         <div className="flex h-full min-h-[220px] items-center justify-center">
           <p className="font-headline text-[11px] uppercase tracking-widest text-muted">
             Loading map...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasCoords) {
-    return (
-      <div className={containerClass} data-testid="location-preview-empty">
-        <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-2 px-6 text-center">
-          <MapPin className="w-5 h-5 text-muted" />
-          <p className="font-headline text-[11px] uppercase tracking-widest text-muted">
-            Select an address above to preview the location
           </p>
         </div>
       </div>
