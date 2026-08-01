@@ -27,7 +27,7 @@ variable "cloudflare_account_id" {
 variable "amplify_repository_url" {
   description = "HTTPS Git URL for Amplify. Set to null to create the app without a connected repository."
   type        = string
-  default     = "https://github.com/StartlineAU/startline"
+  default     = "https://github.com/StartlineAU/startline-web-app"
 }
 
 variable "amplify_environment_variables" {
