@@ -4,7 +4,7 @@
 variable "github_repository" {
   description = "GitHub repository for terraform CI in 'org/repo' form."
   type        = string
-  default     = "StartlineAU/startline"
+  default     = "StartlineAU/startline-web-app"
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
