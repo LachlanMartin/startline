@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status,       setStatus]       = useState<AuthStatus>("loading");
 
   const hydrate = useCallback(async () => {
-    if (process.env.NODE_ENV === "development" && typeof document !== "undefined" && document.cookie.includes("__e2e_bypass=1")) {
+    if (process.env.NODE_ENV === "development" && typeof document !== "undefined" && document.cookie.includes("__e2e_bypass")) {
       setUser({ sub: "dev-bypass", email: "bypass@startline.test" });
       setStatus("authenticated");
       return;

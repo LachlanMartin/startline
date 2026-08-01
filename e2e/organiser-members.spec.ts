@@ -9,9 +9,9 @@ test.describe("organiser members", () => {
 
     await expect(page.getByRole("heading", { name: /members/i })).toBeVisible();
     await expect(page.getByText("sarah.mitchell@startline.test")).toBeVisible();
-    await expect(page.getByText("Owner")).toBeVisible();
+    await expect(page.getByText("Owner", { exact: true })).toBeVisible();
     await expect(page.getByText("tom.whitfield@startline.test")).toBeVisible();
-    await expect(page.getByText("Manager").first()).toBeVisible();
+    await expect(page.getByText("Manager", { exact: true }).first()).toBeVisible();
   });
 
   test("super admin can add a member by email", async ({ page }) => {
@@ -36,13 +36,15 @@ test.describe("organiser members", () => {
     await expect(page.getByText(/no account found/i)).toBeVisible();
   });
 
-  test("member (admin) is forbidden from the members page", async ({ page }) => {
+  test("member (manager) can view the roster but not manage it", async ({ page }) => {
     await organiserMemberLogin(page);
     await page.goto("/organiser/members");
     await page.waitForLoadState("networkidle");
 
-    await expect(page.getByText(/do not have access to members/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /members/i })).toBeVisible();
+    await expect(page.getByText("sarah.mitchell@startline.test")).toBeVisible();
     await expect(page.getByPlaceholder("team@email.com")).not.toBeVisible();
+    await expect(page.getByRole("button", { name: /transfer ownership/i })).not.toBeVisible();
   });
 
   test("member (admin) cannot add members", async ({ page }) => {
