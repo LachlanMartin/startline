@@ -187,6 +187,8 @@ module "env" {
   resend_api_key = local.bootstrap.resend_api_key
   site_url       = each.value.site_url
 
+  mapbox_access_token = local.bootstrap.mapbox_access_token
+
   extra_branch_environment_variables = {
     ENV = each.key == "prod" ? "prod" : "staging"
   }

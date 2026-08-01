@@ -49,6 +49,8 @@ export function toUserEvent(event: PublicEvent): UserEvent {
     address: event.address ?? undefined,
     city: event.city,
     state: mapState(event.state),
+    latitude: event.latitude ?? null,
+    longitude: event.longitude ?? null,
     type,
     discipline: event.discipline,
     format: event.format,

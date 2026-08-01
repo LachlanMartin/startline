@@ -24,6 +24,8 @@ export async function GET(req: NextRequest) {
         stateName: item.Address.Region?.Name ?? "",
         postalCode: item.Address.PostalCode ?? "",
         country: item.Address.Country?.Name ?? "",
+        latitude: item.Position?.[1] ?? null,
+        longitude: item.Position?.[0] ?? null,
       },
     });
   } catch {

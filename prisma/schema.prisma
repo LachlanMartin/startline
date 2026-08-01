@@ -116,6 +116,8 @@ model Event {
   address   String?
   city      String
   state     String
+  latitude  Float?
+  longitude Float?
 
   // Step 3 — format & categories
   format     String

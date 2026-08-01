@@ -6,7 +6,7 @@ import type { UserEvent } from "@/types";
 import type { PublicReview } from "@/lib/reviews";
 import type { OrganiserPublicStats } from "@/lib/organiser-follows";
 import type { ReviewEventOption } from "@/components/organiser/ReviewsSection";
-import HomeEventCard from "@/components/HomeEventCard";
+import EventCard from "@/components/EventCard";
 import OrganiserReviewsClient from "@/components/OrganiserReviewsClient";
 import OrganiserRating from "@/components/OrganiserRating";
 import OrganiserFollowSection from "@/components/OrganiserFollowSection";
@@ -171,7 +171,7 @@ export default function OrganiserProfileView({
               {upcoming.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
                   {upcoming.map((event) => (
-                    <HomeEventCard key={event.id} event={event} className="w-full" />
+                    <EventCard key={event.id} event={event} className="w-full" />
                   ))}
                 </div>
               ) : (
@@ -205,7 +205,7 @@ export default function OrganiserProfileView({
           <div className="mt-10">
             <ScrollCarousel eyebrow="Archive" title="Previous Events">
               {past.map((event) => (
-                <HomeEventCard key={event.id} event={event} />
+                <EventCard key={event.id} event={event} />
               ))}
             </ScrollCarousel>
           </div>

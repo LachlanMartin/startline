@@ -1,10 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
-import maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef, useSyncExternalStore } from "react";
+import Link from "next/link";
+import Map, { type MapRef, Marker, NavigationControl } from "react-map-gl/mapbox";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { ExternalLink } from "lucide-react";
 import type { UserEvent } from "@/types";
-import { getEventCoords } from "@/lib/australia-coords";
+import { EVENT_TYPE_LABELS, STATE_LABELS } from "@/types";
+import { formatEventDate, formatTime } from "@/lib/utils";
+import { eventLngLat } from "@/lib/map-events";
+
+const AUSTRALIA_VIEW = {
+  latitude: -25.2744,
+  longitude: 133.7751,
+  zoom: 3.25,
+};
+
+const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "";
+const mapStyle =
+  process.env.NEXT_PUBLIC_MAPBOX_STYLE_URL ?? "mapbox://styles/mapbox/dark-v11";
+
+function useIsClient() {
+  return useSyncExternalStore(() => () => {}, () => true, () => false);
+}
 
 interface EventMapProps {
   events: UserEvent[];
@@ -19,198 +38,178 @@ export interface EventMapHandle {
   stopSpin: () => void;
 }
 
-const EVENT_MARKER_COLOR = "#B3E153";
-const EVENT_MARKER_SIZE = 10;
+function EventPinCard({ event, expanded }: { event: UserEvent; expanded: boolean }) {
+  return (
+    <div className="relative mb-1 pointer-events-auto">
+      <div
+        className={`rounded-xl border bg-dark shadow-2xl ${
+          expanded
+            ? "w-[min(18rem,calc(100vw-2rem))] border-primary/40 p-4"
+            : "w-52 border-dark-lighter p-3"
+        }`}
+      >
+        <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-primary mb-1">
+          {EVENT_TYPE_LABELS[event.type]}
+        </p>
+        <p className="font-headline text-sm font-black italic tracking-tight text-light leading-tight mb-1">
+          {event.title}
+        </p>
+        <p className="font-headline text-[11px] uppercase tracking-widest text-muted">
+          {event.city}, {STATE_LABELS[event.state]}
+        </p>
+        <p className="font-headline text-[11px] uppercase tracking-widest text-muted mt-1">
+          {formatEventDate(event.date)}
+          {expanded && ` · ${formatTime(event.time)}`}
+        </p>
+        {expanded && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            <Link
+              href={`/events/${event.id}`}
+              className="inline-flex items-center gap-2 border border-dark-lighter text-muted font-headline text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl hover:border-primary/50 hover:text-light transition-colors"
+            >
+              More Info
+            </Link>
+            {event.registrationUrl && (
+              <a
+                href={event.registrationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-machined text-dark font-headline text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl machined-button-shadow"
+              >
+                Register
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+      <div
+        className={`absolute left-1/2 top-full -translate-x-1/2 -mt-px h-2.5 w-2.5 rotate-45 border-r border-b bg-dark ${
+          expanded ? "border-primary/40" : "border-dark-lighter"
+        }`}
+        aria-hidden
+      />
+    </div>
+  );
+}
 
-const EventMap = forwardRef<EventMapHandle, EventMapProps>(function EventMap({ events, selectedId, onMarkerClick, initialCenter }, ref) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
-  const rotationRef = useRef<number>(0);
-  const spinTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
-  const defaultCenter = useRef(initialCenter ?? { lng: 133.7751, lat: -25.2744, zoom: 1 });
+const EventMap = forwardRef<EventMapHandle, EventMapProps>(function EventMap(
+  { events, selectedId, onMarkerClick, initialCenter },
+  ref,
+) {
+  const mapRef = useRef<MapRef | null>(null);
+  const onMarkerClickRef = useRef(onMarkerClick);
+  const hasFramedInitial = useRef(false);
+  const lastFlownIdRef = useRef<string | null>(null);
+  const filterKeyRef = useRef("");
+  const isFirstFit = useRef(true);
+  const defaultCenter = useRef(initialCenter ?? { lng: AUSTRALIA_VIEW.longitude, lat: AUSTRALIA_VIEW.latitude, zoom: AUSTRALIA_VIEW.zoom });
 
-  function fitBounds() {
-    if (!mapRef.current || events.length === 0) return;
-    const coords = events.map((e) => {
-      const [lat, lng] = getEventCoords(e.city, e.state);
-      return [lng, lat] as [number, number];
-    });
-    const sw: [number, number] = [Infinity, Infinity];
-    const ne: [number, number] = [-Infinity, -Infinity];
-    coords.forEach(([lng, lat]) => {
-      sw[0] = Math.min(sw[0], lng);
-      sw[1] = Math.min(sw[1], lat);
-      ne[0] = Math.max(ne[0], lng);
-      ne[1] = Math.max(ne[1], lat);
-    });
-    mapRef.current.fitBounds([sw, ne], { padding: 80, maxZoom: 10, duration: 1200 });
-  }
+  const isClient = useIsClient();
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [activeMapStyle, setActiveMapStyle] = useState(mapStyle);
 
-  function resumeSpin(delay = 3000) {
-    if (spinTimerRef.current) clearTimeout(spinTimerRef.current);
-    spinTimerRef.current = setTimeout(() => {
-      if (!selectedId && mapRef.current && !rotationRef.current) {
-        rotationRef.current = requestAnimationFrame(spin);
+  useEffect(() => {
+    onMarkerClickRef.current = onMarkerClick;
+  }, [onMarkerClick]);
+
+  useEffect(() => {
+    if (initialCenter) defaultCenter.current = initialCenter;
+  }, [initialCenter]);
+
+  const mapEvents = useMemo(
+    () => events.filter((e) => eventLngLat(e) !== null),
+    [events],
+  );
+
+  const frameMapView = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || !mapLoaded) return;
+
+    if (selectedId) {
+      hasFramedInitial.current = true;
+      const event = mapEvents.find((e) => e.id === selectedId);
+      const ll = event ? eventLngLat(event) : null;
+      if (ll && lastFlownIdRef.current !== selectedId) {
+        map.flyTo({ center: [ll.lng, ll.lat], zoom: 11, duration: 900 });
+        lastFlownIdRef.current = selectedId;
       }
-    }, delay);
-  }
+      return;
+    }
 
-  function spin() {
-    if (!mapRef.current) return;
-    const center = mapRef.current.getCenter();
-    center.lng += 0.15;
-    mapRef.current.setCenter(center);
-    rotationRef.current = requestAnimationFrame(spin);
-  }
+    lastFlownIdRef.current = null;
+    if (hasFramedInitial.current) return;
+
+    if (mapEvents.length === 0) {
+      map.flyTo({
+        center: [defaultCenter.current.lng, defaultCenter.current.lat],
+        zoom: defaultCenter.current.zoom,
+        duration: 900,
+      });
+      return;
+    }
+
+    hasFramedInitial.current = true;
+
+    if (mapEvents.length === 1) {
+      const ll = eventLngLat(mapEvents[0]);
+      if (!ll) return;
+      map.flyTo({ center: [ll.lng, ll.lat], zoom: 11, duration: 900 });
+      return;
+    }
+
+    const bounds = new mapboxgl.LngLatBounds();
+    mapEvents.forEach((event) => {
+      const ll = eventLngLat(event);
+      if (ll) bounds.extend([ll.lng, ll.lat]);
+    });
+    if (!bounds.isEmpty()) {
+      map.fitBounds(bounds, { padding: 100, maxZoom: 10, duration: 900 });
+    }
+  }, [mapEvents, mapLoaded, selectedId]);
 
   useImperativeHandle(ref, () => ({
     flyTo(id: string) {
-      const event = events.find((e) => e.id === id);
-      if (!event || !mapRef.current) return;
-      const [lat, lng] = getEventCoords(event.city, event.state);
-      mapRef.current.flyTo({ center: [lng, lat], zoom: 6, duration: 1500 });
+      const event = mapEvents.find((e) => e.id === id);
+      const ll = event ? eventLngLat(event) : null;
+      const map = mapRef.current?.getMap();
+      if (!ll || !map) return;
+      map.flyTo({ center: [ll.lng, ll.lat], zoom: 11, duration: 1500 });
+      lastFlownIdRef.current = id;
     },
-    fitFilteredBounds: fitBounds,
+    fitFilteredBounds: frameMapView,
     stopSpin() {
-      if (rotationRef.current) cancelAnimationFrame(rotationRef.current);
-      rotationRef.current = 0;
+      // Mapbox version has no auto-spin; kept for EventsListing compatibility.
     },
   }));
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    frameMapView();
+  }, [frameMapView]);
 
-    // Ensure layout has settled (especially on client-side navigation)
-    requestAnimationFrame(() => {
-      if (!containerRef.current || mapRef.current) return;
-      initMap();
-    });
+  useEffect(() => {
+    if (!mapLoaded) return;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
 
-    return () => {
-      if (rotationRef.current) cancelAnimationFrame(rotationRef.current);
-      if (mapRef.current) {
-        roRef.current?.disconnect();
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+    const handleMapClick = (event: mapboxgl.MapMouseEvent) => {
+      const target = event.originalEvent.target as HTMLElement | null;
+      if (target?.closest(".mapboxgl-marker")) return;
+      if (target?.closest(".mapboxgl-ctrl")) return;
+      setHoveredId(null);
+      onMarkerClickRef.current("");
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const roRef = useRef<ResizeObserver | null>(null);
-
-  function initMap() {
-    if (!containerRef.current || mapRef.current) return;
-    const ctr = initialCenter ?? { lng: 133.7751, lat: -25.2744, zoom: 1 };
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-      center: [ctr.lng, ctr.lat],
-      zoom: ctr.zoom,
-      minZoom: 1,
-      attributionControl: false,
-      dragRotate: true,
-    });
-
-    map.on("error", (e) => console.error("Map error:", e));
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
-    mapRef.current = map;
-    map.on("load", () => {
-      map.resize();
-      if (!rotationRef.current) rotationRef.current = requestAnimationFrame(spin);
-    });
-
-    roRef.current = new ResizeObserver(() => map.resize());
-    roRef.current.observe(containerRef.current);
-
-    function onMouseDown() {
-      if (rotationRef.current) cancelAnimationFrame(rotationRef.current);
-    }
-
-    function onMouseUp() {
-      resumeSpin(3000);
-    }
-
-    map.on("mousedown", onMouseDown);
-    map.on("mouseup", onMouseUp);
-    rotationRef.current = requestAnimationFrame(spin);
-  }
-
-  // Update markers when events change
-  useEffect(() => {
-    if (!mapRef.current) return;
-
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-
-    events.forEach((event) => {
-      const [lat, lng] = getEventCoords(event.city, event.state);
-
-      const el = document.createElement("div");
-      el.className = "cursor-pointer transition-all duration-300";
-      el.style.width = `${EVENT_MARKER_SIZE}px`;
-      el.style.height = `${EVENT_MARKER_SIZE}px`;
-      el.style.borderRadius = "50%";
-      el.style.background = EVENT_MARKER_COLOR;
-      el.style.boxShadow = `0 0 8px ${EVENT_MARKER_COLOR}80`;
-      el.style.border = "2px solid #000";
-
-      el.addEventListener("click", () => onMarkerClick(event.id));
-
-      el.addEventListener("mouseenter", () => {
-        el.style.width = "16px";
-        el.style.height = "16px";
-        el.style.boxShadow = `0 0 16px ${EVENT_MARKER_COLOR}`;
-        el.style.zIndex = "10";
-      });
-      el.addEventListener("mouseleave", () => {
-        el.style.width = `${EVENT_MARKER_SIZE}px`;
-        el.style.height = `${EVENT_MARKER_SIZE}px`;
-        el.style.boxShadow = `0 0 8px ${EVENT_MARKER_COLOR}80`;
-        el.style.zIndex = "1";
-      });
-
-      const popup = new maplibregl.Popup({ offset: 10, closeButton: false })
-        .setHTML(
-          `<div style="font-family:system-ui;font-size:12px;font-weight:600;color:#111;max-width:180px;text-align:center">${event.title}</div>`
-        );
-
-      const marker = new maplibregl.Marker({ element: el, anchor: "center" })
-        .setLngLat([lng, lat])
-        .setPopup(popup)
-        .addTo(mapRef.current!);
-
-      markersRef.current.push(marker);
-    });
-  }, [events, onMarkerClick, selectedId]);
-
-  // Update selected marker style
-  useEffect(() => {
-    markersRef.current.forEach((m, i) => {
-      const el = m.getElement();
-      const event = events[i];
-      if (event?.id === selectedId) {
-        el.style.width = "20px";
-        el.style.height = "20px";
-        el.style.background = "#fff";
-        el.style.boxShadow = `0 0 24px ${EVENT_MARKER_COLOR}`;
-        el.style.zIndex = "20";
-      } else {
-        el.style.width = `${EVENT_MARKER_SIZE}px`;
-        el.style.height = `${EVENT_MARKER_SIZE}px`;
-        el.style.background = EVENT_MARKER_COLOR;
-        el.style.boxShadow = `0 0 8px ${EVENT_MARKER_COLOR}80`;
-        el.style.zIndex = "1";
-      }
-    });
-  }, [selectedId, events]);
+    map.on("click", handleMapClick);
+    return () => {
+      map.off("click", handleMapClick);
+    };
+  }, [mapLoaded]);
 
   // Auto-fit bounds when filter results change
-  const filterKeyRef = useRef("");
-  const isFirstFit = useRef(true);
-
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapLoaded) return;
     const key = events.map((e) => e.id).join(",");
     if (key === filterKeyRef.current) return;
     filterKeyRef.current = key;
@@ -220,24 +219,119 @@ const EventMap = forwardRef<EventMapHandle, EventMapProps>(function EventMap({ e
       return;
     }
 
-    if (events.length === 0) {
-      if (rotationRef.current) cancelAnimationFrame(rotationRef.current);
-      mapRef.current.flyTo({ center: [defaultCenter.current.lng, defaultCenter.current.lat], zoom: defaultCenter.current.zoom, duration: 1000 });
-      rotationRef.current = requestAnimationFrame(spin);
-      return;
-    }
+    hasFramedInitial.current = false;
+    frameMapView();
+  }, [events, mapLoaded, frameMapView]);
 
-    fitBounds();
-  }, [events]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Zoom out when deselected
   useEffect(() => {
-    if (!selectedId && mapRef.current) {
-      mapRef.current.flyTo({ center: [defaultCenter.current.lng, defaultCenter.current.lat], zoom: defaultCenter.current.zoom, duration: 1200 });
-    }
-  }, [selectedId]);
+    if (selectedId || !mapLoaded) return;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    map.flyTo({
+      center: [defaultCenter.current.lng, defaultCenter.current.lat],
+      zoom: defaultCenter.current.zoom,
+      duration: 1200,
+    });
+  }, [selectedId, mapLoaded]);
 
-  return <div ref={containerRef} className="w-full h-full" />;
+  if (!mapboxToken) {
+    return (
+      <div className="flex h-full items-center justify-center bg-dark" data-testid="events-map">
+        <div className="max-w-xl px-8 text-center">
+          <p className="font-headline text-sm uppercase tracking-widest text-primary mb-2">
+            Mapbox Token Missing
+          </p>
+          <p className="font-headline text-base text-muted leading-relaxed">
+            Add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to your environment to enable the interactive map.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isClient) {
+    return (
+      <div className="flex h-full items-center justify-center bg-dark" data-testid="events-map">
+        <p className="font-headline text-sm uppercase tracking-widest text-muted">Loading map...</p>
+      </div>
+    );
+  }
+
+  if (mapEvents.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center bg-dark" data-testid="events-map">
+        <p className="font-headline text-sm uppercase tracking-widest text-muted text-center px-8">
+          No events to show on the map.
+        </p>
+      </div>
+    );
+  }
+
+  const startView = initialCenter
+    ? { latitude: initialCenter.lat, longitude: initialCenter.lng, zoom: initialCenter.zoom }
+    : AUSTRALIA_VIEW;
+
+  return (
+    <div className="relative h-full min-h-[320px]" data-testid="events-map">
+      <Map
+        ref={mapRef}
+        mapboxAccessToken={mapboxToken}
+        initialViewState={startView}
+        style={{ width: "100%", height: "100%" }}
+        mapStyle={activeMapStyle}
+        onLoad={() => setMapLoaded(true)}
+        onError={() => {
+          if (activeMapStyle !== "mapbox://styles/mapbox/dark-v11") {
+            setActiveMapStyle("mapbox://styles/mapbox/dark-v11");
+          }
+        }}
+        attributionControl={false}
+      >
+        <NavigationControl position="bottom-right" showCompass={false} />
+        {mapLoaded &&
+          mapEvents.map((event) => {
+            const ll = eventLngLat(event);
+            if (!ll) return null;
+            const isSelected = selectedId === event.id;
+            const isHovered = hoveredId === event.id;
+            const showCard = isSelected || isHovered;
+
+            return (
+              <Marker key={event.id} longitude={ll.lng} latitude={ll.lat} anchor="bottom">
+                <div
+                  className="flex flex-col items-center pointer-events-auto"
+                  onMouseEnter={() => setHoveredId(event.id)}
+                  onMouseLeave={() =>
+                    setHoveredId((current) => (current === event.id ? null : current))
+                  }
+                >
+                  {showCard && <EventPinCard event={event} expanded={isSelected} />}
+
+                  {showCard && (
+                    <div
+                      className={`w-0.5 h-3 shrink-0 ${isSelected ? "bg-primary" : "bg-primary/50"}`}
+                      aria-hidden
+                    />
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => onMarkerClick(event.id)}
+                    className={`shrink-0 rounded-full border-2 border-white/90 shadow-[0_0_0_2px_rgba(0,0,0,0.35)] transition-all ${
+                      isSelected
+                        ? "w-5 h-5 bg-primary scale-125 shadow-[0_0_0_4px_rgba(179,225,83,0.35)]"
+                        : "w-4 h-4 bg-primary hover:scale-110"
+                    }`}
+                    aria-label={`View ${event.title}`}
+                    aria-pressed={isSelected}
+                  />
+                </div>
+              </Marker>
+            );
+          })}
+      </Map>
+    </div>
+  );
 });
 
 export default EventMap;

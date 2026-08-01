@@ -139,6 +139,13 @@ variable "site_url" {
   type        = string
 }
 
+variable "mapbox_access_token" {
+  description = "Mapbox public access token (pk.*) for the events map and organiser location preview. From the ci-bootstrap secret."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 # --- S3 upload bucket ---
 
 variable "bucket_cors_allowed_origins" {
