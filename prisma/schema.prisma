@@ -135,6 +135,11 @@ model Event {
   registrationType  String  @default("startline")
   feeStructure      String  @default("athlete")
 
+  // Payouts — set once an admin triggers a Stripe Connect payout after the event ends.
+  payoutTriggered   Boolean @default(false)
+  payoutAmountCents Int?
+  payoutAt          DateTime?
+
   // Step 5 — media & logistics
   coverImageUrl     String?
   photos            String[]

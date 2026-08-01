@@ -8,7 +8,7 @@ import {
   User, LogOut, Building2, ShieldCheck, Shield, Plus, Settings, Bell,
   CheckCircle2, XCircle, Menu, X, LayoutDashboard, CalendarDays,
   CreditCard, BookOpen, ArrowLeft, ChevronDown, Users, Star,
-  UserCircle, ClipboardList, BarChart2, ScrollText,
+  UserCircle, ClipboardList, BarChart2, ScrollText, Send,
 } from "lucide-react";
 import SignInModal from "@/components/SignInModal";
 import { useAuthContext, type Role } from "@/context/AuthContext";
@@ -38,6 +38,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/registrations", label: "Registrations", icon: ClipboardList },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
+  { href: "/admin/payouts", label: "Payouts", icon: Send },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
 ];
 

@@ -27,6 +27,7 @@ const ADMIN_PROTECTED = [
   "/admin/events",
   "/admin/organisers",
   "/admin/reviews",
+  "/admin/payouts",
 ];
 
 const USER_DOMAIN = "startlineau.com";
