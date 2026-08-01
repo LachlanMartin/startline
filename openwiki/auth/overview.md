@@ -87,3 +87,4 @@ When a guest registers for an event, an athlete Cognito user is created automati
 
 - [Architecture](/openwiki/architecture/overview.md) — how middleware routes and protects portals
 - [Domain & Data Model](/openwiki/domain/data-model.md) — User, Admin, and Organiser entities
+- [User Roles & Permissions](/openwiki/domain/user-roles.md) — the four account types and their permissions
