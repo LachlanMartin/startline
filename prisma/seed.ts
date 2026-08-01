@@ -6,6 +6,7 @@ import {
   AdminCreateUserCommand,
   AdminSetUserPasswordCommand,
   AdminAddUserToGroupCommand,
+  AdminDeleteUserCommand,
   AdminGetUserCommand,
   AdminSetUserMFAPreferenceCommand,
   ListUsersInGroupCommand,
@@ -38,10 +39,57 @@ type SeedUser = {
 };
 
 const SEED_USERS: SeedUser[] = [
-  { email: "admin@startline.test",     isAdmin: true,  displayName: "Admin User" },
-  { email: "organiser@startline.test",  isAdmin: false, displayName: "Test Organiser" },
-  { email: "user@startline.test",   isAdmin: false, displayName: "Test User" },
+  // Core test identities — emails are relied on by e2e + auth bypass, don't change
+  { email: "marcus.stirling@startline.test",       isAdmin: true,  displayName: "Marcus Stirling" },
+  { email: "sarah.mitchell@startline.test",    isAdmin: false, displayName: "Sarah Mitchell" },
+  { email: "jade.nguyen@startline.test",         isAdmin: false, displayName: "Jade Nguyen" },
+  { email: "tom.whitfield@startline.test",       isAdmin: false, displayName: "Tom Whitfield" },
+  // Apex Endurance Events co-managers
+  { email: "jack.obrien@startline.test",  isAdmin: false, displayName: "Jack O'Brien" },
+  { email: "priya.sharma@startline.test", isAdmin: false, displayName: "Priya Sharma" },
+  // Coastal Fitness Collective co-managers
+  { email: "liam.oconnor@startline.test", isAdmin: false, displayName: "Liam O'Connor" },
+  { email: "chloe.bennett@startline.test", isAdmin: false, displayName: "Chloe Bennett" },
+  // Regular athletes (no organiser membership)
+  { email: "harper.jones@startline.test",  isAdmin: false, displayName: "Harper Jones" },
+  { email: "mateo.silva@startline.test",   isAdmin: false, displayName: "Mateo Silva" },
+  { email: "aria.kapoor@startline.test",   isAdmin: false, displayName: "Aria Kapoor" },
+  { email: "oscar.ngata@startline.test",   isAdmin: false, displayName: "Oscar Ngata" },
+  { email: "sophie.moreau@startline.test", isAdmin: false, displayName: "Sophie Moreau" },
+  { email: "lucas.tan@startline.test",     isAdmin: false, displayName: "Lucas Tan" },
 ];
+
+// Emails removed from SEED_USERS over time — cleaned out of Cognito on reseed so
+// the pool doesn't accumulate stale accounts (AGENTS.md: "old Cognito users not
+// auto-removed"). Best-effort: missing users are ignored.
+const LEGACY_SEED_EMAILS = [
+  "alex.turner@startline.test",
+  "emma.reid@startline.test",
+  "noah.kim@startline.test",
+  "zoe.anderson@startline.test",
+  "riley.smith@startline.test",
+  "isla.murphy@startline.test",
+  // Core identities were renamed to name-based emails (issue #109)
+  "admin@startline.test",
+  "organiser@startline.test",
+  "user@startline.test",
+  "member@startline.test",
+];
+
+// Who manages each organiser. Keyed by the creator's email.
+const MEMBER_ROSTER: Record<string, { email: string; role: "OWNER" | "MANAGER" }[]> = {
+  "sarah.mitchell@startline.test": [
+    { email: "sarah.mitchell@startline.test",    role: "OWNER" },
+    { email: "tom.whitfield@startline.test",       role: "MANAGER" },
+    { email: "jack.obrien@startline.test",  role: "MANAGER" },
+    { email: "priya.sharma@startline.test", role: "MANAGER" },
+  ],
+  "jade.nguyen@startline.test": [
+    { email: "jade.nguyen@startline.test",        role: "OWNER" },
+    { email: "liam.oconnor@startline.test", role: "MANAGER" },
+    { email: "chloe.bennett@startline.test", role: "MANAGER" },
+  ],
+};
 
 async function ensureCognitoUsers(): Promise<void> {
   console.log("  Ensuring seed users exist in Cognito…");
@@ -82,6 +130,21 @@ async function ensureCognitoUsers(): Promise<void> {
   console.log(`  Cognito: ${created} created, ${SEED_USERS.length - created} already existed`);
 }
 
+// Deletes Cognito accounts for emails that were removed from SEED_USERS, so the
+// pool doesn't keep stale seed identities (AGENTS.md: old Cognito users not
+// auto-removed). Best-effort — missing users are ignored.
+async function removeLegacyCognitoUsers(): Promise<void> {
+  for (const email of LEGACY_SEED_EMAILS) {
+    try {
+      await cognito.send(new AdminDeleteUserCommand({ UserPoolId: userPoolId, Username: email }));
+      console.log(`  Cognito: removed legacy seed user ${email}`);
+    } catch (e) {
+      if ((e as { name?: string }).name === "UserNotFoundException") continue;
+      console.warn(`  WARN: could not remove legacy seed user ${email}:`, (e as Error).message?.split("\n")[0]);
+    }
+  }
+}
+
 async function fetchCognitoSubs(): Promise<{
   subsByEmail: Record<string, string>;
   adminSubs: string[];
@@ -120,6 +183,7 @@ async function main() {
     console.warn("  NEXT_PUBLIC_COGNITO_USER_POOL_ID not set — skipping Cognito seeding");
   } else {
     try {
+      await removeLegacyCognitoUsers();
       await ensureCognitoUsers();
     } catch (e) {
       console.warn("  Cognito seeding skipped — insufficient permissions or pool unavailable:", (e as Error).message?.split("\n")[0]);
@@ -140,12 +204,22 @@ async function main() {
   // When Cognito isn't reachable, use mock subs so seed still populates the DB
   if (Object.keys(subsByEmail).length === 0) {
     console.warn("  Using mock Cognito subs (no real Cognito pool reachable)");
-    subsByEmail = {
-      "admin@startline.test":     "dev-bypass-admin",
-      "organiser@startline.test": "dev-bypass-organiser",
-      "user@startline.test":      "dev-bypass-user",
+    subsByEmail = {};
+    // e2e bypass identities are keyed on these subs in lib/amplify-server.ts —
+    // keep them stable regardless of the user's email address.
+    const CORE_MOCK_SUBS: Record<string, string> = {
+      "marcus.stirling@startline.test": "dev-bypass-admin",
+      "sarah.mitchell@startline.test":  "dev-bypass-organiser",
+      "jade.nguyen@startline.test":     "dev-bypass-user",
+      "tom.whitfield@startline.test":   "dev-bypass-member",
     };
-    adminSubs = ["dev-bypass-admin"];
+    for (const user of SEED_USERS) {
+      subsByEmail[user.email] = CORE_MOCK_SUBS[user.email]
+        ?? `dev-bypass-${user.email.split("@")[0].replace(/[^a-z0-9_-]/gi, "-")}`;
+    }
+    adminSubs = SEED_USERS.filter((u) => u.isAdmin)
+      .map((u) => subsByEmail[u.email])
+      .filter(Boolean) as string[];
   }
   console.log(`  Cognito users found: ${Object.keys(subsByEmail).length}`);
 
@@ -158,6 +232,7 @@ async function main() {
   await prisma.notification.deleteMany();
   await prisma.event.deleteMany();
   await prisma.admin.deleteMany();
+  await prisma.organiserMember.deleteMany();
   await prisma.user.deleteMany();
   await prisma.waitlistSubscriber.deleteMany();
   await prisma.organiser.deleteMany();
@@ -200,7 +275,7 @@ async function main() {
   console.log(`  Users: ${SEED_USERS.length}`);
 
   // ── Organiser ────────────────────────────────────────────────────────
-  const orgSub = subsByEmail["organiser@startline.test"];
+  const orgSub = subsByEmail["sarah.mitchell@startline.test"];
   let orgRecord: { id: string; email: string; orgName: string | null; instagram: string | null; facebook: string | null } | null = null;
 
   if (orgSub) {
@@ -208,13 +283,13 @@ async function main() {
     if (userId) {
       orgRecord = await prisma.organiser.create({
         data: {
-          userId,
-          email: "organiser@startline.test",
+          createdBy: userId,
+          email: "sarah.mitchell@startline.test",
           verified: true,
           status: "APPROVED",
           orgName: "Apex Endurance Events",
           contactName: "Test Organiser",
-          contactEmail: "organiser@startline.test",
+          contactEmail: "sarah.mitchell@startline.test",
           phone: "+61 400 000 000",
           abn: "51 824 753 556",
           website: "https://startlineau.com",
@@ -226,6 +301,14 @@ async function main() {
           photos: [],
         },
       });
+      // Apex roster (includes creator as OWNER) — issue #109
+      for (const m of MEMBER_ROSTER["sarah.mitchell@startline.test"]) {
+        const memberUserId = userBySub[subsByEmail[m.email]];
+        if (!memberUserId) continue;
+        await prisma.organiserMember.create({
+          data: { organiserId: orgRecord.id, userId: memberUserId, role: m.role },
+        });
+      }
     }
   }
 
@@ -242,20 +325,20 @@ async function main() {
     return;
   }
 
-  // Second organiser — links to the plain user@startline.test account so we
+  // Second organiser — links to the plain jade.nguyen@startline.test account so we
   // have more than one organiser to browse. No new Cognito user needed.
-  const coastalUserId = userBySub[subsByEmail["user@startline.test"]];
+  const coastalUserId = userBySub[subsByEmail["jade.nguyen@startline.test"]];
   let coastalOrg: { id: string } | null = null;
   if (coastalUserId) {
     const coastalRecord = await prisma.organiser.create({
       data: {
-        userId: coastalUserId,
-        email: "user@startline.test",
+        createdBy: coastalUserId,
+        email: "jade.nguyen@startline.test",
         verified: true,
         status: "APPROVED",
         orgName: "Coastal Fitness Collective",
         contactName: "Test User",
-        contactEmail: "user@startline.test",
+        contactEmail: "jade.nguyen@startline.test",
         phone: "+61 400 000 001",
         abn: "12 345 678 901",
         website: "https://startlineau.com",
@@ -268,8 +351,16 @@ async function main() {
       },
     });
     coastalOrg = { id: coastalRecord.id };
+    // Coastal roster (includes creator as OWNER) — issue #109
+    for (const m of MEMBER_ROSTER["jade.nguyen@startline.test"]) {
+      const memberUserId = userBySub[subsByEmail[m.email]];
+      if (!memberUserId) continue;
+      await prisma.organiserMember.create({
+        data: { organiserId: coastalRecord.id, userId: memberUserId, role: m.role },
+      });
+    }
   } else {
-    console.warn("  Second organiser not created — no user record for user@startline.test");
+    console.warn("  Second organiser not created — no user record for jade.nguyen@startline.test");
   }
   if (coastalOrg) console.log("  Organiser: 2 (Coastal Fitness Collective)");
 
@@ -591,12 +682,12 @@ async function main() {
   console.log(`  Registrations: ${regCount}`);
 
   // ── Seeded-user race history ────────────────────────────────────────────
-  // user@startline.test gets a spread of completed events (different
+  // jade.nguyen@startline.test gets a spread of completed events (different
   // disciplines + states) so the profile KStats and timeline have data.
-  // admin@startline.test gets a couple so an admin account has history too.
-  const userSeedId = userBySub[subsByEmail["user@startline.test"] ?? ""];
-  const adminSeedId = userBySub[subsByEmail["admin@startline.test"] ?? ""];
-  const organiserSeedId = userBySub[subsByEmail["organiser@startline.test"] ?? ""];
+  // marcus.stirling@startline.test gets a couple so an admin account has history too.
+  const userSeedId = userBySub[subsByEmail["jade.nguyen@startline.test"] ?? ""];
+  const adminSeedId = userBySub[subsByEmail["marcus.stirling@startline.test"] ?? ""];
+  const organiserSeedId = userBySub[subsByEmail["sarah.mitchell@startline.test"] ?? ""];
 
   const historyRegs: {
     id: string;
@@ -632,10 +723,10 @@ async function main() {
         organiserId: owner,
         athleteName: "Seed Athlete",
         athleteEmail: h.userId === userSeedId
-          ? "user@startline.test"
+          ? "jade.nguyen@startline.test"
           : h.userId === adminSeedId
-            ? "admin@startline.test"
-            : "organiser@startline.test",
+            ? "marcus.stirling@startline.test"
+            : "sarah.mitchell@startline.test",
         waveLabel: "General",
         amountCents: 0,
         platformFeeCents: 0,
@@ -649,13 +740,62 @@ async function main() {
   }
   if (historyCount > 0) console.log(`  Seeded-user race history: ${historyCount}`);
 
+  // ── Athlete race history (new regular users) ─────────────────────────────
+  // Give the extra athletes a couple of completed races each so their
+  // profile KStats / timeline aren't empty.
+  const athleteHistory: { email: string; eventId: string; result: string; finishTime: string | null }[] = [
+    { email: "harper.jones@startline.test",  eventId: "seed-event-005", result: "43rd",  finishTime: "00:48:22" },
+    { email: "harper.jones@startline.test",  eventId: "seed-event-010", result: "DNF",   finishTime: null },
+    { email: "mateo.silva@startline.test",   eventId: "seed-event-014", result: "27th",  finishTime: "00:51:09" },
+    { email: "mateo.silva@startline.test",   eventId: "seed-event-017", result: "DNF",   finishTime: null },
+    { email: "aria.kapoor@startline.test",   eventId: "seed-event-006", result: "88th",  finishTime: "04:01:44" },
+    { email: "aria.kapoor@startline.test",   eventId: "seed-event-022", result: "12th",  finishTime: null },
+    { email: "oscar.ngata@startline.test",   eventId: "seed-event-015", result: "5th",  finishTime: "06:12:03" },
+    { email: "oscar.ngata@startline.test",   eventId: "seed-event-044", result: "9th",  finishTime: "00:44:30" },
+    { email: "sophie.moreau@startline.test", eventId: "seed-event-008", result: "31st",  finishTime: "03:52:18" },
+    { email: "lucas.tan@startline.test",     eventId: "seed-event-026", result: "DNF",   finishTime: null },
+    { email: "lucas.tan@startline.test",     eventId: "seed-event-017", result: "66th",  finishTime: "02:41:55" },
+  ];
+  let athleteHistoryCount = 0;
+  for (let i = 0; i < athleteHistory.length; i++) {
+    const ah = athleteHistory[i];
+    const athleteUserId = userBySub[subsByEmail[ah.email]];
+    if (!athleteUserId) continue;
+    const owner = (await prisma.event.findUnique({ where: { id: ah.eventId }, select: { organiserId: true } }))?.organiserId;
+    if (!owner) continue;
+    await prisma.registration.upsert({
+      where: { id: `seed-athlete-history-${i}` },
+      update: {},
+      create: {
+        id: `seed-athlete-history-${i}`,
+        userId: athleteUserId,
+        eventId: ah.eventId,
+        organiserId: owner,
+        athleteName: ah.email.split("@")[0],
+        athleteEmail: ah.email,
+        waveLabel: "General",
+        amountCents: 0,
+        platformFeeCents: 0,
+        feeStructure: "athlete",
+        status: "CONFIRMED",
+        finishTime: ah.finishTime ?? null,
+        result: ah.result ?? null,
+      },
+    });
+    athleteHistoryCount++;
+  }
+  if (athleteHistoryCount > 0) console.log(`  Athlete race history: ${athleteHistoryCount}`);
+
   // ── Organiser follows ────────────────────────────────────────────────
   // user@ and admin@ follow Apex. organiser@ (the E2E bypass user) owns
   // Apex so cannot follow it — it follows Coastal instead, which gives the
   // /activity "Following" tab a row for that account.
   const followerUserIds = [
-    userBySub[subsByEmail["user@startline.test"] ?? ""],
-    userBySub[subsByEmail["admin@startline.test"] ?? ""],
+    userBySub[subsByEmail["jade.nguyen@startline.test"] ?? ""],
+    userBySub[subsByEmail["marcus.stirling@startline.test"] ?? ""],
+    // New athletes + co-managers follow Apex too
+    ...["harper.jones", "mateo.silva", "aria.kapoor", "oscar.ngata", "jack.obrien", "priya.sharma"]
+      .map((u) => userBySub[subsByEmail[`${u}@startline.test`] ?? ""]),
   ].filter(Boolean) as string[];
 
   let followCount = 0;
@@ -670,7 +810,7 @@ async function main() {
     followCount++;
   }
 
-  const organiserUserFollowId = userBySub[subsByEmail["organiser@startline.test"] ?? ""];
+  const organiserUserFollowId = userBySub[subsByEmail["sarah.mitchell@startline.test"] ?? ""];
   if (organiserUserFollowId && coastalOrg) {
     await prisma.organiserFollow.upsert({
       where: {
@@ -787,7 +927,7 @@ async function main() {
 
   console.log("\n✅ Database seeding complete!");
   console.log(`   Password for all users: ${PASSWORD}`);
-  console.log("   Users: admin@startline.test, organiser@startline.test, user@startline.test");
+  console.log("   Users: marcus.stirling@startline.test, sarah.mitchell@startline.test, jade.nguyen@startline.test");
 }
 
 main()

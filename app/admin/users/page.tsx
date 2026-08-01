@@ -16,7 +16,7 @@ interface UserRow {
   city: string | null;
   state: string | null;
   createdAt: string;
-  organiser: { id: string; orgName: string | null; status: string } | null;
+  memberships: { organiser: { id: string; orgName: string | null; status: string } }[];
   _count: { registrations: number };
 }
 
@@ -75,14 +75,14 @@ function UserRowItem({
               </span>
             )}
 
-            {user.organiser && (
-              <span className={`inline-flex items-center gap-1 font-headline text-[10px] font-bold uppercase tracking-widest
-                ${user.organiser.status === "SUSPENDED" ? "text-red-400" : "text-primary"}`}>
+            {user.memberships?.map(({ organiser }) => (
+              <span key={organiser.id} className={`inline-flex items-center gap-1 font-headline text-[10px] font-bold uppercase tracking-widest
+                ${organiser.status === "SUSPENDED" ? "text-red-400" : "text-primary"}`}>
                 <Building2 className="w-3.5 h-3.5" />
-                {user.organiser.orgName ?? "Organiser"}
-                {user.organiser.status === "SUSPENDED" && " (suspended)"}
+                {organiser.orgName ?? "Organiser"}
+                {organiser.status === "SUSPENDED" && " (suspended)"}
               </span>
-            )}
+            ))}
           </div>
 
           <div className="font-headline text-[11px] uppercase tracking-widest text-muted-dark mb-1">

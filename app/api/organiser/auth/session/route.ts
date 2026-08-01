@@ -17,12 +17,12 @@ export async function POST() {
       return NextResponse.json({ hasOrganiser: false, error: "No user record found." }, { status: 404 });
     }
 
-    const organiser = await prisma.organiser.findUnique({
-      where:  { userId: user.id },
+    const membership = await prisma.organiserMember.findFirst({
+      where: { userId: user.id },
       select: { id: true },
     });
 
-    return NextResponse.json({ hasOrganiser: !!organiser });
+    return NextResponse.json({ hasOrganiser: !!membership });
   } catch (err) {
     console.error("Organiser auth session error:", err);
     return NextResponse.json({ error: "Service unavailable." }, { status: 503 });

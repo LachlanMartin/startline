@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
           city: true,
           state: true,
           createdAt: true,
-          organiser: { select: { id: true, orgName: true, status: true } },
+          memberships: { select: { organiser: { select: { id: true, orgName: true, status: true } } } },
           _count: { select: { registrations: true } },
         },
         skip,

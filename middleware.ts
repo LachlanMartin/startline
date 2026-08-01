@@ -16,6 +16,7 @@ const ORGANISER_PROTECTED = [
   "/organiser/dashboard",
   "/organiser/listings",
   "/organiser/profile",
+  "/organiser/members",
   "/organiser/new-listing",
   "/organiser/onboarding",
   "/organiser/payments",

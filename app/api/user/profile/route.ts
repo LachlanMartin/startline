@@ -19,7 +19,7 @@ export async function GET() {
       id: true, email: true, name: true, username: true,
       bio: true, profilePicUrl: true, isPublic: true,
       city: true, state: true,
-      organiser: { select: { id: true, orgName: true, logoUrl: true, verified: true } },
+      memberships: { select: { organiser: { select: { id: true, orgName: true, logoUrl: true, verified: true } } } },
     },
   });
   if (!user) {

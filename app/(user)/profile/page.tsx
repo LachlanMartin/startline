@@ -19,7 +19,9 @@ type UserData = {
   isPublic: boolean;
   city: string | null;
   state: string | null;
-  organiser: { id: string; orgName: string | null; logoUrl: string | null; verified: boolean } | null;
+  memberships: {
+    organiser: { id: string; orgName: string | null; logoUrl: string | null; verified: boolean };
+  }[];
 };
 
 type RaceHistory = {
@@ -386,12 +388,12 @@ export default function ProfilePage() {
                         <Calendar className="w-[13px] h-[13px] text-primary flex-shrink-0" />
                         Member since Startline
                       </div>
-                      {userData?.organiser && (
+                      {userData?.memberships?.[0] && (
                         <Link
                           href="/organiser/dashboard"
                           className="font-headline text-[11px] font-bold uppercase tracking-widest text-primary hover:underline"
                         >
-                          {userData.organiser.orgName ?? "Organiser Dashboard"}
+                          {userData.memberships[0].organiser.orgName ?? "Organiser Dashboard"}
                         </Link>
                       )}
                     </div>
