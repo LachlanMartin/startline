@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
+import { getEventCoords } from "@/lib/australia-coords";
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -70,8 +71,8 @@ export async function PATCH(
         address:           data.address           ?? undefined,
         city:              data.city              ?? undefined,
         state:             data.state             ?? undefined,
-        latitude:          data.latitude          ?? null,
-        longitude:         data.longitude         ?? null,
+        latitude:          data.latitude          ?? (data.city && data.state ? getEventCoords(data.city, data.state)[0] : null),
+        longitude:         data.longitude         ?? (data.city && data.state ? getEventCoords(data.city, data.state)[1] : null),
         format:            data.format            ?? undefined,
         level:             data.level             ?? undefined,
         categories:        data.categories        ?? undefined,

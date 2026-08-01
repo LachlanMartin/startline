@@ -60,9 +60,9 @@ test.describe("event detail page", () => {
   });
 
   test("event card shows organiser name and rating", async ({ page }) => {
-    await page.goto("/events");
+    await page.goto("/events?view=list");
     await page.waitForLoadState("networkidle");
-    const organiserLink = page.getByRole("link", { name: /Apex Endurance Events/i }).first();
+    const organiserLink = page.getByRole("button", { name: /Apex Endurance Events/i }).first();
     await expect(organiserLink).toBeVisible();
     // Star rating chip is only rendered when the organiser has published reviews
     await expect(page.getByLabel(/Rated .+ out of 5 from \d+ reviews/i).first()).toBeVisible();

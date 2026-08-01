@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback, useLayoutEffect, Sus
 import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, MapPin, X, LayoutGrid, ChevronDown, Check } from "lucide-react";
+import { Search, MapPin, X, LayoutGrid, ChevronDown, Check, ArrowUpDown } from "lucide-react";
 import type { UserEvent, FilterState, EventType, AustralianState, CompetitionFormat, ExperienceLevel, SortOption } from "@/types";
 import {
   EVENT_TYPE_LABELS, STATE_LABELS, STATE_OPTIONS, EVENT_TYPE_OPTIONS,
@@ -38,9 +38,9 @@ function toggleInArray<T>(arr: T[], value: T, setArr: (v: T[]) => void) {
 }
 
 function FilterTrigger({
-  label, active, isOpen, onToggle, panelClassName, align = "left", children,
+  label, active, isOpen, onToggle, panelClassName, align = "left", children, icon,
 }: {
-  label: string; active: boolean; isOpen: boolean; onToggle: () => void; panelClassName?: string; align?: "left" | "right"; children: React.ReactNode;
+  label: string; active: boolean; isOpen: boolean; onToggle: () => void; panelClassName?: string; align?: "left" | "right"; children: React.ReactNode; icon?: React.ReactNode;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left?: number; right?: number } | null>(null);
@@ -65,6 +65,7 @@ function FilterTrigger({
       <button ref={buttonRef} onClick={onToggle}
         className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full font-headline text-xs font-bold uppercase tracking-widest border transition-colors whitespace-nowrap ${active || isOpen ? "border-primary/35 bg-primary/[0.08] text-primary" : "border-transparent text-muted hover:text-light"}`}
       >
+        {icon}
         {label}
         <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`} />
       </button>
@@ -122,7 +123,7 @@ function EventsListingInner() {
   const [sortBy,        setSortBy]        = useState<SortOption>("date");
   const [openDropdown,  setOpenDropdown]  = useState<string | null>(null);
   const [mobileSearch,  setMobileSearch]  = useState(false);
-  const [view, setView] = useState<"list" | "map">(searchParams.get("view") === "map" ? "map" : "list");
+  const [view, setView] = useState<"list" | "map">(searchParams.get("view") === "list" ? "list" : "map");
   // Latches true the first time the Map tab is viewed, so EventMap mounts
   // once and then just toggles visibility (avoids re-init/re-fetch on every tab switch).
   const [mapEverViewed, setMapEverViewed] = useState(view === "map");
@@ -220,22 +221,22 @@ function EventsListingInner() {
 
   const viewToggle = (
     <div className="flex items-center gap-0.5 bg-dark rounded-xl border border-dark-lighter p-0.5 flex-shrink-0">
-      <button onClick={() => setView("list")} data-testid="view-mode-list"
-        className={`flex items-center gap-1.5 px-3 h-8 lg:h-9 rounded-lg font-headline text-xs font-bold uppercase tracking-widest transition-colors duration-150 ${view === "list" ? "bg-white/10 text-light" : "text-muted hover:text-light"}`}
-      >
-        <LayoutGrid className="w-3.5 h-3.5" /> List
-      </button>
       <button onClick={() => { setView("map"); setMapEverViewed(true); }} data-testid="view-mode-map"
-        className={`flex items-center gap-1.5 px-3 h-8 lg:h-9 rounded-lg font-headline text-xs font-bold uppercase tracking-widest transition-colors duration-150 ${view === "map" ? "bg-white/10 text-light" : "text-muted hover:text-light"}`}
+        className={`flex items-center gap-1.5 px-3 h-11 lg:h-9 rounded-lg font-headline text-xs font-bold uppercase tracking-widest transition-colors duration-150 ${view === "map" ? "bg-white/10 text-light" : "text-muted hover:text-light"}`}
       >
         <MapPin className="w-3.5 h-3.5" /> Map
+      </button>
+      <button onClick={() => setView("list")} data-testid="view-mode-list"
+        className={`flex items-center gap-1.5 px-3 h-11 lg:h-9 rounded-lg font-headline text-xs font-bold uppercase tracking-widest transition-colors duration-150 ${view === "list" ? "bg-white/10 text-light" : "text-muted hover:text-light"}`}
+      >
+        <LayoutGrid className="w-3.5 h-3.5" /> List
       </button>
     </div>
   );
 
   const desktopHeader = (
     <div className="hidden lg:block px-4 pt-4 pb-2 border-b border-dark-lighter bg-dark-darker flex-shrink-0">
-      <div className="flex items-stretch gap-2">
+      <div className="flex items-center gap-2">
         <div className="flex flex-1 items-stretch bg-dark rounded-xl overflow-hidden border border-dark-lighter">
           <div className="flex-1 px-3.5 py-2.5 border-r border-dark-lighter min-w-0">
             <label className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</label>
@@ -388,8 +389,24 @@ function EventsListingInner() {
     </div>
   );
 
+  const sortDropdown = (
+    <div className="flex flex-col gap-2">
+      {SORT_OPTIONS.map((opt) => (
+        <button key={opt.value} onClick={() => { setSortBy(opt.value); setOpenDropdown(null); }}
+          className={`${pillClass(sortBy === opt.value)} text-left`}
+        >{opt.label}</button>
+      ))}
+    </div>
+  );
+
   const filterSubNav = (
     <div ref={subNavRef} className="border-b border-dark-lighter bg-dark-darker px-3 lg:px-6 py-2 flex items-center gap-1 overflow-x-auto flex-shrink-0">
+      <FilterTrigger label={SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? "Sort"} active={sortBy !== "date"}
+        isOpen={openDropdown === "sort"} onToggle={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
+        panelClassName="w-48" icon={<ArrowUpDown className="w-3.5 h-3.5" />}
+      >
+        {sortDropdown}
+      </FilterTrigger>
       <FilterTrigger label="Discipline" active={typeFilters.length > 0} isOpen={openDropdown === "discipline"}
         onToggle={() => setOpenDropdown(openDropdown === "discipline" ? null : "discipline")}>
         {disciplineDropdown}
@@ -416,27 +433,11 @@ function EventsListingInner() {
     </div>
   );
 
-  const sortDropdown = (
-    <div className="flex flex-col gap-2">
-      {SORT_OPTIONS.map((opt) => (
-        <button key={opt.value} onClick={() => { setSortBy(opt.value); setOpenDropdown(null); }}
-          className={`${pillClass(sortBy === opt.value)} text-left`}
-        >{opt.label}</button>
-      ))}
-    </div>
-  );
-
   const resultsHeader = (
     <div className="px-3 lg:px-6 pt-4 pb-1 flex items-center justify-between gap-3 flex-wrap flex-shrink-0">
       <h2 className="font-headline text-base lg:text-xl font-black italic tracking-tighter text-light">
         <span className="text-primary">{displayEvents.length}</span> event{displayEvents.length !== 1 ? "s" : ""} found
       </h2>
-      <FilterTrigger label={SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? "Sort"} active={sortBy !== "date"}
-        isOpen={openDropdown === "sort"} onToggle={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
-        panelClassName="w-48" align="right"
-      >
-        {sortDropdown}
-      </FilterTrigger>
     </div>
   );
 
@@ -465,7 +466,7 @@ function EventsListingInner() {
   const gridContent = (
     <div className={view === "list" ? "flex-1 overflow-y-auto px-3 lg:px-6 py-4 lg:py-5" : "hidden"}>
       {displayEvents.length === 0 ? emptyState : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
+        <div className="grid gap-4 sm:gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
           {displayEvents.map((event) => (
             <EventCard key={event.id} event={event} className="w-full" />
           ))}
@@ -479,7 +480,7 @@ function EventsListingInner() {
   // re-initialising Mapbox / re-fetching tiles on every toggle.
   const mapContent = (
     <div className={view === "map" ? "flex flex-col lg:flex-row flex-1 min-h-0" : "hidden"}>
-      <div ref={listRef} className="flex flex-col w-full lg:w-[480px] xl:w-[564px] lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-dark-lighter bg-dark-darker overflow-y-auto max-h-[38vh] lg:max-h-none px-4 py-3 lg:py-4">
+      <div ref={listRef} className="flex flex-col w-full lg:flex-1 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-dark-lighter bg-dark-darker overflow-y-auto max-h-[38vh] lg:max-h-none px-4 py-3 lg:py-4">
         {displayEvents.length === 0 ? (
           <div className="p-8 text-center">
             <p className="font-headline text-lg font-black italic tracking-tighter text-light mb-3">No events found.</p>
@@ -488,7 +489,7 @@ function EventsListingInner() {
             >Clear Filters</button>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
             {displayEvents.map((event) => (
               <EventCard key={event.id} event={event} className="w-full" selected={selectedId === event.id} onSelect={() => handleSelect(event.id)} />
             ))}
