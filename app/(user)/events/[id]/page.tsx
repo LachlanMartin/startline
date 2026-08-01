@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import EventGallery from "@/components/EventGallery";
 import EventReviewsSection from "@/components/EventReviewsSection";
 import OrganiserRating from "@/components/OrganiserRating";
+import SaveEventButton from "@/components/SaveEventButton";
 import { getPublishedOrganiserReviews, averageOverallRating } from "@/lib/reviews";
 
 export const revalidate = 60;
@@ -211,6 +212,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   View on Maps
                 </Link>
               </Button>
+              <div className="flex items-center justify-center gap-2 border border-dark-lighter rounded-xl py-2.5 px-4">
+                <SaveEventButton eventId={event.id} />
+                <span className="font-headline text-xs font-bold uppercase tracking-widest text-muted">Save Event</span>
+              </div>
             </div>
 
             <div className="bg-dark rounded-xl p-5 sm:p-6">

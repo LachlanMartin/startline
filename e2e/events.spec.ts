@@ -42,6 +42,15 @@ test.describe("events page", () => {
     await page.getByTestId("view-mode-map").first().click();
     await expect(page.getByTestId("events-map")).toBeVisible();
   });
+
+  test("map renders when geolocation is granted", async ({ page, context }) => {
+    await context.grantPermissions(["geolocation"], { origin: "http://localhost:3000" });
+    await context.setGeolocation({ latitude: -33.8688, longitude: 151.2093, accuracy: 5 });
+    await page.goto("/events");
+    await page.waitForLoadState("networkidle");
+    await page.getByTestId("view-mode-map").first().click();
+    await expect(page.getByTestId("events-map")).toBeVisible();
+  });
 });
 
 test.describe("event detail page", () => {

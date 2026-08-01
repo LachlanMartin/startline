@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { format, parseISO, isAfter, isBefore, startOfDay, addMonths, endOfMonth } from "date-fns";
 import type { UserEvent, FilterState, SortOption, ExperienceLevel } from "@/types";
+import { eventDistance } from "@/lib/distance";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -134,6 +135,11 @@ export function filterEvents(
         event.city.toLowerCase().includes(q) ||
         (event.organizer?.toLowerCase().includes(q) ?? false);
       if (!matches) return false;
+    }
+
+    if (filters.originLat != null && filters.originLng != null && filters.maxDistance != null) {
+      const dist = eventDistance({ lat: filters.originLat, lng: filters.originLng }, event);
+      if (dist === null || dist > filters.maxDistance) return false;
     }
 
     return true;

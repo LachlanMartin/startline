@@ -160,6 +160,7 @@ model Event {
   reviews       Review[]
   announcements Announcement[]
   registrations Registration[]
+  savedEvents   SavedEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -275,6 +276,10 @@ model Registration {
   status                RegistrationStatus @default(CONFIRMED)
   stripePaymentIntentId String?
 
+  // Race results — populated by the organiser after the event (issue #201)
+  finishTime String? // finish time, ISO "HH:MM:SS"
+  result     String? // position e.g. "1st", "42nd", "DNF"
+
   createdAt DateTime @default(now())
 
   @@index([eventId])
@@ -303,6 +308,20 @@ model OrganiserFollow {
   @@map("organiser_follows")
 }
 
+// ─── User → Event saves ───────────────────────────────────────────────────────
+model SavedEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@map("saved_events")
+}
+
 // ─── User accounts ────────────────────────────────────────────────────────────
 // Every platform user has a User record. Organisers are users who also
 // have an associated Organiser profile (1:1).
@@ -326,6 +345,7 @@ model User {
   organiser     Organiser?
   registrations Registration[]
   follows       OrganiserFollow[]
+  savedEvents   SavedEvent[]
   reviews       Review[]
 
   @@map("users")

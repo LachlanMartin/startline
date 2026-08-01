@@ -5,6 +5,7 @@ import type { UserEvent } from "@/types";
 import { EVENT_TYPE_LABELS, STATE_LABELS } from "@/types";
 import { cn, formatShortDate, formatTime, formatCompetitionFormat, stripHtml } from "@/lib/utils";
 import OrganiserCardMeta from "@/components/OrganiserCardMeta";
+import SaveEventButton from "@/components/SaveEventButton";
 
 interface EventCardProps {
   event: UserEvent;
@@ -39,6 +40,11 @@ export default function EventCard({ event, className, cardClassName, onSelect, s
         />
         <div className="absolute inset-0 bg-gradient-to-t from-dark/60 via-transparent to-transparent" />
 
+        {/* Save button */}
+        <div className="absolute top-3 left-3">
+          <SaveEventButton eventId={event.id} className="bg-dark-light/80 backdrop-blur-sm hover:bg-dark-light" />
+        </div>
+
         {/* Date badge */}
         <div className="absolute top-3 right-3 bg-dark-light/90 backdrop-blur-sm rounded-lg px-3 py-2 text-center leading-tight">
           <span className="block font-headline text-[9px] font-bold uppercase tracking-widest text-muted">{month}</span>
@@ -59,6 +65,9 @@ export default function EventCard({ event, className, cardClassName, onSelect, s
           <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
             <MapPin className="w-3 h-3 text-primary flex-shrink-0" />
             <span className="truncate">{event.city}, {STATE_LABELS[event.state]}</span>
+            {event.distance && (
+              <span data-testid="event-distance" className="ml-auto flex-shrink-0 text-primary font-bold">{event.distance} away</span>
+            )}
           </div>
           <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
             <Clock className="w-3 h-3 text-primary flex-shrink-0" />
