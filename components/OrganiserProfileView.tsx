@@ -190,7 +190,7 @@ export default function OrganiserProfileView({
             </div>
 
             <div className="lg:sticky lg:top-20 h-[320px] lg:h-[min(70vh,640px)] rounded-2xl border border-dark-lighter bg-dark overflow-hidden">
-              <EventMap events={upcoming} selectedId={null} onMarkerClick={() => {}} />
+              <EventMap events={upcoming} selectedId={null} />
             </div>
           </div>
         </div>
