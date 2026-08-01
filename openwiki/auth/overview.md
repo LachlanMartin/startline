@@ -46,10 +46,6 @@ MFA is **optional** for all users and **required for admins** (seed sets admin M
 
 Passkey sign-in passes `options: { authFlowType: "USER_AUTH", preferredChallenge: "WEB_AUTHN" }` to `signIn()`. The default `authenticationFlowType: "USER_SRP_AUTH"` in `lib/amplify-config.ts` stays unchanged — passkey overrides per-call.
 
-### Recovery Codes
-
-AES-256-GCM encrypted, stored in `User.recoveryCodes`. Managed via `lib/recovery-codes.ts` and `app/api/user/mfa/route.ts`. Users can generate/consume codes at `/settings/security`.
-
 ### Terraform Configuration
 
 Environment module sets:
