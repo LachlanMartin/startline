@@ -190,8 +190,14 @@ async function fetchCognitoSubs(): Promise<{
 async function main() {
   console.log("🌱 Seeding database…\n");
 
+  // CI (e2e) uses the __e2e_bypass cookie keyed on mock subs — never touch
+  // Cognito there.
+  const forceMockSubs = process.env.CI === "true";
+
   if (!userPoolId) {
     console.warn("  NEXT_PUBLIC_COGNITO_USER_POOL_ID not set — skipping Cognito seeding");
+  } else if (forceMockSubs) {
+    console.log("  CI detected — skipping Cognito seeding (using mock e2e subs)");
   } else {
     try {
       await removeLegacyCognitoUsers();
@@ -203,7 +209,10 @@ async function main() {
 
   let subsByEmail: Record<string, string> = {};
   let adminSubs: string[] = [];
-  if (userPoolId) {
+  // CI (e2e) runs against a real DB but uses the __e2e_bypass cookie, whose
+  // identities are keyed on the mock `dev-bypass-*` subs. Force mock subs in
+  // CI so the bypass users exist locally; only contact Cognito otherwise.
+  if (userPoolId && !forceMockSubs) {
     try {
       const result = await fetchCognitoSubs();
       subsByEmail = result.subsByEmail;
