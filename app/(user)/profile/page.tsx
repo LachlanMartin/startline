@@ -428,7 +428,20 @@ export default function ProfilePage() {
                 </span>
               </div>
 
-              {history && history.registrations.length > 0 ? (
+              {profileLoading ? (
+                <div className="space-y-4">
+                  {[0, 1].map((i) => (
+                    <div key={i} className="flex items-start gap-4 animate-pulse">
+                      <div className="w-3 h-3 rounded-full bg-dark-lighter mt-1 flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="w-40 h-3 bg-dark-lighter rounded" />
+                        <div className="w-64 h-5 bg-dark-lighter rounded" />
+                        <div className="w-48 h-3 bg-dark-lighter rounded" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : history && history.registrations.length > 0 ? (
                 <ol className="relative border-l-2 border-dark-lighter ml-2 space-y-6">
                   {history.registrations.map((reg) => (
                     <li key={reg.id} className="relative pl-6">

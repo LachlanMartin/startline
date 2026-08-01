@@ -26,7 +26,7 @@ test.describe("user profile: race history", () => {
 
     // Bypass user is organiser@startline.test — seeded with 2 completed events
     await expect(page.getByText("Events Completed")).toBeVisible();
-    await expect(page.getByText("Race History")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Race History" })).toBeVisible();
     await expect(page.getByText("The Apex Throwdown 2025")).toBeVisible();
     await expect(page.getByText("Apex Bay Run")).toBeVisible();
 
