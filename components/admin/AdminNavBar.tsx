@@ -76,7 +76,7 @@ export default function AdminNavBar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0d0d1a]/90 backdrop-blur-xl border-b border-[#818cf8]/20">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-darker/80 backdrop-blur-xl border-b-2 border-[#818cf8]">
         <div className="flex items-center justify-between h-14 max-w-[1200px] mx-auto px-4 sm:px-6 gap-4">
 
           {/* ── Logo + badge ── */}
@@ -84,7 +84,7 @@ export default function AdminNavBar() {
             <Link href="/admin/dashboard" className="py-1 flex items-center gap-2">
               <Image src="/images/logo-title.svg" alt="Startline" width={110} height={28} className="h-6 w-auto" />
             </Link>
-            <span className="hidden lg:inline-flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-[#818cf8]/80 border border-[#818cf8]/25 rounded px-1.5 py-0.5">
+            <span className="hidden lg:inline-flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-primary/80 border border-primary/40 rounded px-1.5 py-0.5">
               <ShieldCheck className="w-2.5 h-2.5" /> Admin
             </span>
           </div>
@@ -102,18 +102,18 @@ export default function AdminNavBar() {
                   <ChevronDown className={`w-3.5 h-3.5 text-white/40 transition-transform duration-200 ${openGroup === group.label ? "rotate-180" : ""}`} />
                 </button>
                 {openGroup === group.label && (
-                  <div className="absolute left-0 top-full mt-2 w-56 bg-[#0d0d1a] border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden">
+                  <div className="absolute left-0 top-full mt-2 w-56 bg-dark-darker border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden">
                     <div className="py-1.5">
                       {group.items.map(({ href, label, icon: Icon }) => {
                         const isActive = isActivePage(href);
                         return (
                           <Link key={href} href={href} onClick={() => setOpenGroup(null)}
                             className={`flex items-center gap-3 px-4 py-2.5 font-headline text-[12px] font-bold uppercase tracking-widest transition-colors
-                              ${isActive ? "text-[#818cf8] bg-[#818cf8]/10" : "text-white/60 hover:text-white hover:bg-white/[0.06]"}`}
+                              ${isActive ? "text-primary bg-primary/10" : "text-white/60 hover:text-white hover:bg-white/[0.06]"}`}
                           >
-                            <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-[#818cf8]" : "text-white/40"}`} />
+                            <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "text-white/40"}`} />
                             {label}
-                            {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#818cf8]" />}
+                            {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
                           </Link>
                         );
                       })}
@@ -132,14 +132,14 @@ export default function AdminNavBar() {
               <div ref={userRef} className="hidden md:block relative">
                 <button onClick={() => { setIsUserOpen(o => !o); setOpenGroup(null); }}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
-                  <span className="w-7 h-7 rounded-lg bg-[#818cf8] text-dark font-headline font-black italic text-sm flex items-center justify-center shrink-0">
+                  <span className="w-7 h-7 rounded-lg bg-primary text-dark font-headline font-black italic text-sm flex items-center justify-center shrink-0">
                     {initial}
                   </span>
                   <ChevronDown className={`w-3.5 h-3.5 text-white/40 transition-transform duration-200 ${isUserOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {isUserOpen && (
-                  <div className="absolute right-0 top-full mt-1 min-w-[180px] bg-[#0d0d1a]/95 backdrop-blur-xl border border-white/[0.05] rounded-xl shadow-2xl overflow-hidden">
+                  <div className="absolute right-0 top-full mt-1 min-w-[180px] bg-dark-darker/95 backdrop-blur-xl border border-white/[0.05] rounded-xl shadow-2xl overflow-hidden">
                     <div className="px-4 py-3 border-b border-white/[0.08]">
                       <div className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/40 mb-0.5">Admin account</div>
                       {user?.email && <div className="font-headline text-[12px] text-white/70 truncate">{user.email}</div>}
@@ -168,10 +168,10 @@ export default function AdminNavBar() {
 
         {/* ── Mobile dropdown ── */}
         {isMenuOpen && (
-          <div className="md:hidden bg-[#0d0d1a]/95 backdrop-blur-xl border-t border-[#818cf8]/20 max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
+          <div className="md:hidden bg-dark-darker/95 backdrop-blur-xl border-t border-white/[0.05] max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-1.5">
               <div className="flex items-center gap-1.5 px-4 py-2 mb-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#818cf8]" />
+                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
                 <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/30">Admin</span>
               </div>
 
@@ -186,7 +186,7 @@ export default function AdminNavBar() {
                       <Link key={href} href={href} onClick={() => setIsMenuOpen(false)}
                         className={`flex items-center gap-3 px-4 py-3 rounded-lg font-headline text-[13px] font-bold uppercase tracking-widest transition-colors
                           ${isActive ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/10"}`}>
-                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-[#818cf8]" : "text-white/40"}`} />
+                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "text-white/40"}`} />
                         {label}
                       </Link>
                     );

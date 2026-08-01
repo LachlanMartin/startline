@@ -161,7 +161,7 @@ export default function OrganiserNavBar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0d1a0d]/90 backdrop-blur-xl border-b border-[#b3e153]/20">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-darker/80 backdrop-blur-xl border-b-2 border-primary">
         <div className="flex items-center justify-between h-14 max-w-[1200px] mx-auto px-4 sm:px-6 gap-4">
 
           {/* ── Logo + org ── */}
@@ -169,7 +169,7 @@ export default function OrganiserNavBar() {
             <Link href="/organiser/dashboard" className="py-1 flex items-center gap-2">
               <Image src="/images/logo-title.svg" alt="Startline" width={110} height={28} className="h-6 w-auto" />
             </Link>
-            <span className="hidden lg:inline-flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-[#b3e153]/80 border border-[#b3e153]/25 rounded px-1.5 py-0.5">
+            <span className="hidden lg:inline-flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-primary/80 border border-primary/40 rounded px-1.5 py-0.5">
               <Building2 className="w-2.5 h-2.5" /> Organiser
             </span>
           </div>
@@ -183,7 +183,7 @@ export default function OrganiserNavBar() {
               return (
                 <Link key={href} href={href}
                   className={`px-3 py-2 rounded-md font-headline text-[12px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors duration-150
-                    ${isActive ? "bg-[#b3e153]/15 text-[#b3e153]" : "text-white/50 hover:text-white hover:bg-white/10"}`}>
+                    ${isActive ? "bg-primary/15 text-primary" : "text-white/50 hover:text-white hover:bg-white/10"}`}>
                   {label}
                 </Link>
               );
@@ -198,14 +198,14 @@ export default function OrganiserNavBar() {
               <div ref={orgRef} className="relative hidden md:block">
                 <button onClick={() => { setIsOrgOpen(o => !o); setIsUserOpen(false); setNotifOpen(false); }}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors max-w-[160px]">
-                  <Building2 className="w-4 h-4 text-[#b3e153] shrink-0" />
+                  <Building2 className="w-4 h-4 text-primary shrink-0" />
                   <span className="font-headline text-[12px] font-bold uppercase tracking-widest text-white/70 truncate">
                     {orgName || "Organisation"}
                   </span>
                   <ChevronDown className={`w-3.5 h-3.5 text-white/40 shrink-0 transition-transform duration-200 ${isOrgOpen ? "rotate-180" : ""}`} />
                 </button>
                 {isOrgOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-64 bg-[#0d1a0d]/95 backdrop-blur-xl border border-[#b3e153]/20 rounded-xl shadow-2xl overflow-hidden">
+                  <div className="absolute right-0 top-full mt-1 w-64 bg-dark-darker/95 backdrop-blur-xl border border-primary/40 rounded-xl shadow-2xl overflow-hidden">
                     <div className="px-4 py-2 border-b border-white/10">
                       <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">Switch organisation</span>
                     </div>
@@ -214,7 +214,7 @@ export default function OrganiserNavBar() {
                         className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[12px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors text-left">
                         <span className="truncate flex-1">{m.organiserName ?? "Organisation"}</span>
                         {m.role === "OWNER"
-                          ? <span className="shrink-0 text-[9px] text-[#b3e153] border border-[#b3e153]/30 rounded px-1.5 py-0.5">OWNER</span>
+                          ? <span className="shrink-0 text-[9px] text-primary border border-primary/40 rounded px-1.5 py-0.5">OWNER</span>
                           : <span className="shrink-0 text-[9px] text-white/40 border border-white/15 rounded px-1.5 py-0.5">MANAGER</span>}
                       </button>
                     ))}
@@ -236,7 +236,7 @@ export default function OrganiserNavBar() {
                 )}
               </button>
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-1 w-80 bg-[#0d1a0d]/95 backdrop-blur-xl border border-[#b3e153]/20 rounded-xl shadow-2xl overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 w-80 bg-dark-darker/95 backdrop-blur-xl border border-primary/40 rounded-xl shadow-2xl overflow-hidden">
                   <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                     <span className="font-headline text-[12px] font-bold uppercase tracking-widest text-white/60">Notifications</span>
                     {notifications.length > 0 && (
@@ -279,14 +279,14 @@ export default function OrganiserNavBar() {
             <div ref={userRef} className="relative">
               <button onClick={() => { setIsUserOpen(o => !o); setNotifOpen(false); setIsOrgOpen(false); }}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
-                <span className="w-7 h-7 rounded-lg bg-[#b3e153] text-dark font-headline font-black italic text-sm flex items-center justify-center shrink-0">
+                <span className="w-7 h-7 rounded-lg bg-primary text-dark font-headline font-black italic text-sm flex items-center justify-center shrink-0">
                   {initial}
                 </span>
                 <ChevronDown className={`w-3.5 h-3.5 text-white/40 transition-transform duration-200 ${isUserOpen ? "rotate-180" : ""}`} />
               </button>
 
               {isUserOpen && (
-                <div className="absolute right-0 top-full mt-1 min-w-[200px] bg-[#0d1a0d]/95 backdrop-blur-xl border border-[#b3e153]/20 rounded-xl shadow-2xl overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 min-w-[200px] bg-dark-darker/95 backdrop-blur-xl border border-primary/40 rounded-xl shadow-2xl overflow-hidden">
                   <div className="px-4 py-3 border-b border-white/10">
                     <div className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/40 mb-0.5">{orgName || "Organisation"}</div>
                     {user?.email && <div className="font-headline text-[12px] text-white/70 truncate">{user.email}</div>}
@@ -331,10 +331,10 @@ export default function OrganiserNavBar() {
 
         {/* ── Mobile dropdown ── */}
         {isMenuOpen && (
-          <div className="md:hidden bg-[#0d1a0d]/95 backdrop-blur-xl border-t border-[#b3e153]/20 max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
+          <div className="md:hidden bg-dark-darker/95 backdrop-blur-xl border-t border-white/[0.05] max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
             <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-1.5">
               <div className="flex items-center gap-1.5 px-4 py-2 mb-1">
-                <Building2 className="w-3.5 h-3.5 text-[#b3e153]" />
+                <Building2 className="w-3.5 h-3.5 text-primary" />
                 <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/30">{orgName || "Organiser"}</span>
               </div>
 
