@@ -1,0 +1,69 @@
+name: OpenWiki Check
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check:
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/load-env
+        with:
+          aws-role-arn: ${{ vars.AWS_ROLE_ARN_READONLY }}
+          environment: prod
+          bootstrap-export-keys: DEEPSEEK_API_KEY
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile || pnpm approve-builds --all
+      - run: pnpm install --frozen-lockfile
+      - name: Install openwiki
+        run: npm install -g openwiki
+      - name: Regenerate openwiki docs
+        continue-on-error: true
+        env:
+          OPENWIKI_PROVIDER: openai-compatible
+          OPENAI_COMPATIBLE_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
+          OPENAI_COMPATIBLE_BASE_URL: https://api.deepseek.com/v1
+          OPENWIKI_MODEL_ID: deepseek-chat
+        run: |
+          openwiki --update -p "Review the code changes and update the openwiki/ docs to reflect any new or changed patterns, APIs, data models, or architecture. Keep the existing style and structure."
+      - name: Detect stale docs
+        id: diff
+        continue-on-error: true
+        shell: bash
+        run: |
+          if git diff --exit-code openwiki/ >/dev/null 2>&1; then
+            echo "clean=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "clean=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Comment on stale docs
+        if: steps.diff.outputs.clean == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: [
+                "## OpenWiki docs may be stale",
+                "The `openwiki/` docs don't fully match this PR's code changes.",
+                "",
+                "To refresh locally:",
+                "```bash",
+                "openwiki --update",
+                "```",
+                "",
+                "Commit any doc changes to this PR. This is informational only and does not block merging."
+              ].join("\n")
+            })
