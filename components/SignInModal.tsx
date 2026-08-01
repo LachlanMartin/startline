@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { X, Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, User, ChevronDown, Check, AtSign, ShieldAlert } from "lucide-react";
 import { signIn, signUp, signOut, resetPassword, confirmResetPassword, confirmSignIn } from "aws-amplify/auth";
 import { useAuthContext } from "@/context/AuthContext";
@@ -736,9 +737,12 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
             {mfaStep === "setup" && totpSetupUri && (
               <div className="space-y-4">
                 <div className="flex justify-center">
-                  <img
+                  <Image
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(totpSetupUri)}`}
                     alt="TOTP QR Code"
+                    width={192}
+                    height={192}
+                    unoptimized
                     className="w-48 h-48 rounded-lg"
                   />
                 </div>

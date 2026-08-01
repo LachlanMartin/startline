@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Shield, ShieldAlert, Trash2, KeyRound, Plus, ArrowRight, Check, Copy, Eye, EyeOff } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
 
@@ -193,9 +194,12 @@ export default function SecuritySettingsPage() {
             {setupStep === "qr" && (
               <>
                 <div className="flex justify-center">
-                  <img
+                  <Image
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUri)}`}
                     alt="TOTP QR Code"
+                    width={192}
+                    height={192}
+                    unoptimized
                     className="w-48 h-48 rounded-lg"
                   />
                 </div>
