@@ -10,7 +10,6 @@ import { loadEnv } from "./lib/env.mjs";
 
 loadEnv();
 
-const ORGANISER_ID = "local-organiser-001";
 const ORGANISER_EMAIL = "organiser@startline.test";
 
 async function main() {
@@ -26,12 +25,12 @@ async function main() {
 
   try {
     const organiser = await prisma.organiser.findUnique({
-      where: { id: ORGANISER_ID },
+      where: { email: ORGANISER_EMAIL },
       select: { id: true, stripeAccountId: true, stripeOnboardingComplete: true },
     });
 
     if (!organiser) {
-      console.error(`Organiser ${ORGANISER_ID} not found. Run scripts/local-seed-minimal.sql first.`);
+      console.error(`Organiser ${ORGANISER_EMAIL} not found. Run scripts/local-seed-minimal.sql first.`);
       process.exit(1);
     }
 
