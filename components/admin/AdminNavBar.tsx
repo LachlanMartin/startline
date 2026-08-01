@@ -92,6 +92,15 @@ export default function AdminNavBar() {
 
           {/* ── Desktop grouped nav dropdowns ── */}
           <div className="hidden md:flex items-center gap-0.5">
+            <Link
+              href={DASHBOARD.href}
+              onClick={() => setOpenGroup(null)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest transition-colors
+                ${isActivePage(DASHBOARD.href) ? "bg-white/15 text-white" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:block">{DASHBOARD.label}</span>
+            </Link>
             {NAV_GROUPS.map((group) => (
               <div key={group.label} ref={(el) => { groupRefs.current[group.label] = el; }} className="relative">
                 <button
@@ -175,6 +184,13 @@ export default function AdminNavBar() {
                 <ShieldCheck className="w-3.5 h-3.5 text-primary" />
                 <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/30">Admin</span>
               </div>
+
+              <Link href={DASHBOARD.href} onClick={() => setIsMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-headline text-[13px] font-bold uppercase tracking-widest transition-colors
+                  ${isActivePage(DASHBOARD.href) ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/10"}`}>
+                <LayoutDashboard className={`w-4 h-4 shrink-0 ${isActivePage(DASHBOARD.href) ? "text-primary" : "text-white/40"}`} />
+                {DASHBOARD.label}
+              </Link>
 
               {NAV_GROUPS.map((group) => (
                 <div key={group.label}>
