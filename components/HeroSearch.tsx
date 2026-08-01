@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, MapPin } from "lucide-react";
+import { Search, X, MapPin, Locate } from "lucide-react";
 
 export default function HeroSearch() {
   const router = useRouter();
@@ -14,6 +14,15 @@ export default function HeroSearch() {
     if (what.trim())  params.set("what", what.trim());
     if (where.trim()) params.set("where", where.trim());
     router.push(params.toString() ? `/events?${params.toString()}` : "/events");
+  }
+
+  // Geocoding + GPS live in EventsListing; here we just land on the events
+  // page with the "Current location" marker and let it prompt for the device.
+  function handleLocate() {
+    const params = new URLSearchParams();
+    if (what.trim()) params.set("what", what.trim());
+    params.set("where", "Current location");
+    router.push(`/events?${params.toString()}`);
   }
 
   function handleKey(e: React.KeyboardEvent) {
@@ -64,6 +73,9 @@ export default function HeroSearch() {
                 <X className="w-4 h-4" />
               </button>
             )}
+            <button onClick={handleLocate} className="text-muted hover:text-primary" aria-label="Use my location" title="Use my location">
+              <Locate className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -121,6 +133,9 @@ export default function HeroSearch() {
                 <X className="w-4 h-4" />
               </button>
             )}
+            <button onClick={handleLocate} className="text-muted hover:text-primary" aria-label="Use my location" title="Use my location">
+              <Locate className="w-5 h-5" />
+            </button>
           </div>
         </div>
 

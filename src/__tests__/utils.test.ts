@@ -139,6 +139,32 @@ describe("filterEvents", () => {
     expect(result).toHaveLength(1);
     expect(result[0].fromPrice).toBe(150);
   });
+
+  it("excludes events beyond maxDistance", () => {
+    // Origin = Sydney; Melbourne event ~713km away, Sydney event ~0km away.
+    const result = filterEvents(baseEvents, {
+      ...emptyFilters,
+      originLat: -33.8688,
+      originLng: 151.2093,
+      maxDistance: 10,
+    });
+    expect(result.some((e) => e.city === "Melbourne")).toBe(false);
+  });
+
+  it("includes events within maxDistance", () => {
+    const result = filterEvents(baseEvents, {
+      ...emptyFilters,
+      originLat: -33.8688,
+      originLng: 151.2093,
+      maxDistance: 100,
+    });
+    expect(result.some((e) => e.city === "Sydney")).toBe(true);
+  });
+
+  it("is a no-op when no origin is set", () => {
+    const result = filterEvents(baseEvents, { ...emptyFilters, maxDistance: 10 });
+    expect(result.length).toBeGreaterThan(0);
+  });
 });
 
 describe("sortEvents", () => {
