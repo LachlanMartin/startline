@@ -8,7 +8,7 @@ import { TableSkeleton } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
-type RegStatus = "CONFIRMED" | "CANCELLED" | "REFUNDED";
+type RegStatus = "CONFIRMED" | "CANCELLED" | "REFUNDED" | "REFUND_REQUESTED";
 
 interface Registration {
   id: string;
@@ -27,16 +27,18 @@ interface Registration {
 }
 
 const STATUS_TABS: { status: RegStatus | "ALL"; label: string }[] = [
-  { status: "ALL",       label: "All"       },
-  { status: "CONFIRMED", label: "Confirmed" },
-  { status: "REFUNDED",  label: "Refunded"  },
-  { status: "CANCELLED", label: "Cancelled" },
+  { status: "ALL",              label: "All"              },
+  { status: "CONFIRMED",        label: "Confirmed"        },
+  { status: "REFUND_REQUESTED", label: "Refund requested" },
+  { status: "REFUNDED",         label: "Refunded"         },
+  { status: "CANCELLED",        label: "Cancelled"        },
 ];
 
 const STATUS_STYLE: Record<RegStatus, { bg: string; text: string; dot: string }> = {
-  CONFIRMED: { bg: "bg-primary/10",   text: "text-primary",   dot: "bg-primary"   },
-  CANCELLED: { bg: "bg-white/[0.05]", text: "text-muted",     dot: "bg-muted-dark" },
-  REFUNDED:  { bg: "bg-amber-400/10", text: "text-amber-300", dot: "bg-amber-400"  },
+  CONFIRMED:         { bg: "bg-primary/10",   text: "text-primary",   dot: "bg-primary"   },
+  CANCELLED:         { bg: "bg-white/[0.05]", text: "text-muted",     dot: "bg-muted-dark" },
+  REFUND_REQUESTED:  { bg: "bg-blue-400/10",  text: "text-blue-300",  dot: "bg-blue-400"  },
+  REFUNDED:          { bg: "bg-amber-400/10", text: "text-amber-300", dot: "bg-amber-400"  },
 };
 
 function formatDate(iso: string) {
