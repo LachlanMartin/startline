@@ -97,7 +97,8 @@ test.describe("admin event creation", () => {
     await page.getByPlaceholder(/start typing an address/i).fill("1 Test St, Sydney NSW 2000");
     const cityInput = page.getByPlaceholder(/e.g. Melbourne/i);
     if (await cityInput.isVisible()) await cityInput.fill("Sydney");
-    await page.locator("select").last().selectOption("nsw");
+    await page.getByRole("combobox", { name: /state/i }).click();
+    await page.getByRole("option", { name: /NSW/ }).click();
     await page.getByRole("button", { name: /continue/i }).click();
 
     // Step 3 — Tickets & Pricing

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { CheckCircle, Star } from "lucide-react";
-import OrganiserRating from "@/components/OrganiserRating";
+import OrganiserIdentity from "@/components/OrganiserIdentity";
 import type { OrganiserRating as Rating, PublicReview } from "@/lib/reviews";
 import { formatLongDate } from "@/lib/utils";
 
 type Props = {
   organiserId: string;
   organiserName: string;
+  organiserLogoUrl?: string | null;
   rating: Rating | null;
   reviews: PublicReview[];
 };
@@ -30,6 +31,7 @@ function ReviewStars({ value }: { value: number }) {
 export default function EventReviewsSection({
   organiserId,
   organiserName,
+  organiserLogoUrl,
   rating,
   reviews,
 }: Props) {
@@ -39,21 +41,15 @@ export default function EventReviewsSection({
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
         <div>
-          <h2 className="font-headline text-xs font-medium uppercase tracking-widest text-primary mb-1">
+          <h2 className="font-headline text-lg font-black uppercase tracking-widest text-primary mb-1.5">
             Reviews
           </h2>
-          <p className="font-headline text-sm text-muted">
-            Reviews for{" "}
-            <Link
-              href={`/organisers/${organiserId}`}
-              className="text-light hover:text-primary transition-colors"
-            >
-              {organiserName}
-            </Link>
-          </p>
-          <div className="mt-2">
-            <OrganiserRating rating={rating} size="md" />
-          </div>
+          <OrganiserIdentity
+            organiserId={organiserId}
+            name={organiserName}
+            logoUrl={organiserLogoUrl}
+            rating={rating}
+          />
         </div>
         <Link
           href={`/organisers/${organiserId}#reviews`}

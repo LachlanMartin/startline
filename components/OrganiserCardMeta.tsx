@@ -35,7 +35,10 @@ export default function OrganiserCardMeta({
   const router = useRouter();
   const href = `/organisers/${organiserId}`;
   const nameClass = cn(
-    "font-headline text-[10px] font-medium uppercase tracking-widest transition-colors truncate min-w-0 text-left",
+    // chip-sm opts out of the global 44px mobile touch-target floor when this
+    // renders as a button; py/-my expands the tap area for the link case
+    // without growing the card's visual footprint.
+    "chip-sm font-headline text-[10px] font-medium uppercase tracking-widest transition-colors truncate min-w-0 text-left py-[15px] -my-[15px]",
     nameClassName ?? "text-muted hover:text-primary",
   );
 
