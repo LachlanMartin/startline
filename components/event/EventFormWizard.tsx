@@ -1667,7 +1667,7 @@ export default function EventFormWizard({
         registrationUrl:   form.registrationType === "external" ? form.registrationUrl : null,
         accessibilityInfo: originalFields.current.accessibilityInfo ?? null,
         submit:            !asDraft,
-        coverImageUrl:     coverImageUrl ?? form.coverImageUrl ?? null,
+        coverImageUrl:     coverImageUrl || form.coverImageUrl || null,
         photos:            photoUrls,
         ...(!eventId && organiserId ? { organiserId } : {}),
       };

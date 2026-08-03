@@ -336,17 +336,17 @@ function EventsListingInner() {
     <div className="hidden lg:block px-4 pt-4 pb-2 border-b border-dark-lighter bg-dark-darker flex-shrink-0">
       <div className="flex items-center gap-2">
         <div className="flex flex-1 items-stretch bg-dark rounded-xl overflow-hidden border border-dark-lighter">
-          <div className="flex-1 px-3.5 py-2.5 border-r border-dark-lighter min-w-0">
-            <label className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</label>
+          <label className="flex-1 px-3.5 py-2.5 border-r border-dark-lighter min-w-0 cursor-text">
+            <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</span>
             <div className="flex items-center gap-1.5">
               <input type="text" placeholder="Event name, type or keyword" value={whatQuery}
                 onChange={(e) => setWhatQuery(e.target.value)}
                 className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none" />
               {whatQuery && <button onClick={() => setWhatQuery("")} className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
             </div>
-          </div>
-          <div className="flex-1 px-3.5 py-2.5 min-w-0">
-            <label className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Where</label>
+          </label>
+          <label className="flex-1 px-3.5 py-2.5 min-w-0 cursor-text">
+            <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Where</span>
             <div className="flex items-center gap-1.5">
               <input type="text" placeholder="State, city, or suburb" value={whereQuery}
                 onChange={(e) => setWhereQuery(e.target.value)}
@@ -357,7 +357,7 @@ function EventsListingInner() {
                 : <button onClick={locateMe} aria-label="Use my location" title="Use my location" className="text-muted hover:text-primary flex-shrink-0"><Locate className="w-3.5 h-3.5" /></button>}
               {whereQuery && <button onClick={clearWhere} aria-label="Clear where" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
             </div>
-          </div>
+          </label>
         </div>
         {viewToggle}
       </div>

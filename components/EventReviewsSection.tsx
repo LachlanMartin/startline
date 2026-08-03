@@ -39,7 +39,7 @@ export default function EventReviewsSection({
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
         <div>
-          <h2 className="font-headline text-xs font-medium uppercase tracking-widest text-primary mb-1">
+          <h2 className="font-headline text-lg font-black uppercase tracking-widest text-primary mb-1">
             Reviews
           </h2>
           <p className="font-headline text-sm text-muted">

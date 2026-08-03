@@ -102,7 +102,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           <div className="order-2 lg:order-none lg:col-span-2 space-y-6 sm:space-y-8">
 
             <div>
-              <h2 className="font-headline text-xs font-medium uppercase tracking-widest text-primary mb-3">Event Overview</h2>
+              <h2 className="font-headline text-lg font-black uppercase tracking-widest text-primary mb-3">Event Overview</h2>
               <div
                 className="text-sm font-medium text-muted leading-relaxed
                   [&_h3]:font-headline [&_h3]:font-black [&_h3]:text-base [&_h3]:text-light [&_h3]:mt-4 [&_h3]:mb-1
@@ -130,7 +130,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
             {drops.length > 0 && (
               <div>
-                <h2 className="font-headline text-xs font-medium uppercase tracking-widest text-primary mb-3">Pricing</h2>
+                <h2 className="font-headline text-lg font-black uppercase tracking-widest text-primary mb-3">Pricing</h2>
                 <div className="space-y-2">
                   {drops.map((drop, i) => (
                     <div
@@ -170,7 +170,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
             {event.photos && event.photos.length > 0 && (
               <div>
-                <h2 className="font-headline text-xs font-medium uppercase tracking-widest text-primary mb-3">Gallery</h2>
+                <h2 className="font-headline text-lg font-black uppercase tracking-widest text-primary mb-3">Gallery</h2>
                 <EventGallery images={event.photos} title={event.title} />
               </div>
             )}

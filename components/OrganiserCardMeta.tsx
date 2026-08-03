@@ -35,7 +35,8 @@ export default function OrganiserCardMeta({
   const router = useRouter();
   const href = `/organisers/${organiserId}`;
   const nameClass = cn(
-    "font-headline text-[10px] font-medium uppercase tracking-widest transition-colors truncate min-w-0 text-left",
+    // py/-my expands the tap target to ~44px without growing the card's visual footprint
+    "font-headline text-[10px] font-medium uppercase tracking-widest transition-colors truncate min-w-0 text-left py-[15px] -my-[15px]",
     nameClassName ?? "text-muted hover:text-primary",
   );
 

@@ -241,7 +241,7 @@ export default function NavBar() {
                 const isActive = href === "/" ? pathname === "/" : pathname?.startsWith(href) ?? false;
                 return (
                   <Link key={label} href={href}
-                    className={`px-3 py-2 rounded-md font-headline text-[12px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors duration-150
+                    className={`inline-flex items-center min-h-11 px-3 rounded-md font-headline text-[12px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors duration-150
                       ${isActive ? "bg-white/15 text-white" : "text-white/50 hover:text-white hover:bg-white/10"}`}
                   >
                     {label}
@@ -311,7 +311,7 @@ export default function NavBar() {
             {/* Desktop: unauthenticated */}
             {status !== "authenticated" && (
               <button onClick={() => setIsSignInOpen(true)} disabled={status === "loading"}
-                className="hidden md:inline-flex items-center justify-center h-8 px-3 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-white/60 border border-white/10 hover:border-primary hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-default">
+                className="hidden md:inline-flex items-center justify-center h-11 px-3 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-white/60 border border-white/10 hover:border-primary hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-default">
                 SIGN IN
               </button>
             )}
