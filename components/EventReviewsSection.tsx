@@ -1,12 +1,12 @@
-import Link from "next/link";
 import { CheckCircle, Star } from "lucide-react";
-import OrganiserRating from "@/components/OrganiserRating";
+import OrganiserIdentity from "@/components/OrganiserIdentity";
 import type { OrganiserRating as Rating, PublicReview } from "@/lib/reviews";
 import { formatLongDate } from "@/lib/utils";
 
 type Props = {
   organiserId: string;
   organiserName: string;
+  organiserLogoUrl?: string | null;
   rating: Rating | null;
   reviews: PublicReview[];
 };
@@ -30,6 +30,7 @@ function ReviewStars({ value }: { value: number }) {
 export default function EventReviewsSection({
   organiserId,
   organiserName,
+  organiserLogoUrl,
   rating,
   reviews,
 }: Props) {
@@ -37,30 +38,16 @@ export default function EventReviewsSection({
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
-        <div>
-          <h2 className="font-headline text-xs font-medium uppercase tracking-widest text-primary mb-1">
-            Reviews
-          </h2>
-          <p className="font-headline text-sm text-muted">
-            Reviews for{" "}
-            <Link
-              href={`/organisers/${organiserId}`}
-              className="text-light hover:text-primary transition-colors"
-            >
-              {organiserName}
-            </Link>
-          </p>
-          <div className="mt-2">
-            <OrganiserRating rating={rating} size="md" />
-          </div>
-        </div>
-        <Link
-          href={`/organisers/${organiserId}#reviews`}
-          className="font-headline text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
-        >
-          View all on organiser profile &rarr;
-        </Link>
+      <div className="mb-3">
+        <h2 className="font-headline text-xs font-medium uppercase tracking-widest text-primary mb-1.5">
+          Reviews
+        </h2>
+        <OrganiserIdentity
+          organiserId={organiserId}
+          name={organiserName}
+          logoUrl={organiserLogoUrl}
+          rating={rating}
+        />
       </div>
 
       <div className="space-y-3">

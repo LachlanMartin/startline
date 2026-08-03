@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import NavBar from "@/components/NavBar";
+import Footer from "@/components/Footer";
 import AmplifyProvider from "./AmplifyProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { SettingsProvider } from "@/context/SettingsContext";
@@ -27,6 +28,7 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
         <SettingsProvider>
           <NavBar />
           {children}
+          <Footer />
           <SettingsModal />
         </SettingsProvider>
       </AuthProvider>

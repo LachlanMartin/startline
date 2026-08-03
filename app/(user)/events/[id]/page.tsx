@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import EventGallery from "@/components/EventGallery";
 import EventReviewsSection from "@/components/EventReviewsSection";
+import OrganiserIdentity from "@/components/OrganiserIdentity";
 import OrganiserRating from "@/components/OrganiserRating";
 import SaveEventButton from "@/components/SaveEventButton";
 import { getPublishedOrganiserReviews, averageOverallRating } from "@/lib/reviews";
@@ -178,6 +179,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <EventReviewsSection
               organiserId={event.organiserId}
               organiserName={organiserName}
+              organiserLogoUrl={event.organiser?.logoUrl}
               rating={organiserRating}
               reviews={organiserReviews}
             />
@@ -285,31 +287,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 {event.organizer && (
                   <div>
                     <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted mb-1.5">Organiser</p>
-                    <Link
-                      href={`/organisers/${event.organiserId}`}
-                      className="group flex items-center gap-3 -mx-2 px-2 py-2 rounded-lg border border-transparent hover:border-primary/40 hover:bg-white/[0.03] transition-colors"
-                    >
-                      <span className="relative w-10 h-10 rounded-lg overflow-hidden bg-dark-lighter shrink-0">
-                        {event.organiser?.logoUrl ? (
-                          <Image src={event.organiser.logoUrl} alt={`${event.organizer} logo`} fill className="object-cover" sizes="40px" />
-                        ) : (
-                          <span className="w-full h-full flex items-center justify-center font-headline text-base font-black italic text-primary">
-                            {event.organizer.charAt(0)}
-                          </span>
-                        )}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block font-headline text-base font-black italic text-light group-hover:text-primary transition-colors leading-tight truncate">
-                          {event.organizer}
-                        </span>
-                        <span className="flex items-center gap-2 mt-0.5">
-                          <OrganiserRating rating={organiserRating} />
-                          <span className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
-                            View profile &rarr;
-                          </span>
-                        </span>
-                      </span>
-                    </Link>
+                    <OrganiserIdentity
+                      organiserId={event.organiserId}
+                      name={event.organizer}
+                      logoUrl={event.organiser?.logoUrl}
+                      rating={organiserRating}
+                      action="View profile"
+                    />
                   </div>
                 )}
               </div>

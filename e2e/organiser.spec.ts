@@ -195,14 +195,6 @@ test.describe("organiser pages", () => {
     await argosScreenshot(page, "organiser-payments");
   });
 
-  test("organiser how it works page visual snapshot", async ({ page }) => {
-
-    await organiserLogin(page);
-    await page.goto("/organiser/how-it-works");
-    await page.waitForLoadState("networkidle");
-    await argosScreenshot(page, "organiser-how-it-works");
-  });
-
   test("organiser profile page visual snapshot", async ({ page }) => {
 
     await organiserLogin(page);

@@ -35,7 +35,10 @@ export default function OrganiserCardMeta({
   const router = useRouter();
   const href = `/organisers/${organiserId}`;
   const nameClass = cn(
-    "font-headline text-[10px] font-medium uppercase tracking-widest transition-colors truncate min-w-0 text-left",
+    // chip-sm opts out of the global 44px mobile touch-target floor in
+    // globals.css — without it this control renders 44px tall inside the
+    // chip on phones and tablets, dwarfing the desktop version.
+    "chip-sm font-headline text-[10px] font-medium uppercase tracking-widest transition-colors truncate min-w-0 text-left",
     nameClassName ?? "text-muted hover:text-primary",
   );
 
