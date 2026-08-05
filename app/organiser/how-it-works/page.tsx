@@ -549,7 +549,7 @@ export default function HowItWorksPage() {
                   {activeTab === "home" && (
                     <div>
                       {/* Hero */}
-                      <div className="relative px-8 pt-14 pb-12 overflow-hidden"
+                      <div className="relative px-8 pt-[3.5rem] pb-12 overflow-hidden"
                         style={{ background: "linear-gradient(135deg, #0a1a04 0%, #111305 40%, #0f0f0f 70%)" }}>
                         <div className="absolute inset-0 opacity-20"
                           style={{ backgroundImage: "radial-gradient(ellipse at 75% 40%, #65a30d 0%, transparent 55%)" }} />

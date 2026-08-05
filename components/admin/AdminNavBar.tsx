@@ -76,7 +76,7 @@ export default function AdminNavBar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-darker/80 backdrop-blur-xl border-b-2 border-primary">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-darker/80 backdrop-blur-xl border-b-2 border-primary pt-safe">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center h-14 max-w-[1200px] mx-auto px-4 sm:px-6 gap-4">
 
           {/* ── Logo ── */}

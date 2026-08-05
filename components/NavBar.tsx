@@ -100,7 +100,7 @@ export default function NavBar() {
                 <button key={m.organiserId} onClick={() => switchOrganiser(m.organiserId)}
                   className="w-full flex items-center gap-3 px-4 py-2.5 font-headline text-[12px] font-bold uppercase tracking-widest text-left text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                   {m.logoUrl
-                    ? <img src={m.logoUrl} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+                    ? <Image src={m.logoUrl} alt="" width={20} height={20} className="w-5 h-5 rounded object-cover shrink-0" />
                     : <Building2 className="w-3.5 h-3.5 shrink-0 text-primary/70" />}
                   <span className="truncate flex-1">{m.organiserName ?? "Organisation"}</span>
                   {m.role === "OWNER"
@@ -126,7 +126,7 @@ export default function NavBar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-darker/80 backdrop-blur-xl border-b border-white/[0.05]">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-darker/80 backdrop-blur-xl border-b border-white/[0.05] pt-safe">
         <div className="flex items-center justify-between h-14 max-w-[1200px] mx-auto px-4 sm:px-6 gap-4">
 
           {/* ── Logo ── */}
@@ -174,7 +174,7 @@ export default function NavBar() {
                 <button onClick={() => setIsUserOpen(o => !o)}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
                   {profilePic ? (
-                    <img src={profilePic} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                    <Image src={profilePic} alt="" width={28} height={28} className="w-7 h-7 rounded-lg object-cover shrink-0" />
                   ) : (
                     <span className="w-7 h-7 rounded-lg bg-primary text-dark font-headline font-black italic text-sm flex items-center justify-center shrink-0">
                       {initial}
@@ -252,7 +252,7 @@ export default function NavBar() {
                     <button key={m.organiserId} onClick={() => { setIsMenuOpen(false); switchOrganiser(m.organiserId); }}
                       className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors text-left">
                       {m.logoUrl
-                        ? <img src={m.logoUrl} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+                        ? <Image src={m.logoUrl} alt="" width={20} height={20} className="w-5 h-5 rounded object-cover shrink-0" />
                         : <Building2 className="w-4 h-4 shrink-0" />}
                       {m.organiserName ?? "Organisation"}
                     </button>

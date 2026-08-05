@@ -201,10 +201,15 @@ test.describe("admin user editing", () => {
     await expect(page.getByText("Edit user")).toBeVisible();
 
     await page.getByPlaceholder("Full name").fill(newName);
+
+    const listRefetch = page.waitForResponse(
+      (r) => r.url().includes("/api/admin/users") && r.request().method() === "GET",
+    );
     await page.getByRole("button", { name: /save changes/i }).click();
+    await listRefetch;
 
     await expect(page.getByText("Edit user")).not.toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(newName, { exact: false })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(newName, { exact: false })).toBeVisible();
 
     // Audit log records the edit.
     const auditRes = await page.request.get("/api/admin/audit?action=EDIT_USER&limit=50");

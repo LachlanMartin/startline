@@ -165,7 +165,7 @@ export default function OnboardingPage() {
       </div>
 
       {/* ── Logo bar ── */}
-      <div className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center justify-center">
+      <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-center pt-safe pb-2">
         <Image src="/images/logo-title.svg" alt="Startline" width={140} height={36} className="h-8 w-auto" />
       </div>
 

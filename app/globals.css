@@ -23,6 +23,12 @@
   --color-muted-light: 160 165 174;
   --color-muted-dark: 110 115 123;
   color-scheme: dark;
+
+  /* Notch / home-indicator insets (Capacitor: viewport-fit=cover) */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
 
 * {
@@ -37,6 +43,8 @@ body {
   /* `clip` prevents horizontal overflow without creating a scroll container —
      `hidden` here silently disables every position:sticky descendant. */
   overflow-x: clip;
+  /* Disable WebView bounce/pull-to-refresh on native */
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -174,6 +182,40 @@ input[type="radio"] {
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;
   }
+
+  /* Notch / home-indicator insets for fixed chrome */
+  .pt-safe { padding-top: var(--sat); }
+  .pb-safe { padding-bottom: var(--sab); }
+  .pl-safe { padding-left: var(--sal); }
+  .pr-safe { padding-right: var(--sar); }
+  .px-safe { padding-left: var(--sal); padding-right: var(--sar); }
+
+  /* Fixed-bar page offsets that include the top safe-area inset */
+  .pt-safe-14 { padding-top: calc(3.5rem + var(--sat)); }
+  .pt-safe-16 { padding-top: calc(4rem + var(--sat)); }
+
+  /* Bottom-inset padding for fixed bottom bars (home indicator). Additive
+     with the element's existing py-* (0.75rem base here). */
+  .safe-area-bottom { padding-bottom: calc(0.75rem + var(--sab)); }
+
+  /* Full-height dynamic viewport (mobile browser/WebView chrome) */
+  .h-dvh { height: 100dvh; }
+  .min-h-dvh { min-height: 100dvh; }
+}
+
+/* 100vh is taller than the visible area when mobile browser chrome
+   collapses or the WebView keyboard opens — dvh tracks the visible viewport. */
+.min-h-screen { min-height: 100dvh; }
+
+/* Fixed top bars are h-14 and extend under the notch (viewport-fit=cover);
+   every page offsets content with pt-14. Fold the inset into the offset so
+   content clears the taller bar on notched devices. (Desktop: inset = 0.) */
+.pt-14 { padding-top: calc(3.5rem + var(--sat)); }
+
+/* Let Mapbox own touch gestures inside its canvas so the WebView
+   doesn't steal pinch-zoom / drags from the map. */
+.mapboxgl-canvas {
+  touch-action: none;
 }
 
 @keyframes fadeIn {
@@ -405,7 +447,7 @@ input[type="radio"] {
 /* ------ Waitlist Page ------ */
 
 .waitlist-stage {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
