@@ -52,6 +52,7 @@ export default function AdminNavBar() {
 
   const userRef = useRef<HTMLDivElement>(null);
   const groupRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const hoverCloseRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!isUserOpen && !openGroup && !isMenuOpen) return;
@@ -102,7 +103,13 @@ export default function AdminNavBar() {
               <span className="hidden sm:block">{DASHBOARD.label}</span>
             </Link>
             {NAV_GROUPS.map((group) => (
-              <div key={group.label} ref={(el) => { groupRefs.current[group.label] = el; }} className="relative">
+              <div key={group.label} ref={(el) => { groupRefs.current[group.label] = el; }} className="relative"
+                onMouseEnter={() => { if (hoverCloseRef.current) clearTimeout(hoverCloseRef.current); setOpenGroup(group.label); setIsUserOpen(false); }}
+                onMouseLeave={() => {
+                  if (hoverCloseRef.current) clearTimeout(hoverCloseRef.current);
+                  hoverCloseRef.current = window.setTimeout(() => setOpenGroup(null), 150);
+                }}
+              >
                 <button
                   onClick={() => { setOpenGroup(o => o === group.label ? null : group.label); setIsUserOpen(false); }}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest transition-colors
