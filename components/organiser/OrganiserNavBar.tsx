@@ -209,7 +209,7 @@ export default function OrganiserNavBar() {
                 )}
               </button>
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-1 w-80 bg-dark-darker/95 backdrop-blur-xl border border-primary/40 rounded-xl shadow-2xl overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 w-80 bg-dark-darker border border-primary/40 rounded-xl shadow-2xl overflow-hidden">
                   <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                     <span className="font-headline text-[12px] font-bold uppercase tracking-widest text-white/60">Notifications</span>
                     {notifications.length > 0 && (

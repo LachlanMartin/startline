@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { organiserLogin, organiserMemberLogin } from "./helpers";
 
 test.describe("organiser members", () => {
-  test("super admin sees members page with both members", async ({ page }) => {
+  test("owner sees members page with both members", async ({ page }) => {
     await organiserLogin(page);
     await page.goto("/organiser/members");
     await page.waitForLoadState("networkidle");
@@ -14,7 +14,7 @@ test.describe("organiser members", () => {
     await expect(page.getByText("Manager", { exact: true }).first()).toBeVisible();
   });
 
-  test("super admin can add a member by email", async ({ page }) => {
+  test("owner can add a member by email", async ({ page }) => {
     await organiserLogin(page);
     await page.goto("/organiser/members");
     await page.waitForLoadState("networkidle");
@@ -25,7 +25,7 @@ test.describe("organiser members", () => {
     await expect(page.getByText("jade.nguyen@startline.test")).toBeVisible();
   });
 
-  test("super admin cannot add a non-existent account", async ({ page }) => {
+  test("owner cannot add a non-existent account", async ({ page }) => {
     await organiserLogin(page);
     await page.goto("/organiser/members");
     await page.waitForLoadState("networkidle");

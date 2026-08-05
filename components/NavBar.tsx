@@ -20,7 +20,7 @@ const USER_NAV: NavItem[] = [
 export default function NavBar() {
   const router   = useRouter();
   const pathname = usePathname();
-  const { user, role, organiserCount, status, logout } = useAuthContext();
+  const { user, role, organiserCount, memberships, status, logout } = useAuthContext();
 
   const [isMenuOpen,   setIsMenuOpen]   = useState(false);
   const [isSignInOpen, setIsSignInOpen] = useState(false);
@@ -63,23 +63,43 @@ export default function NavBar() {
     router.push("/");
   };
 
+  const switchOrganiser = async (organiserId: string) => {
+    try {
+      await fetch("/api/organiser/switch-org", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organiserId }),
+      });
+    } catch {}
+    setIsUserOpen(false);
+    router.push("/organiser/dashboard");
+  };
+
   if (pathname?.startsWith("/admin/login")) return null;
 
   const displayName = profileName ?? user?.email ?? "";
   const initial     = displayName[0]?.toUpperCase() ?? "A";
-  const hasOrganiser = organiserCount > 0;
   const isAdmin      = role === "admin";
 
   const portalLinks = (
     <>
-      {(hasOrganiser || isAdmin) && (
+      {(memberships.length > 0 || isAdmin) && (
         <>
           <div className="border-t border-white/10" />
-          {hasOrganiser && (
-            <Link href="/organiser/dashboard" onClick={() => setIsUserOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
-              <Building2 className="w-4 h-4 text-primary/70" /> Organiser Portal
-            </Link>
+          {memberships.length > 0 && (
+            <div className="py-1.5">
+              <div className="px-4 py-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">Organisations</div>
+              {memberships.map((m) => (
+                <button key={m.organiserId} onClick={() => switchOrganiser(m.organiserId)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 font-headline text-[12px] font-bold uppercase tracking-widest text-left text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+                  <Building2 className="w-3.5 h-3.5 shrink-0 text-primary/70" />
+                  <span className="truncate flex-1">{m.organiserName ?? "Organisation"}</span>
+                  {m.role === "OWNER"
+                    ? <span className="shrink-0 text-[9px] text-primary border border-primary/40 rounded px-1.5 py-0.5">OWNER</span>
+                    : <span className="shrink-0 text-[9px] text-white/40 border border-white/15 rounded px-1.5 py-0.5">MANAGER</span>}
+                </button>
+              ))}
+            </div>
           )}
           {isAdmin && (
             <Link href="/admin/dashboard" onClick={() => setIsUserOpen(false)}
@@ -205,15 +225,18 @@ export default function NavBar() {
                 </Link>
               )}
 
-              {status === "authenticated" && (hasOrganiser || isAdmin) && (
+              {status === "authenticated" && (memberships.length > 0 || isAdmin) && (
                 <>
                   <div className="border-t border-white/10 my-1.5" />
-                  {hasOrganiser && (
-                    <Link href="/organiser/dashboard" onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors">
-                      <Building2 className="w-4 h-4" /> Organiser Portal
-                    </Link>
+                  {memberships.length > 0 && (
+                    <div className="px-4 pt-3 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/30">Organisations</div>
                   )}
+                  {memberships.map((m) => (
+                    <button key={m.organiserId} onClick={() => { setIsMenuOpen(false); switchOrganiser(m.organiserId); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors text-left">
+                      <Building2 className="w-4 h-4" /> {m.organiserName ?? "Organisation"}
+                    </button>
+                  ))}
                   {isAdmin && (
                     <Link href="/admin/dashboard" onClick={() => setIsMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors">
