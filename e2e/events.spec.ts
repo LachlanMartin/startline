@@ -64,8 +64,8 @@ test.describe("event detail page", () => {
     await page.goto("/events/seed-event-001");
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading", { name: /^Reviews$/i })).toBeVisible();
-    await expect(page.getByText(/Reviews for/i)).toBeVisible();
     await expect(page.getByText(/Apex Endurance Events/i).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /view all on organiser profile/i })).toBeVisible();
   });
 
   test("event card shows organiser name and rating", async ({ page }) => {
