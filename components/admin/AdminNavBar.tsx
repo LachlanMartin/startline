@@ -159,9 +159,16 @@ export default function AdminNavBar() {
                       <div className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/40 mb-0.5">Admin account</div>
                       {user?.email && <div className="font-headline text-[12px] text-white/70 truncate">{user.email}</div>}
                     </div>
+                    <div className="px-4 pt-3 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">Admin</div>
+                    <Link href="/admin/dashboard" onClick={() => setIsUserOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+                      <ShieldCheck className="w-4 h-4" /> Dashboard
+                    </Link>
+                    <div className="border-t border-white/10 my-1" />
+                    <div className="px-4 pt-2 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">User</div>
                     <Link href="/" onClick={() => setIsUserOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
-                      <User className="w-4 h-4" /> User Portal
+                      <User className="w-4 h-4" /> Home
                     </Link>
                     <button onClick={handleSignOut}
                       className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-red-400/80 hover:text-red-400 hover:bg-white/5 transition-colors">
@@ -218,7 +225,7 @@ export default function AdminNavBar() {
                 {status === "authenticated" && (
                   <Link href="/" onClick={() => setIsMenuOpen(false)}
                     className="flex items-center justify-center gap-2 h-10 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-white/60 border border-white/10 hover:text-white transition-colors mb-2">
-                    <User className="w-3.5 h-3.5" /> User Portal
+                    <User className="w-3.5 h-3.5" /> User
                   </Link>
                 )}
                 <button onClick={() => { setIsMenuOpen(false); handleSignOut(); }}

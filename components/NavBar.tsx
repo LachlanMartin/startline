@@ -85,10 +85,10 @@ export default function NavBar() {
     <>
       {(memberships.length > 0 || isAdmin) && (
         <>
-          <div className="border-t border-white/10" />
+          <div className="border-t border-white/10 my-1" />
           {memberships.length > 0 && (
-            <div className="py-1.5">
-              <div className="px-4 py-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">Organisations</div>
+            <div>
+              <div className="px-4 pt-2 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">Organiser</div>
               {memberships.map((m) => (
                 <button key={m.organiserId} onClick={() => switchOrganiser(m.organiserId)}
                   className="w-full flex items-center gap-3 px-4 py-2.5 font-headline text-[12px] font-bold uppercase tracking-widest text-left text-white/60 hover:text-white hover:bg-white/10 transition-colors">
@@ -104,10 +104,13 @@ export default function NavBar() {
             </div>
           )}
           {isAdmin && (
-            <Link href="/admin/dashboard" onClick={() => setIsUserOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
-              <ShieldCheck className="w-4 h-4 text-primary/70" /> Admin Portal
-            </Link>
+            <div>
+              <div className="px-4 pt-2 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">Admin</div>
+              <Link href="/admin/dashboard" onClick={() => setIsUserOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+                <ShieldCheck className="w-4 h-4 text-primary/70" /> Dashboard
+              </Link>
+            </div>
           )}
         </>
       )}
@@ -174,6 +177,7 @@ export default function NavBar() {
 
                 {isUserOpen && (
                   <div className="absolute right-0 top-full mt-1 min-w-[200px] bg-dark-darker border border-white/[0.05] rounded-xl shadow-2xl overflow-hidden">
+                    <div className="px-4 pt-3 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">User</div>
                     <Link href="/profile" onClick={() => setIsUserOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                       <User className="w-4 h-4" /> Profile
@@ -231,7 +235,7 @@ export default function NavBar() {
                 <>
                   <div className="border-t border-white/10 my-1.5" />
                   {memberships.length > 0 && (
-                    <div className="px-4 pt-3 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/30">Organisations</div>
+                    <div className="px-4 pt-3 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/30">Organiser</div>
                   )}
                   {memberships.map((m) => (
                     <button key={m.organiserId} onClick={() => { setIsMenuOpen(false); switchOrganiser(m.organiserId); }}
@@ -243,10 +247,13 @@ export default function NavBar() {
                     </button>
                   ))}
                   {isAdmin && (
-                    <Link href="/admin/dashboard" onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors">
-                      <ShieldCheck className="w-4 h-4" /> Admin Portal
-                    </Link>
+                    <>
+                      <div className="px-4 pt-3 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/30">Admin</div>
+                      <Link href="/admin/dashboard" onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors">
+                        <ShieldCheck className="w-4 h-4" /> Dashboard
+                      </Link>
+                    </>
                   )}
                 </>
               )}

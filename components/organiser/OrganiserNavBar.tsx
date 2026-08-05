@@ -269,10 +269,14 @@ export default function OrganiserNavBar() {
                     {user?.email && <div className="font-headline text-[12px] text-white/70 truncate">{user.email}</div>}
                   </div>
 
-                  {/* Organisations */}
+                  {/* Organiser */}
+                  <div className="px-4 pt-3 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">Organiser</div>
+                  <Link href="/organiser/new-listing" onClick={() => setIsUserOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
+                    <Plus className="w-4 h-4" /> Post an Event
+                  </Link>
                   {memberships.length > 0 && (
-                    <div className="py-1.5 border-b border-white/10">
-                      <div className="px-4 py-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">Organisations</div>
+                    <div className="pb-1.5">
                       {memberships.map((m) => {
                         const isActive = m.organiserId === activeOrgId;
                         return (
@@ -292,6 +296,9 @@ export default function OrganiserNavBar() {
                     </div>
                   )}
 
+                  {/* User */}
+                  <div className="border-t border-white/10 my-1" />
+                  <div className="px-4 pt-2 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">User</div>
                   <Link href="/profile" onClick={() => setIsUserOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                     <UserCircle className="w-4 h-4" /> Profile
@@ -300,19 +307,15 @@ export default function OrganiserNavBar() {
                     className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                     <Shield className="w-4 h-4" /> Security
                   </Link>
-                  <Link href="/organiser/new-listing" onClick={() => setIsUserOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
-                    <Plus className="w-4 h-4" /> Post an Event
-                  </Link>
                   <button onClick={() => { setIsUserOpen(false); openSettingsModal("personal"); }}
                     className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                     <Settings className="w-4 h-4" /> Settings
                   </button>
-                  <div className="border-t border-white/10" />
                   <Link href="/" onClick={() => setIsUserOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
-                    <User className="w-4 h-4" /> User Portal
+                    <User className="w-4 h-4" /> User
                   </Link>
+                  <div className="border-t border-white/10" />
                   <button onClick={handleSignOut}
                     className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-red-400/80 hover:text-red-400 hover:bg-white/5 transition-colors">
                     <LogOut className="w-4 h-4" /> Sign Out
