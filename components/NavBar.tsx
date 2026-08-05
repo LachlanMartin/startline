@@ -128,13 +128,6 @@ export default function NavBar() {
           {/* ── Right side ── */}
           <div className="flex items-center gap-2 shrink-0">
 
-            {/* Portal badge */}
-            {status === "authenticated" && (
-              <span className="hidden md:inline-flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-primary/80 border border-primary/40 rounded px-1.5 py-0.5">
-                <User className="w-2.5 h-2.5" /> User
-              </span>
-            )}
-
             {/* Desktop: unauthenticated */}
             {status !== "authenticated" && (
               <button onClick={() => setIsSignInOpen(true)} disabled={status === "loading"}
