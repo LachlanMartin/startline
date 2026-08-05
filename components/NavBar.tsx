@@ -15,7 +15,6 @@ type NavItem = { href: string; label: string };
 const USER_NAV: NavItem[] = [
   { href: "/", label: "HOME" },
   { href: "/events", label: "EVENTS" },
-  { href: "/activity", label: "ACTIVITY" },
 ];
 
 export default function NavBar() {
@@ -116,6 +115,14 @@ export default function NavBar() {
                 </Link>
               );
             })}
+            {status === "authenticated" && (
+              <Link href="/activity"
+                className={`px-3 py-2 rounded-md font-headline text-[12px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors duration-150
+                  ${pathname?.startsWith("/activity") ? "bg-white/15 text-white" : "text-white/50 hover:text-white hover:bg-white/10"}`}
+              >
+                ACTIVITY
+              </Link>
+            )}
           </div>
 
           {/* ── Right side ── */}
@@ -190,6 +197,13 @@ export default function NavBar() {
                   </Link>
                 );
               })}
+              {status === "authenticated" && (
+                <Link href="/activity" onClick={() => setIsMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg font-headline text-[13px] font-bold uppercase tracking-widest transition-colors
+                    ${pathname?.startsWith("/activity") ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/10"}`}>
+                  ACTIVITY
+                </Link>
+              )}
 
               {status === "authenticated" && (hasOrganiser || isAdmin) && (
                 <>
