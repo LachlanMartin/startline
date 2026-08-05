@@ -292,7 +292,7 @@ export default function OrganiserNavBar() {
                     </div>
                   )}
 
-                  <Link href="/organiser/profile" onClick={() => setIsUserOpen(false)}
+                  <Link href="/profile" onClick={() => setIsUserOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                     <UserCircle className="w-4 h-4" /> Profile
                   </Link>
