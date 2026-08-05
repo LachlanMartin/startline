@@ -66,6 +66,47 @@ const SEED_USERS: SeedUser[] = [
   { email: "lucas.tan@startline.test",     isAdmin: false, displayName: "Lucas Tan" },
 ];
 
+// Deterministic profile photos for each seed user (Unsplash portraits).
+const PROFILE_PICS: Record<string, string> = {
+  "marcus.stirling@startline.test":  "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&q=80",
+  "sarah.mitchell@startline.test":   "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&q=80",
+  "jade.nguyen@startline.test":      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&q=80",
+  "tom.whitfield@startline.test":    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80",
+  "jack.obrien@startline.test":      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80",
+  "priya.sharma@startline.test":     "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80",
+  "liam.oconnor@startline.test":     "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80",
+  "chloe.bennett@startline.test":    "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80",
+  "avery.quinn@startline.test":      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80",
+  "harper.jones@startline.test":     "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=200&q=80",
+  "mateo.silva@startline.test":      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&q=80",
+  "aria.kapoor@startline.test":      "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&q=80",
+  "oscar.ngata@startline.test":      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80",
+  "sophie.moreau@startline.test":    "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&q=80",
+  "lucas.tan@startline.test":        "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&q=80",
+};
+
+// Discipline-appropriate cover photos for events that don't have one set.
+const DISCIPLINE_COVERS: Record<string, string> = {
+  running:   "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=1200&q=80",
+  cycling:   "https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=1200&q=80",
+  swimming:  "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=1200&q=80",
+  triathlon: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=1200&q=80",
+  crossfit:  "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80",
+  hybrid:    "https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=1200&q=80",
+  functional_fitness: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1200&q=80",
+};
+
+// Photo galleries per discipline (reused across events).
+const DISCIPLINE_PHOTOS: Record<string, string[]> = {
+  running:   ["https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=1200&q=80", "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1200&q=80", "https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=1200&q=80"],
+  cycling:   ["https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=1200&q=80", "https://images.unsplash.com/photo-1511994298241-608e28f14fde?w=1200&q=80", "https://images.unsplash.com/photo-1534787238916-9ba6764efd4f?w=1200&q=80"],
+  swimming:  ["https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=1200&q=80", "https://images.unsplash.com/photo-1560089000-7433a4ebbd64?w=1200&q=80", "https://images.unsplash.com/photo-1540541338287-41700207dee6?w=1200&q=80"],
+  triathlon: ["https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=1200&q=80", "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=1200&q=80", "https://images.unsplash.com/photo-1517093157656-b9eccef91cb1?w=1200&q=80"],
+  crossfit:  ["https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80", "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=1200&q=80", "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=1200&q=80"],
+  hybrid:    ["https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=1200&q=80", "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&q=80", "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1200&q=80"],
+  functional_fitness: ["https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1200&q=80", "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1200&q=80", "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=1200&q=80"],
+};
+
 // Emails removed from SEED_USERS over time — cleaned out of Cognito on reseed so
 // the pool doesn't accumulate stale accounts (AGENTS.md: "old Cognito users not
 // auto-removed"). Best-effort: missing users are ignored.
@@ -293,8 +334,9 @@ async function main() {
             city: "Sydney",
             state: "nsw",
             isPublic: true,
+            profilePicUrl: PROFILE_PICS[user.email] ?? null,
           }
-        : {},
+        : { profilePicUrl: PROFILE_PICS[user.email] ?? null },
       create: {
         cognitoSub: sub,
         email: user.email,
@@ -302,6 +344,7 @@ async function main() {
         username: user.email === "jade.nguyen@startline.test"
           ? "jade-nguyen"
           : user.email.split("@")[0].replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/^-+|-+$/g, ""),
+        profilePicUrl: PROFILE_PICS[user.email] ?? null,
         ...(user.isAdmin ? { mfaEnabled: true } : {}),
         ...(user.email === "jade.nguyen@startline.test"
           ? {
@@ -503,7 +546,7 @@ async function main() {
   const event2 = await prisma.event.upsert({
     where: { id: "seed-event-002" }, update: {},
     create: {
-      id: "seed-event-002", organiserId: org.id, status: "PENDING", photos: [],
+      id: "seed-event-002", organiserId: org.id, status: "PENDING", photos: DISCIPLINE_PHOTOS.hybrid,
       title: "Hybrid Hustle Series — Round 3", discipline: "hybrid",
       tagline: "Run. Lift. Repeat.",
       description: "Trail running, loaded carries, obstacle crawls, and a surprise finale.",
@@ -513,26 +556,27 @@ async function main() {
       cap: 150, minAge: 16, waves: [{ label: "General Entry", date: "2026-07-01", price: "75", qty: 150 }],
       inclusions: "Race entry, finisher medal, recovery snack bag", refundPolicy: "Flexible",
       registrationType: "startline", feeStructure: "athlete",
-      coverImageUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&q=80",
+      coverImageUrl: DISCIPLINE_COVERS.hybrid,
     },
   });
 
   const event3 = await prisma.event.upsert({
     where: { id: "seed-event-003" }, update: {},
     create: {
-      id: "seed-event-003", organiserId: org.id, status: "DRAFT", photos: [],
+      id: "seed-event-003", organiserId: org.id, status: "DRAFT", photos: DISCIPLINE_PHOTOS.functional_fitness,
       title: "Team Throwdown Summer Series", discipline: "functional_fitness",
       tagline: "", description: "Draft — details TBC",
       eventDate: "2026-12-05", startTime: "09:00", endTime: "15:00",
       venue: "TBC", city: "Sydney", state: "nsw", ...seedCoords("Sydney", "nsw"), format: "team", level: "open",
       categories: [], waves: [], registrationType: "startline", feeStructure: "athlete",
+      coverImageUrl: DISCIPLINE_COVERS.functional_fitness,
     },
   });
 
   const event4 = await prisma.event.upsert({
     where: { id: "seed-event-004" }, update: {},
     create: {
-      id: "seed-event-004", organiserId: org.id, status: "REJECTED", photos: [],
+      id: "seed-event-004", organiserId: org.id, status: "REJECTED", photos: DISCIPLINE_PHOTOS.running,
       title: "Autumn Run Festival", discipline: "running",
       tagline: "5K, 10K through the Yarra Valley",
       description: "A scenic trail run through the Yarra Valley vineyards.",
@@ -542,6 +586,7 @@ async function main() {
       cap: 500, waves: [{ label: "5K Entry", price: "45" }, { label: "10K Entry", price: "55" }, { label: "Half Marathon", price: "75" }],
       registrationType: "startline", feeStructure: "athlete", refundPolicy: "Firm",
       rejectionReason: "Event date has already passed.", reviewedAt: new Date("2026-04-01T09:00:00Z"),
+      coverImageUrl: DISCIPLINE_COVERS.running,
     },
   });
 
@@ -587,11 +632,14 @@ async function main() {
     const ownerId = e.org === "coastal" ? (coastalOrg?.id ?? org.id) : org.id;
     await prisma.event.upsert({
       where: { id: e.id }, update: {},
-      create: { id: e.id, organiserId: ownerId, status: e.status, title: e.title, discipline: e.discipline, photos: [],
+      create: { id: e.id, organiserId: ownerId, status: e.status, title: e.title, discipline: e.discipline,
+        photos: DISCIPLINE_PHOTOS[e.discipline] ?? [],
         tagline: e.tagline, description: e.description, eventDate: e.eventDate, startTime: e.startTime, endTime: e.endTime,
         venue: e.venue, city: e.city, state: e.state, ...seedCoords(e.city, e.state, "coords" in e ? e.coords : undefined), format: e.format, level: e.level, categories: e.categories,
         cap: e.cap, waves: e.waves, registrationType: "startline", feeStructure: "athlete",
-        ...("coverImageUrl" in e && e.coverImageUrl ? { coverImageUrl: e.coverImageUrl } : {}) },
+        coverImageUrl: "coverImageUrl" in e && e.coverImageUrl
+          ? e.coverImageUrl
+          : DISCIPLINE_COVERS[e.discipline] ?? null },
     });
   }
 
