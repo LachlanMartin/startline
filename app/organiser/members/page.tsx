@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState, startTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  Building2, Crown, UserCog, Mail, Plus, Trash2, RefreshCw, ArrowLeft, X,
+  Building2, Crown, UserCog, Mail, Plus, Trash2, RefreshCw, ArrowLeft, X, LogOut,
 } from "lucide-react";
 
 interface Member {
@@ -14,14 +15,17 @@ interface Member {
 }
 
 export default function MembersPage() {
+  const router            = useRouter();
   const [members,       setMembers]       = useState<Member[] | null>(null);
   const [role,          setRole]          = useState<"OWNER" | "MANAGER" | null>(null);
+  const [currentMemberId, setCurrentMemberId] = useState<string | null>(null);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState("");
   const [addEmail,      setAddEmail]      = useState("");
   const [adding,        setAdding]        = useState(false);
   const [addMsg,        setAddMsg]        = useState("");
   const [confirmRemove, setConfirmRemove] = useState<Member | null>(null);
+  const [confirmLeave,  setConfirmLeave]  = useState(false);
   const [transferTo,    setTransferTo]    = useState<Member | null>(null);
   const [busy,          setBusy]          = useState(false);
 
@@ -39,6 +43,7 @@ export default function MembersPage() {
       startTransition(() => {
         setMembers(data.members ?? []);
         setRole(data.role ?? null);
+        setCurrentMemberId(data.currentMemberId ?? null);
       });
     } catch {
       setError("Could not load members.");
@@ -94,6 +99,25 @@ export default function MembersPage() {
       }
     } catch {
       setError("Could not remove member.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/organiser/members/leave", { method: "POST" });
+      const data = await r.json();
+      if (!r.ok) {
+        setError(data.error ?? "Could not leave organisation.");
+        setConfirmLeave(false);
+      } else {
+        router.push("/");
+      }
+    } catch {
+      setError("Could not leave organisation.");
+      setConfirmLeave(false);
     } finally {
       setBusy(false);
     }
@@ -163,7 +187,7 @@ export default function MembersPage() {
           </div>
           {addMsg && <p className="mt-2 font-headline text-[12px] font-bold uppercase tracking-widest text-red-400">{addMsg}</p>}
           <p className="mt-2 text-[12px] text-muted-dark">
-            The person must already have a Startline account. They are added as an Admin.
+            The person must already have a Startline account. They are added as a manager.
           </p>
         </div>
       )}
@@ -205,8 +229,23 @@ export default function MembersPage() {
                   <p className="font-headline text-[11px] uppercase tracking-widest text-muted mt-0.5 truncate">{m.user.email}</p>
                 </div>
 
+                {/* Current user — leave the organisation */}
+                {m.id === currentMemberId && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setConfirmLeave(true)}
+                      disabled={role === "OWNER"}
+                      title={role === "OWNER" ? "Transfer ownership before leaving" : "Leave this organisation"}
+                      className="flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest border rounded-lg px-3 py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed
+                        text-muted border-white/10 hover:text-red-400 hover:border-red-400/30"
+                    >
+                      <LogOut className="w-3.5 h-3.5" /> Leave
+                    </button>
+                  </div>
+                )}
+
                 {/* Actions (Owner only, not on self) */}
-                {isOwner && m.role === "MANAGER" && (
+                {isOwner && m.id !== currentMemberId && m.role === "MANAGER" && (
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => setTransferTo(m)}
@@ -223,7 +262,7 @@ export default function MembersPage() {
                     </button>
                   </div>
                 )}
-                {isOwner && m.role === "OWNER" && (
+                {isOwner && m.id !== currentMemberId && m.role === "OWNER" && (
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => setConfirmRemove(m)}
@@ -261,6 +300,31 @@ export default function MembersPage() {
               <button onClick={() => handleRemove(confirmRemove)} disabled={busy}
                 className="px-4 py-2 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-white bg-red-500/80 hover:bg-red-500 transition-colors disabled:opacity-40">
                 {busy ? "Removing…" : "Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leave organisation modal */}
+      {confirmLeave && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => !busy && setConfirmLeave(false)}>
+          <div className="bg-dark border border-dark-lighter rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="font-headline text-lg font-black italic tracking-tighter text-white">Leave organisation?</h3>
+              <button onClick={() => !busy && setConfirmLeave(false)} className="text-muted hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+            <p className="text-sm text-muted mb-6">
+              You will lose access to this organisation and its events.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => !busy && setConfirmLeave(false)} disabled={busy}
+                className="px-4 py-2 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-muted border border-white/10 hover:text-white transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleLeave} disabled={busy}
+                className="px-4 py-2 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-white bg-red-500/80 hover:bg-red-500 transition-colors disabled:opacity-40">
+                {busy ? "Leaving…" : "Leave"}
               </button>
             </div>
           </div>

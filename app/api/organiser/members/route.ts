@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession } from "@/lib/amplify-server";
+import { getOrganiserSession, getUserSession } from "@/lib/amplify-server";
 import { canAddMember, MAX_ORGS_PER_USER } from "@/lib/organiser-members";
 
 // GET /api/organiser/members
@@ -20,7 +20,20 @@ export async function GET() {
         user: { select: { id: true, name: true, email: true } },
       },
     });
-    return NextResponse.json({ members, role: session.role });
+
+    const userSession = await getUserSession();
+    const currentMember = userSession
+      ? await prisma.organiserMember.findFirst({
+          where: { organiserId: session.sub, userId: userSession.sub },
+          select: { id: true },
+        })
+      : null;
+
+    return NextResponse.json({
+      members,
+      role: session.role,
+      currentMemberId: currentMember?.id ?? null,
+    });
   } catch {
     return NextResponse.json({ error: "Service unavailable." }, { status: 503 });
   }
