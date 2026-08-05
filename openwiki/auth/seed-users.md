@@ -27,6 +27,8 @@ People who manage an organiser on the platform.
 | Jade Nguyen | jade.nguyen@startline.test | Owner | Coastal Fitness Collective |
 | Chloe Bennett | chloe.bennett@startline.test | Manager | Coastal Fitness Collective |
 | Liam O'Connor | liam.oconnor@startline.test | Manager | Coastal Fitness Collective |
+| Avery Quinn | avery.quinn@startline.test | Manager | Apex Endurance Events |
+| Avery Quinn | avery.quinn@startline.test | Manager | Coastal Fitness Collective |
 
 > Roles: exactly one **Owner** per organiser (full control: members, ownership, deletion). **Managers** handle content (events, profile).
 
