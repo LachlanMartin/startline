@@ -55,6 +55,8 @@ const SEED_USERS: SeedUser[] = [
   // Coastal Fitness Collective co-managers
   { email: "liam.oconnor@startline.test", isAdmin: false, displayName: "Liam O'Connor" },
   { email: "chloe.bennett@startline.test", isAdmin: false, displayName: "Chloe Bennett" },
+  // Manager on both Apex and Coastal
+  { email: "avery.quinn@startline.test", isAdmin: false, displayName: "Avery Quinn" },
   // Regular athletes (no organiser membership)
   { email: "harper.jones@startline.test",  isAdmin: false, displayName: "Harper Jones" },
   { email: "mateo.silva@startline.test",   isAdmin: false, displayName: "Mateo Silva" },
@@ -88,11 +90,13 @@ const MEMBER_ROSTER: Record<string, { email: string; role: "OWNER" | "MANAGER" }
     { email: "tom.whitfield@startline.test",       role: "MANAGER" },
     { email: "jack.obrien@startline.test",  role: "MANAGER" },
     { email: "priya.sharma@startline.test", role: "MANAGER" },
+    { email: "avery.quinn@startline.test", role: "MANAGER" },
   ],
   "jade.nguyen@startline.test": [
     { email: "jade.nguyen@startline.test",        role: "OWNER" },
     { email: "liam.oconnor@startline.test", role: "MANAGER" },
     { email: "chloe.bennett@startline.test", role: "MANAGER" },
+    { email: "avery.quinn@startline.test", role: "MANAGER" },
   ],
 };
 
