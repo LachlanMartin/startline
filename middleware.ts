@@ -16,6 +16,7 @@ const ORGANISER_PROTECTED = [
   "/organiser/dashboard",
   "/organiser/listings",
   "/organiser/profile",
+  "/organiser/members",
   "/organiser/new-listing",
   "/organiser/onboarding",
   "/organiser/payments",
@@ -75,7 +76,7 @@ export async function middleware(req: NextRequest) {
 
   if (process.env.NODE_ENV === "development") {
     const bypass = req.cookies.get("__e2e_bypass")?.value;
-    if (bypass === "1") return NextResponse.next();
+    if (bypass) return NextResponse.next();
   }
 
   const { pathname } = req.nextUrl;

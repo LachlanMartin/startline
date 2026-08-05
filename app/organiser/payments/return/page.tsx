@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCircle, AlertCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -40,13 +41,19 @@ export default function PaymentsReturnPage() {
 
         {loading && (
           <>
-            <Loader2 className="w-10 h-10 text-gray-400 animate-spin mx-auto mb-4" />
+            <div className="flex justify-center mb-6" role="status" aria-label="Loading">
+              <Skeleton className="h-16 w-16 rounded-full bg-gray-200" />
+            </div>
             <h1 className="font-headline text-2xl font-black italic tracking-tighter text-gray-900 mb-2">
               Checking your account…
             </h1>
-            <p className="text-gray-500 text-[14px]">
+            <p className="text-gray-500 text-[14px] mb-6">
               We&apos;re confirming your Stripe setup with Stripe. This only takes a moment.
             </p>
+            <div className="space-y-3">
+              <Skeleton className="h-3 w-3/4 mx-auto bg-gray-200" />
+              <Skeleton className="h-3 w-1/2 mx-auto bg-gray-200" />
+            </div>
           </>
         )}
 

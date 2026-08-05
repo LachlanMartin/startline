@@ -41,6 +41,7 @@ function normalizeParticipants(body: Record<string, unknown>): CheckoutParticipa
     emergencyContactName: String(body.emergencyContactName ?? ""),
     emergencyContactPhone: String(body.emergencyContactPhone ?? ""),
     medicalNotes: String(body.medicalNotes ?? ""),
+    estimatedFinish: String(body.estimatedFinish ?? ""),
     waiverAccepted: body.waiverAccepted === true,
   }];
 }

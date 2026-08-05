@@ -143,6 +143,6 @@ jobs:
       - name: Start Next.js dev server
         shell: bash
         run: |
-          pnpm dev -p 3000 &
+          NEXT_PUBLIC_BASE_URL=http://localhost:3000 pnpm dev -p 3000 &
           npx wait-on http://localhost:3000/admin/login --timeout 60000
       - run: pnpm test:e2e

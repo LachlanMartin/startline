@@ -5,6 +5,13 @@ import { fetchAuthSession, getCurrentUser, signOut } from "aws-amplify/auth";
 
 export type Role = "user" | "organiser" | "admin";
 
+export type OrgMembership = {
+  organiserId:   string;
+  organiserName: string | null;
+  role:          string;
+  logoUrl:       string | null;
+};
+
 export type AuthUser = {
   sub:   string;
   email: string;
@@ -16,6 +23,8 @@ type AuthContextValue = {
   user:         AuthUser | null;
   role:         Role | null;
   hasOrganiser: boolean;
+  organiserCount: number;
+  memberships:  OrgMembership[];
   status:       AuthStatus;
   loading:      boolean;
   refresh:      () => Promise<void>;
@@ -26,6 +35,8 @@ const AuthContext = createContext<AuthContextValue>({
   user:         null,
   role:         null,
   hasOrganiser: false,
+  organiserCount: 0,
+  memberships:  [],
   status:       "loading",
   loading:      true,
   refresh:      async () => {},
@@ -36,10 +47,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user,         setUser]         = useState<AuthUser | null>(null);
   const [role,         setRole]         = useState<Role | null>(null);
   const [hasOrganiser, setHasOrganiser] = useState(false);
+  const [organiserCount, setOrganiserCount] = useState(0);
+  const [memberships,  setMemberships]  = useState<OrgMembership[]>([]);
   const [status,       setStatus]       = useState<AuthStatus>("loading");
 
   const hydrate = useCallback(async () => {
-    if (process.env.NODE_ENV === "development" && typeof document !== "undefined" && document.cookie.includes("__e2e_bypass=1")) {
+    if (process.env.NODE_ENV === "development" && typeof document !== "undefined" && document.cookie.includes("__e2e_bypass")) {
       setUser({ sub: "dev-bypass", email: "bypass@startline.test" });
       setStatus("authenticated");
       return;
@@ -88,6 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled && data?.role) {
           setRole(data.role);
           setHasOrganiser(Boolean(data.hasOrganiser));
+          setOrganiserCount(data.organiserCount ?? 0);
+          setMemberships(Array.isArray(data.memberships) ? data.memberships : []);
         }
       })
       .catch(() => {});
@@ -100,6 +115,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signOut();
     setUser(null);
     setStatus("unauthenticated");
+    setRole(null);
+    setHasOrganiser(false);
+    setOrganiserCount(0);
+    setMemberships([]);
   }, []);
 
   return (
@@ -108,6 +127,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user,
           role,
           hasOrganiser,
+          organiserCount,
+          memberships,
           status,
           loading: status === "loading",
           refresh: hydrate,

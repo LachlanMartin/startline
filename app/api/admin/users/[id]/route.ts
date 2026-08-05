@@ -32,7 +32,7 @@ export async function GET(
         id: true, email: true, name: true, username: true,
         bio: true, profilePicUrl: true, isPublic: true,
         city: true, state: true, isBanned: true,
-        organiser: { select: { id: true, orgName: true, status: true } },
+        memberships: { select: { organiser: { select: { id: true, orgName: true, status: true } } } },
       },
     });
     if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
@@ -60,7 +60,7 @@ export async function PUT(
 
   const existing = await prisma.user.findUnique({
     where:  { id },
-    select: { id: true, email: true, username: true, organiser: { select: { id: true } } },
+    select: { id: true, email: true, username: true },
   });
   if (!existing) return NextResponse.json({ error: "User not found." }, { status: 404 });
 
@@ -122,19 +122,6 @@ export async function PUT(
 
   try {
     await prisma.user.update({ where: { id }, data });
-
-    // Keep the organiser's contact email in sync (best-effort; collisions skip).
-    if ("email" in data && existing.organiser) {
-      const clash = await prisma.organiser.findFirst({
-        where: { email: data.email as string, NOT: { userId: id } },
-      });
-      if (!clash) {
-        await prisma.organiser.update({
-          where: { userId: id },
-          data: { email: data.email as string },
-        });
-      }
-    }
 
     writeAuditLog({
       adminId: session.sub,

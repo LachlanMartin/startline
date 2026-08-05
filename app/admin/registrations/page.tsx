@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback, Suspense, startTransition } from "rea
 import { useSearchParams } from "next/navigation";
 import { Search, RefreshCw, RotateCcw, DollarSign } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
-type RegStatus = "CONFIRMED" | "CANCELLED" | "REFUNDED";
+type RegStatus = "CONFIRMED" | "CANCELLED" | "REFUNDED" | "REFUND_REQUESTED";
 
 interface Registration {
   id: string;
@@ -26,16 +27,18 @@ interface Registration {
 }
 
 const STATUS_TABS: { status: RegStatus | "ALL"; label: string }[] = [
-  { status: "ALL",       label: "All"       },
-  { status: "CONFIRMED", label: "Confirmed" },
-  { status: "REFUNDED",  label: "Refunded"  },
-  { status: "CANCELLED", label: "Cancelled" },
+  { status: "ALL",              label: "All"              },
+  { status: "CONFIRMED",        label: "Confirmed"        },
+  { status: "REFUND_REQUESTED", label: "Refund requested" },
+  { status: "REFUNDED",         label: "Refunded"         },
+  { status: "CANCELLED",        label: "Cancelled"        },
 ];
 
 const STATUS_STYLE: Record<RegStatus, { bg: string; text: string; dot: string }> = {
-  CONFIRMED: { bg: "bg-primary/10",   text: "text-primary",   dot: "bg-primary"   },
-  CANCELLED: { bg: "bg-white/[0.05]", text: "text-muted",     dot: "bg-muted-dark" },
-  REFUNDED:  { bg: "bg-amber-400/10", text: "text-amber-300", dot: "bg-amber-400"  },
+  CONFIRMED:         { bg: "bg-primary/10",   text: "text-primary",   dot: "bg-primary"   },
+  CANCELLED:         { bg: "bg-white/[0.05]", text: "text-muted",     dot: "bg-muted-dark" },
+  REFUND_REQUESTED:  { bg: "bg-blue-400/10",  text: "text-blue-300",  dot: "bg-blue-400"  },
+  REFUNDED:          { bg: "bg-amber-400/10", text: "text-amber-300", dot: "bg-amber-400"  },
 };
 
 function formatDate(iso: string) {
@@ -285,12 +288,7 @@ function RegistrationsContent() {
           </div>
 
           <Card className="overflow-hidden">
-            {loading && (
-              <div className="p-12 text-center">
-                <div className="w-5 h-5 border-2 border-dark-lighter border-t-primary rounded-full animate-spin mx-auto mb-3" />
-                <div className="font-headline text-sm text-muted uppercase tracking-widest">Loading…</div>
-              </div>
-            )}
+            {loading && <TableSkeleton rows={6} cols={5} className="p-6" />}
 
             {!loading && regs.length === 0 && (
               <div className="p-12 text-center">

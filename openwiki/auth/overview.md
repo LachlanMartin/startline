@@ -59,7 +59,7 @@ Two independent bypass mechanisms:
 
 ### Legacy Bypass (no Cognito pool)
 When `NEXT_PUBLIC_COGNITO_USER_POOL_ID` is unset and `NODE_ENV=development`, bypass activates automatically. Hard-codes session as:
-- sub: `dev-bypass-organiser`, email: `organiser@startline.test`, groups: `["admins"]`
+- sub: `dev-bypass-organiser`, email: `sarah.mitchell@startline.test`, groups: `["admins"]`
 
 ### E2E Cookie Bypass
 For Playwright tests, a `__e2e_bypass=1` cookie provides auth-free access to protected routes. Set via `page.context().addCookies()`. Works in middleware, `getServerSession()`, and `AuthContext`. Only works in `NODE_ENV=development`. Used by `adminLogin()` and `organiserLogin()` helpers in `e2e/helpers.ts` to avoid Cognito dependency and TOTP challenges.
@@ -77,13 +77,7 @@ For Playwright tests, a `__e2e_bypass=1` cookie provides auth-free access to pro
 
 ## Seed Users
 
-Defined in `/prisma/seed.ts`. All share password `Password123!`:
-
-| Email | Role | Notes |
-|---|---|---|
-| `admin@startline.test` | Admin | In `admins` Cognito group |
-| `organiser@startline.test` | Organiser | Linked to "Apex Endurance Events", verified |
-| `user@startline.test` | User | No organiser profile |
+Defined in `/prisma/seed.ts`. All share password `Password123!`. See the full roster — names, emails, organiser roles, and E2E bypass cookies — in [Seed Users](seed-users.md).
 
 ## Athlete Account Creation
 
@@ -93,3 +87,4 @@ When a guest registers for an event, an athlete Cognito user is created automati
 
 - [Architecture](/openwiki/architecture/overview.md) — how middleware routes and protects portals
 - [Domain & Data Model](/openwiki/domain/data-model.md) — User, Admin, and Organiser entities
+- [User Roles & Permissions](/openwiki/domain/user-roles.md) — the four account types and their permissions

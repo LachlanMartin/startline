@@ -14,14 +14,17 @@ export async function GET(
     where:  { username },
     select: {
       id: true, name: true, username: true, bio: true,
-      profilePicUrl: true, isPublic: true,
+      profilePicUrl: true, isPublic: true, city: true, state: true, createdAt: true,
       registrations: {
         where: { status: "CONFIRMED" },
         select: {
-          eventId: true,
-          event: { select: { title: true, eventDate: true, city: true, state: true } },
+          id: true, eventId: true,
+          category: true,
+          resultDistance: true, resultTime: true, resultPlacement: true,
+          isPersonalBest: true, isTopResult: true,
+          event: { select: { title: true, discipline: true, eventDate: true, city: true, state: true } },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { event: { eventDate: "desc" } },
         take: 20,
       },
     },

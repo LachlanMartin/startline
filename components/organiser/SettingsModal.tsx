@@ -8,6 +8,7 @@ import {
   CheckCircle, User, Lock, Bell, CreditCard, Cookie,
 } from "lucide-react";
 import { useSettings, type SettingsSection } from "@/context/SettingsContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ── shared form primitives ──────────────────────────────────────────────────
 
@@ -306,11 +307,23 @@ function PersonalInfoForm() {
 
   const initial = (form.orgName || "O").charAt(0).toUpperCase();
 
-  if (loadingForm) return (
-    <div className="py-10 text-center">
-      <div className="w-5 h-5 border-2 border-dark-lighter border-t-primary rounded-full animate-spin mx-auto" />
-    </div>
-  );
+  if (loadingForm) {
+    return (
+      <div className="space-y-6 py-2" role="status" aria-label="Loading profile">
+        <Skeleton className="h-28 w-full rounded-xl" />
+        <div className="flex gap-4">
+          <Skeleton className="h-16 w-16 rounded-full shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+        </div>
+        <Skeleton className="h-11 w-full rounded-lg" />
+        <Skeleton className="h-11 w-full rounded-lg" />
+        <Skeleton className="h-24 w-full rounded-lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

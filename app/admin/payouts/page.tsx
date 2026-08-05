@@ -74,7 +74,7 @@ export default function AdminPayoutsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
+    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 pt-14">
       <div className="mb-8">
         <h1 className="font-headline text-2xl sm:text-3xl font-black italic tracking-tighter text-light">
           Stripe payouts

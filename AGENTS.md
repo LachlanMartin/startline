@@ -40,9 +40,9 @@ All seed users share password `Password123!`.
 
 | Email | Notes |
 |---|---|
-| `admin@startline.test` | Admin (`admins` group), MFA enabled in seed |
-| `organiser@startline.test` | User + Organiser (Apex Endurance Events, verified) |
-| `user@startline.test` | User only |
+| `marcus.stirling@startline.test` | Admin (`admins` group), MFA enabled in seed |
+| `sarah.mitchell@startline.test` | User + Organiser (Apex Endurance Events, verified) |
+| `jade.nguyen@startline.test` | User only |
 
 Old Cognito users from previous seeds not auto-removed — delete manually or via Terraform reset.
 

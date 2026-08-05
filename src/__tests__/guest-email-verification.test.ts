@@ -27,8 +27,8 @@ describe("guest email verification helpers", () => {
 
   it("skips the signed-in account email", () => {
     expect(getEmailsRequiringVerification(
-      ["user@startline.test", "friend@example.com"],
-      "user@startline.test"
+      ["jade.nguyen@startline.test", "friend@example.com"],
+      "jade.nguyen@startline.test"
     )).toEqual(["friend@example.com"]);
   });
 });

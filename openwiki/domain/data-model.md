@@ -13,15 +13,18 @@ The data layer uses **Prisma ORM v7** against **PostgreSQL 15**. The schema is d
 ## Core Entities
 
 ### User (`users`)
-Every platform user has a User record, created on first Cognito login. Users can optionally create an Organiser profile (1:1). Fields include name, username (public handle), bio, profile picture, city/state (for map centering), ban status, and MFA toggle (`mfaEnabled`).
+Every platform user has a User record, created on first Cognito login. Users can belong to zero or more Organisers via `OrganiserMember`. Fields include name, username (public handle), bio, profile picture, city/state (for map centering), ban status, and MFA toggle (`mfaEnabled`).
 
 ### Organiser (`organisers`)
-Linked 1:1 to a User. Holds business-specific fields:
+A standalone brand entity managed by one or more Users through `OrganiserMember` (see [User Roles & Permissions](user-roles.md)). `createdBy` records the creator (informational). Holds business-specific fields:
 - **Profile**: org name, contact info, ABN, website, social links, bio, logo, cover image, photos
 - **Legal**: legal name, Date of Birth (for ATO SERR reporting), insurance declaration
 - **Stripe**: Stripe Connect Express account reference and onboarding completion status
 - **Status**: `APPROVED` or `SUSPENDED`
 - **Verification**: Verified organisers can auto-publish events; unverified ones need admin approval
+
+### OrganiserMember (`organiser_members`)
+Junction granting a User a role on an Organiser. `role ∈ { OWNER, MANAGER }`, `@@unique([organiserId, userId])`. A user may hold memberships on up to 5 organisers; each organiser has exactly one Owner (enforced in app logic).
 
 ### Admin (`admins`)
 Admin accounts are created on first Cognito login for users in the `admins` Cognito group. They have access to the admin portal and are referenced by audit logs and event reviews.

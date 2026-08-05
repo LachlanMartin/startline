@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, startTransition } from "react";
 import { Search, RefreshCw, Ban, CheckCircle2, Building2, UserX, Pencil } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import EditUserDialog from "@/components/admin/EditUserDialog";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ interface UserRow {
   city: string | null;
   state: string | null;
   createdAt: string;
-  organiser: { id: string; orgName: string | null; status: string } | null;
+  memberships: { organiser: { id: string; orgName: string | null; status: string } }[];
   _count: { registrations: number };
 }
 
@@ -78,14 +79,14 @@ function UserRowItem({
               </span>
             )}
 
-            {user.organiser && (
-              <span className={`inline-flex items-center gap-1 font-headline text-[10px] font-bold uppercase tracking-widest
-                ${user.organiser.status === "SUSPENDED" ? "text-red-400" : "text-primary"}`}>
+            {user.memberships?.map(({ organiser }) => (
+              <span key={organiser.id} className={`inline-flex items-center gap-1 font-headline text-[10px] font-bold uppercase tracking-widest
+                ${organiser.status === "SUSPENDED" ? "text-red-400" : "text-primary"}`}>
                 <Building2 className="w-3.5 h-3.5" />
-                {user.organiser.orgName ?? "Organiser"}
-                {user.organiser.status === "SUSPENDED" && " (suspended)"}
+                {organiser.orgName ?? "Organiser"}
+                {organiser.status === "SUSPENDED" && " (suspended)"}
               </span>
-            )}
+            ))}
           </div>
 
           <div className="font-headline text-[11px] uppercase tracking-widest text-muted-dark mb-1">
@@ -227,12 +228,7 @@ export default function AdminUsersPage() {
           </form>
 
           <Card className="overflow-hidden">
-            {loading && (
-              <div className="p-12 text-center">
-                <div className="w-5 h-5 border-2 border-dark-lighter border-t-primary rounded-full animate-spin mx-auto mb-3" />
-                <div className="font-headline text-sm text-muted uppercase tracking-widest">Loading…</div>
-              </div>
-            )}
+            {loading && <TableSkeleton rows={6} cols={4} className="p-6" />}
 
             {!loading && users.length === 0 && (
               <div className="p-12 text-center">

@@ -19,7 +19,19 @@ export async function GET() {
       id: true, email: true, name: true, username: true,
       bio: true, profilePicUrl: true, isPublic: true,
       city: true, state: true,
-      organiser: { select: { id: true, orgName: true, logoUrl: true, verified: true } },
+      memberships: { select: { organiser: { select: { id: true, orgName: true, logoUrl: true, verified: true } } } },
+      registrations: {
+        where: { status: "CONFIRMED" },
+        select: {
+          id: true, eventId: true,
+          category: true,
+          resultDistance: true, resultTime: true, resultPlacement: true,
+          isPersonalBest: true, isTopResult: true,
+          event: { select: { title: true, discipline: true, eventDate: true, city: true, state: true } },
+        },
+        orderBy: { event: { eventDate: "desc" } },
+        take: 20,
+      },
     },
   });
   if (!user) {

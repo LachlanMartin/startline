@@ -22,17 +22,25 @@ export async function selectStateFilter(page: Page, state: string): Promise<void
   }
 }
 
-export async function organiserLogin(page: Page, _email = "organiser@startline.test"): Promise<void> {
+export async function organiserLogin(page: Page, _email = "sarah.mitchell@startline.test"): Promise<void> {
   await page.context().addCookies([
-    { name: "__e2e_bypass", value: "1", domain: "localhost", path: "/", sameSite: "Lax" },
+    { name: "__e2e_bypass", value: "organiser", domain: "localhost", path: "/", sameSite: "Lax" },
   ]);
   await page.goto("/organiser/dashboard");
   await page.waitForURL("**/organiser/dashboard**", { timeout: 15000 });
 }
 
-export async function adminLogin(page: Page, _email = "admin@startline.test"): Promise<void> {
+export async function organiserMemberLogin(page: Page): Promise<void> {
   await page.context().addCookies([
-    { name: "__e2e_bypass", value: "1", domain: "localhost", path: "/", sameSite: "Lax" },
+    { name: "__e2e_bypass", value: "member", domain: "localhost", path: "/", sameSite: "Lax" },
+  ]);
+  await page.goto("/organiser/dashboard");
+  await page.waitForURL("**/organiser/dashboard**", { timeout: 15000 });
+}
+
+export async function adminLogin(page: Page, _email = "marcus.stirling@startline.test"): Promise<void> {
+  await page.context().addCookies([
+    { name: "__e2e_bypass", value: "admin", domain: "localhost", path: "/", sameSite: "Lax" },
   ]);
   await page.goto("/admin/dashboard");
   await page.waitForURL("**/admin/dashboard**", { timeout: 15000 });
