@@ -9,6 +9,7 @@ export type OrgMembership = {
   organiserId:   string;
   organiserName: string | null;
   role:          string;
+  logoUrl:       string | null;
 };
 
 export type AuthUser = {

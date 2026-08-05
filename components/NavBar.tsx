@@ -92,7 +92,9 @@ export default function NavBar() {
               {memberships.map((m) => (
                 <button key={m.organiserId} onClick={() => switchOrganiser(m.organiserId)}
                   className="w-full flex items-center gap-3 px-4 py-2.5 font-headline text-[12px] font-bold uppercase tracking-widest text-left text-white/60 hover:text-white hover:bg-white/10 transition-colors">
-                  <Building2 className="w-3.5 h-3.5 shrink-0 text-primary/70" />
+                  {m.logoUrl
+                    ? <img src={m.logoUrl} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+                    : <Building2 className="w-3.5 h-3.5 shrink-0 text-primary/70" />}
                   <span className="truncate flex-1">{m.organiserName ?? "Organisation"}</span>
                   {m.role === "OWNER"
                     ? <span className="shrink-0 text-[9px] text-primary border border-primary/40 rounded px-1.5 py-0.5">OWNER</span>
@@ -234,7 +236,10 @@ export default function NavBar() {
                   {memberships.map((m) => (
                     <button key={m.organiserId} onClick={() => { setIsMenuOpen(false); switchOrganiser(m.organiserId); }}
                       className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors text-left">
-                      <Building2 className="w-4 h-4" /> {m.organiserName ?? "Organisation"}
+                      {m.logoUrl
+                        ? <img src={m.logoUrl} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+                        : <Building2 className="w-4 h-4 shrink-0" />}
+                      {m.organiserName ?? "Organisation"}
                     </button>
                   ))}
                   {isAdmin && (

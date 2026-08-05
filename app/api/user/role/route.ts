@@ -18,7 +18,7 @@ export async function GET() {
       memberships: {
         select: {
           role: true,
-          organiser: { select: { id: true, orgName: true } },
+          organiser: { select: { id: true, orgName: true, logoUrl: true } },
         },
         orderBy: { createdAt: "asc" },
       },
@@ -29,6 +29,7 @@ export async function GET() {
     organiserId:   m.organiser.id,
     organiserName: m.organiser.orgName,
     role:          m.role,
+    logoUrl:       m.organiser.logoUrl,
   }));
   const organiserCount = memberships.length;
 
