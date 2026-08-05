@@ -13,26 +13,38 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Organisation name is required." }, { status: 400 });
   }
 
-  const existing = await prisma.organiser.findUnique({
+  const existing = await prisma.organiserMember.findFirst({
     where: { userId: session.sub },
-    select: { id: true, orgName: true },
+    select: { organiser: { select: { id: true, orgName: true } } },
   });
   if (existing) {
-    return NextResponse.json(existing);
+    return NextResponse.json(existing.organiser);
   }
 
   try {
-    const organiser = await prisma.organiser.create({
-      data: {
-        userId: session.sub,
-        email: session.email,
-        orgName: orgName.trim(),
-        verified: false,
-        status: "APPROVED",
-        abn: "",
-        photos: [],
-      },
-      select: { id: true, orgName: true },
+    const organiser = await prisma.$transaction(async (tx) => {
+      const org = await tx.organiser.create({
+        data: {
+          createdBy: session.sub,
+          email: session.email,
+          orgName: orgName.trim(),
+          verified: false,
+          status: "APPROVED",
+          abn: "",
+          photos: [],
+        },
+        select: { id: true, orgName: true },
+      });
+
+      await tx.organiserMember.create({
+        data: {
+          organiserId: org.id,
+          userId: session.sub,
+          role: "OWNER",
+        },
+      });
+
+      return org;
     });
 
     return NextResponse.json(organiser);

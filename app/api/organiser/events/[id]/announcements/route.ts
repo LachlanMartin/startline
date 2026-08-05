@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
+import { sanitizeHtml } from "@/lib/sanitize-html";
+import { stripHtml } from "@/lib/utils";
 // GET /api/organiser/events/[id]/announcements
 export async function GET(
   _req: NextRequest,
@@ -54,14 +56,16 @@ export async function POST(
     const { title, body: text } = body as { title?: string; body?: string };
 
     if (!title?.trim()) return NextResponse.json({ error: "Title is required." }, { status: 400 });
-    if (!text?.trim())  return NextResponse.json({ error: "Body is required." },  { status: 400 });
+    if (!text || !stripHtml(text)) {
+      return NextResponse.json({ error: "Body is required." }, { status: 400 });
+    }
 
     const announcement = await prisma.announcement.create({
       data: {
         eventId:     id,
         organiserId: session.sub,
         title:       title.trim(),
-        body:        text.trim(),
+        body:        sanitizeHtml(text.trim()),
       },
       select: { id: true, title: true, body: true, createdAt: true },
     });

@@ -15,7 +15,7 @@ model Admin {
   name       String?
   createdAt  DateTime @default(now())
 
-  eventReviews Event[]        @relation("EventReviewedBy")
+  eventReviews Event[]         @relation("EventReviewedBy")
   auditLogs    AdminAuditLog[]
 
   @@map("admins")
@@ -38,44 +38,45 @@ model AdminAuditLog {
 }
 
 // ─── Organiser accounts ───────────────────────────────────────────────────────
-// An organiser profile is always linked to a User (1:1). The User's auth
-// credentials are used; the organiser record holds business-specific fields.
+// An Organiser is a standalone brand entity that Users manage. It has no
+// credentials of its own — access is granted through OrganiserMember rows.
+// `createdBy` records which User created the profile (non-unique, informational).
 model Organiser {
-  id         String          @id @default(uuid())
-  userId String          @unique
-  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  email      String          @unique
-  verified   Boolean         @default(false)
-  status     OrganiserStatus @default(APPROVED)
+  id            String          @id @default(uuid())
+  createdBy     String?
+  createdByUser User?           @relation("OrganiserCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  email         String          @unique
+  verified      Boolean         @default(false)
+  status        OrganiserStatus @default(APPROVED)
 
   // Profile — filled during onboarding, editable afterwards
-  orgName      String?
-  contactName  String?
-  contactEmail String?
-  phone        String?
-  abn          String?
-  website      String?
-  instagram    String?
-  facebook     String?
-  bio            String?
-  logoUrl        String?
-  logoPosition   String?  @default("50% 50%")
-  coverImageUrl  String?
-  coverPosition  String?  @default("50% 50%")
-  photos         String[]
+  orgName       String?
+  contactName   String?
+  contactEmail  String?
+  phone         String?
+  abn           String?
+  website       String?
+  instagram     String?
+  facebook      String?
+  bio           String?
+  logoUrl       String?
+  logoPosition  String?  @default("50% 50%")
+  coverImageUrl String?
+  coverPosition String?  @default("50% 50%")
+  photos        String[]
 
   // Legal & compliance — required for ATO SERR reporting (ToS §3.2, Privacy Policy §2.1)
-  legalName String?
+  legalName         String?
   // Insurance self-declaration only — no documents collected (ToS §5.3, Privacy Policy §4.4)
   insuranceDeclared Boolean @default(false)
   // Date of birth (ISO 8601 yyyy-mm-dd) — used for identity verification and ATO SERR reporting.
   // Not required for organisers who only list external-link events.
-  dob String?
+  dob               String?
 
   // Stripe Express Connect — Startline stores only the account reference ID.
   // Bank account details (BSB + account number) are collected and held by Stripe directly (ToS §3.3, Privacy Policy §4.2).
-  stripeAccountId          String?  @unique
-  stripeOnboardingComplete Boolean  @default(false)
+  stripeAccountId          String? @unique
+  stripeOnboardingComplete Boolean @default(false)
 
   events        Event[]
   reviews       Review[]
@@ -83,10 +84,33 @@ model Organiser {
   notifications Notification[]
   registrations Registration[]
   follows       OrganiserFollow[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  members       OrganiserMember[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   @@map("organisers")
+}
+
+enum OrganiserRole {
+  OWNER
+  MANAGER
+}
+
+// A User's membership on an Organiser, granting a role. Exactly one
+// OWNER per organiser (enforced in app logic).
+model OrganiserMember {
+  id          String        @id @default(uuid())
+  organiserId String
+  organiser   Organiser     @relation(fields: [organiserId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        OrganiserRole @default(MANAGER)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([organiserId, userId])
+  @@index([userId])
+  @@map("organiser_members")
 }
 
 enum OrganiserStatus {
@@ -126,8 +150,13 @@ model Event {
   cap        Int?
   minAge     Int    @default(16)
 
-  // Step 4 — tickets
+  // Step 4 — tickets (pricing tiers — NOT start waves)
   waves             Json
+  // DEPRECATED — organiser start waves are moving to the StartWave table
+  // (see startWaveRows). Kept during the transition so existing readers keep
+  // working; drop once every consumer reads the relation. Was: JSON array of
+  // heat definitions (start time, capacity, match conditions).
+  startWaves        Json?
   inclusions        String?
   extras            String?
   activations       String?
@@ -136,7 +165,7 @@ model Event {
   feeStructure      String  @default("athlete")
 
   // Payouts — set once an admin triggers a Stripe Connect payout after the event ends.
-  payoutTriggered   Boolean @default(false)
+  payoutTriggered   Boolean   @default(false)
   payoutAmountCents Int?
   payoutAt          DateTime?
 
@@ -161,6 +190,7 @@ model Event {
   announcements Announcement[]
   registrations Registration[]
   savedEvents   SavedEvent[]
+  startWaveRows StartWave[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -168,9 +198,42 @@ model Event {
   @@map("events")
 }
 
+// ─── Start waves (heats) ──────────────────────────────────────────────────────
+// Organiser-defined start groups. Distinct from the ticket tiers in Event.waves:
+// a start wave is a physical heat with a start time, an optional capacity, and
+// optional match conditions (finish-time band / gender / age band) used to seed
+// athletes in by pace. Registrations link here via Registration.startWaveId.
+model StartWave {
+  id        String  @id @default(uuid())
+  eventId   String
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  label     String
+  startTime String? // "HH:mm", falls back to the event start time when null
+  capacity  Int?    // null = unlimited
+
+  // Match conditions — an athlete must satisfy every condition that is set.
+  finishMin Int?      // whole minutes, inclusive lower bound
+  finishMax Int?      // whole minutes, inclusive upper bound
+  genders   String[]  // empty = any gender
+  ageMin    Int?      // inclusive
+  ageMax    Int?      // inclusive
+
+  sortOrder Int @default(0) // preserves the organiser's wave order
+
+  registrations Registration[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, label])
+  @@index([eventId])
+  @@map("start_waves")
+}
+
 enum EventStatus {
-  DRAFT    // saved, not submitted
-  PENDING  // submitted — awaiting admin review
+  DRAFT // saved, not submitted
+  PENDING // submitted — awaiting admin review
   APPROVED // live on the platform
   REJECTED // admin denied
   ARCHIVED // organiser archived
@@ -188,17 +251,17 @@ model Review {
   user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Ratings 1–5
-  overallRating       Int
-  atmosphereRating Int?
-  organisationRating  Int?
-  experienceRating    Int?
+  overallRating      Int
+  atmosphereRating   Int?
+  organisationRating Int?
+  experienceRating   Int?
 
   title        String
   body         String
   reviewerName String
 
-  isVerified  Boolean  @default(false)
-  isPublished Boolean  @default(true)
+  isVerified  Boolean @default(false)
+  isPublished Boolean @default(true)
 
   createdAt DateTime @default(now())
 
@@ -251,47 +314,72 @@ model Registration {
   event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   organiserId String
   organiser   Organiser @relation(fields: [organiserId], references: [id], onDelete: Cascade)
-  userId String?
-  user   User? @relation(fields: [userId], references: [id])
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
 
-  athleteName  String
-  athleteEmail String
-  firstName    String?
-  lastName     String?
-  dateOfBirth  String? // ISO yyyy-mm-dd
-  gender       String?
-  mobile       String?
+  athleteName           String
+  athleteEmail          String
+  firstName             String?
+  lastName              String?
+  dateOfBirth           String? // ISO yyyy-mm-dd
+  gender                String?
+  mobile                String?
   emergencyContactName  String?
   emergencyContactPhone String?
   medicalNotes          String?
   waiverAccepted        Boolean @default(false)
   category     String?
+  // Ticket tier bought at checkout (pricing). Distinct from the start wave below.
   waveLabel    String?
+  // Organiser-assigned start wave (heat). This is the "wave" athletes see and are
+  // notified about. Seeded by the wave builder's conditions, or set by hand.
+  // startWaveId is the source of truth (FK to StartWave); startWaveLabel is a
+  // denormalised mirror kept during the JSON→table transition and will be dropped.
+  startWaveId    String?
+  startWave      StartWave? @relation(fields: [startWaveId], references: [id], onDelete: SetNull)
+  startWaveLabel String?
+  // The start wave the athlete was last notified about. Lets organisers reshuffle
+  // waves silently and only message athletes whose wave changed since last time.
+  waveNotifiedLabel String?
+  // Athlete's self-reported estimated finish time, in whole minutes. Used to seed
+  // athletes into start waves by pace. Null when not provided.
+  estimatedFinishMinutes Int?
+  bibNumber    String?
 
   // Money is stored in integer cents (AUD) to avoid float rounding.
-  amountCents      Int @default(0) // ticket price paid by the athlete
-  platformFeeCents Int @default(0) // Startline fee (3% + $1) on this entry
+  amountCents      Int    @default(0) // ticket price paid by the athlete
+  platformFeeCents Int    @default(0) // Startline fee (3% + $1) on this entry
   feeStructure     String @default("athlete") // "athlete" | "organiser"
 
   status                RegistrationStatus @default(CONFIRMED)
   stripePaymentIntentId String?
 
-  // Race results — populated by the organiser after the event (issue #201)
-  finishTime String? // finish time, ISO "HH:MM:SS"
-  result     String? // position e.g. "1st", "42nd", "DNF"
+  // Race results — organiser-entered (race management) + legacy profile fields
+  resultDistance  String?
+  resultTime      String?
+  resultPlacement String?
+  isPersonalBest  Boolean @default(false)
+  isTopResult     Boolean @default(false)
+  finishTime      String? // legacy / alternate finish time
+  result          String? // legacy position e.g. "1st", "42nd", "DNF"
 
   createdAt DateTime @default(now())
 
+  @@unique([eventId, bibNumber])
   @@index([eventId])
   @@index([organiserId])
+  @@index([startWaveId])
   @@index([stripePaymentIntentId])
   @@map("registrations")
 }
 
 enum RegistrationStatus {
   CONFIRMED
-  CANCELLED
+  // Athlete has asked for a refund. They drop out of wave assignment and no
+  // longer count against capacity; an admin processes the actual Stripe refund.
+  REFUND_REQUESTED
   REFUNDED
+  CANCELLED
 }
 
 // ─── User → Organiser follows ─────────────────────────────────────────────────
@@ -323,32 +411,57 @@ model SavedEvent {
 }
 
 // ─── User accounts ────────────────────────────────────────────────────────────
-// Every platform user has a User record. Organisers are users who also
-// have an associated Organiser profile (1:1).
+// Every platform user has a User record. Access to an Organiser is granted via
+// OrganiserMember (a user may belong to zero or more organisers).
 model User {
-  id         String   @id @default(uuid())
-  cognitoSub String?  @unique
-  email      String   @unique
-  name       String?  // full name
-  username   String?  @unique // public handle, chosen during profile setup
-  bio        String?
+  id            String   @id @default(uuid())
+  cognitoSub    String?  @unique
+  email         String   @unique
+  name          String? // full name
+  username      String?  @unique // public handle, chosen during profile setup
+  bio           String?
   profilePicUrl String?
-  isPublic   Boolean  @default(true) // public profile visible to others
-  isBanned       Boolean  @default(false)
-  mfaEnabled     Boolean  @default(false)
-  recoveryCodes  String?
-  city       String? // for map centering on login
-  state      String? // for map centering on login
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  isPublic      Boolean  @default(true) // public profile visible to others
+  isBanned      Boolean  @default(false)
+  mfaEnabled    Boolean  @default(false)
+  recoveryCodes String?
+  city          String? // for map centering on login
+  state         String? // for map centering on login
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  organiser     Organiser?
-  registrations Registration[]
-  follows       OrganiserFollow[]
-  savedEvents   SavedEvent[]
-  reviews       Review[]
+  memberships       OrganiserMember[]
+  createdOrganisers Organiser[]       @relation("OrganiserCreatedBy")
+  registrations     Registration[]
+  follows           OrganiserFollow[]
+  savedEvents       SavedEvent[]
+  reviews           Review[]
+  notifications     UserNotification[]
 
   @@map("users")
+}
+
+// ─── Athlete notifications ────────────────────────────────────────────────────
+// Delivered to signed-in athletes (e.g. when an organiser publishes wave changes).
+model UserNotification {
+  id        String               @id @default(uuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      UserNotificationType
+  title     String
+  body      String
+  eventId   String?
+  read      Boolean              @default(false)
+  createdAt DateTime             @default(now())
+
+  @@index([userId])
+  @@map("user_notifications")
+}
+
+enum UserNotificationType {
+  WAVE_UPDATE
+  ORGANISER_EVENT_LIVE
+  ORGANISER_REFUND_REQUEST
 }
 
 model WaitlistSubscriber {

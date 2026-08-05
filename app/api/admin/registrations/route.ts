@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/amplify-server";
 
-const VALID_STATUSES = ["CONFIRMED", "CANCELLED", "REFUNDED"] as const;
+const VALID_STATUSES = ["CONFIRMED", "REFUND_REQUESTED", "CANCELLED", "REFUNDED"] as const;
 type RegStatus = (typeof VALID_STATUSES)[number];
 
 export async function GET(req: NextRequest) {

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 const BYPASS_COOKIE = { name: "__e2e_bypass", value: "1", domain: "localhost", path: "/", sameSite: "Lax" as const };
 
-// Bypass cookie maps server-side to organiser@startline.test, which owns
+// Bypass cookie maps server-side to sarah.mitchell@startline.test, which owns
 // Apex Endurance Events and follows Coastal Fitness Collective.
 const COASTAL_ORG = "Coastal Fitness Collective";
 
@@ -24,7 +24,7 @@ test.describe("user profile: race history", () => {
     await page.goto("/profile");
     await page.waitForLoadState("networkidle");
 
-    // Bypass user is organiser@startline.test — seeded with 2 completed events
+    // Bypass user is sarah.mitchell@startline.test — seeded with 2 completed events
     await expect(page.getByText("Events Completed")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Race History" })).toBeVisible();
     await expect(page.getByText("The Apex Throwdown 2025")).toBeVisible();

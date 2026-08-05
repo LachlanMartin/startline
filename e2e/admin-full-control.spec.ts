@@ -195,7 +195,7 @@ test.describe("admin user editing", () => {
     await page.goto("/admin/users");
     await page.waitForLoadState("networkidle");
 
-    await page.getByPlaceholder(/search by name, email, or username/i).fill("user@startline.test");
+    await page.getByPlaceholder(/search by name, email, or username/i).fill("harper.jones@startline.test");
     await page.getByRole("button", { name: /search/i }).click();
 
     await page.getByRole("button", { name: /edit/i }).first().click();

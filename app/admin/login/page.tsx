@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldAlert } from "lucide-react";
 import { signIn, signOut, confirmSignIn, fetchAuthSession } from "aws-amplify/auth";
@@ -155,6 +156,10 @@ export default function AdminLoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-dark-darker px-6">
       <div className="w-full max-w-[400px] page-in">
+        <Link href="/" className="inline-block mb-10">
+          <Image src="/images/logo-title.svg" alt="Startline — back to home" width={110} height={28} className="h-6 w-auto opacity-80 hover:opacity-100 transition-opacity" />
+        </Link>
+
         <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-8">
           Admin Portal
         </span>

@@ -12,7 +12,7 @@ import {
 async function assertPublicOrganiser(id: string) {
   return prisma.organiser.findFirst({
     where: { id, status: "APPROVED" },
-    select: { id: true, userId: true },
+    select: { id: true },
   });
 }
 
@@ -27,15 +27,20 @@ export async function GET(
   }
 
   const session = await getUserSession();
-  const [stats, following] = await Promise.all([
+  const [stats, following, isOwnProfile] = await Promise.all([
     getOrganiserPublicStats(id),
     session ? isFollowingOrganiser(session.sub, id) : Promise.resolve(false),
+    session
+      ? prisma.organiserMember
+          .findFirst({ where: { organiserId: id, userId: session.sub }, select: { id: true } })
+          .then((m) => !!m)
+      : Promise.resolve(false),
   ]);
 
   return NextResponse.json({
     ...stats,
     following,
-    isOwnProfile: Boolean(session && session.sub === organiser.userId),
+    isOwnProfile,
   });
 }
 
@@ -54,7 +59,11 @@ export async function POST(
     return NextResponse.json({ error: "Organiser not found." }, { status: 404 });
   }
 
-  if (organiser.userId === session.sub) {
+  const ownMembership = await prisma.organiserMember.findFirst({
+    where: { organiserId: id, userId: session.sub },
+    select: { id: true },
+  });
+  if (ownMembership) {
     return NextResponse.json({ error: "You cannot follow your own organiser profile." }, { status: 400 });
   }
 

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { CheckCircle2, AlertCircle, RefreshCw, CalendarDays, Star, Users as UsersIcon, ShieldCheck, ShieldX, Ban, CircleCheck } from "lucide-react";
+import { CheckCircle2, AlertCircle, RefreshCw, CalendarDays, Star, Users as UsersIcon, ShieldCheck, ShieldX, Ban, CircleCheck, Building2, X, Crown, UserCog } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,13 @@ interface OrganiserRow {
   liveEventCount: number;
   reviewCount: number;
   registrationCount: number;
+  memberCount: number;
+}
+
+interface Member {
+  id: string;
+  role: "OWNER" | "MANAGER";
+  user: { id: string; name: string | null; email: string };
 }
 
 function formatDate(iso: string) {
@@ -38,10 +46,12 @@ function OrganiserCard({
   o,
   onToggleVerify,
   onToggleSuspend,
+  onViewMembers,
 }: {
   o: OrganiserRow;
   onToggleVerify: (id: string) => void;
   onToggleSuspend: (id: string) => void;
+  onViewMembers: (o: OrganiserRow) => void;
 }) {
   const name    = o.orgName || o.contactName || o.email;
   const initial = name.charAt(0).toUpperCase();
@@ -124,6 +134,12 @@ function OrganiserCard({
               <Star className="w-3.5 h-3.5 text-muted-dark" />
               {o.reviewCount} review{o.reviewCount !== 1 ? "s" : ""}
             </span>
+            <button onClick={() => onViewMembers(o)}
+              className="flex items-center gap-1.5 text-muted hover:text-primary transition-colors"
+            >
+              <Building2 className="w-3.5 h-3.5 text-muted-dark" />
+              {o.memberCount} member{o.memberCount !== 1 ? "s" : ""}
+            </button>
           </div>
         </div>
       </div>
@@ -133,7 +149,10 @@ function OrganiserCard({
 
 export default function AdminOrganisersPage() {
   const [organisers, setOrganisers] = useState<OrganiserRow[] | null>(null);
-  const loading = organisers === null;
+  const [viewOrg,    setViewOrg]    = useState<OrganiserRow | null>(null);
+  const [members,    setMembers]    = useState<Member[] | null>(null);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const loading     = organisers === null;
 
   const fetchOrganisers = useCallback(() => {
     fetch("/api/admin/organisers")
@@ -142,6 +161,21 @@ export default function AdminOrganisersPage() {
   }, []);
 
   useEffect(() => { fetchOrganisers(); }, [fetchOrganisers]);
+
+  const viewMembers = useCallback(async (o: OrganiserRow) => {
+    setViewOrg(o);
+    setMembers(null);
+    setLoadingMembers(true);
+    try {
+      const res = await fetch(`/api/admin/organisers/${o.id}/members`);
+      const data = await res.json();
+      setMembers(Array.isArray(data.members) ? data.members : []);
+    } catch {
+      setMembers([]);
+    } finally {
+      setLoadingMembers(false);
+    }
+  }, []);
 
   const toggleVerify = useCallback(async (id: string) => {
     try {
@@ -188,12 +222,7 @@ export default function AdminOrganisersPage() {
           </div>
 
           <Card className="overflow-hidden">
-            {loading && (
-              <div className="p-12 text-center">
-                <div className="w-5 h-5 border-2 border-dark-lighter border-t-primary rounded-full animate-spin mx-auto mb-3" />
-                <div className="font-headline text-sm text-muted uppercase tracking-widest">Loading…</div>
-              </div>
-            )}
+            {loading && <TableSkeleton rows={6} cols={4} className="p-6" />}
 
             {!loading && organisers.length === 0 && (
               <div className="p-12 text-center">
@@ -203,7 +232,7 @@ export default function AdminOrganisersPage() {
             )}
 
             {!loading && organisers.map((o) => (
-              <OrganiserCard key={o.id} o={o} onToggleVerify={toggleVerify} onToggleSuspend={toggleSuspend} />
+              <OrganiserCard key={o.id} o={o} onToggleVerify={toggleVerify} onToggleSuspend={toggleSuspend} onViewMembers={viewMembers} />
             ))}
           </Card>
 
@@ -214,6 +243,56 @@ export default function AdminOrganisersPage() {
           )}
         </div>
       </main>
+
+      {/* Members viewer modal */}
+      {viewOrg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={() => setViewOrg(null)}>
+          <div className="bg-dark border border-dark-lighter rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <div className="font-headline text-[11px] font-bold uppercase tracking-[0.25em] text-primary mb-1">Members</div>
+                <h3 className="font-headline text-lg font-black italic tracking-tighter text-light">{viewOrg.orgName || "Organisation"}</h3>
+              </div>
+              <button onClick={() => setViewOrg(null)} className="text-muted hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+
+            <div className="space-y-2">
+              {loadingMembers ? (
+                <div className="py-8 text-center">
+                  <div className="w-5 h-5 border-2 border-dark-lighter border-t-primary rounded-full animate-spin mx-auto mb-2" />
+                  <div className="font-headline text-[12px] uppercase tracking-widest text-muted">Loading…</div>
+                </div>
+              ) : members?.length === 0 ? (
+                <div className="py-8 text-center">
+                  <Building2 className="w-6 h-6 text-white/20 mx-auto mb-2" />
+                  <div className="font-headline text-[12px] uppercase tracking-widest text-muted">No members</div>
+                </div>
+              ) : (
+                members?.map((m) => (
+                  <div key={m.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-dark-light/60 border border-white/[0.05]">
+                    <div className="w-8 h-8 rounded-lg bg-dark-light font-headline font-black italic flex items-center justify-center shrink-0 text-xs text-light">
+                      {(m.user.name ?? m.user.email)[0]?.toUpperCase() ?? "?"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-headline text-[13px] font-bold text-light truncate">{m.user.name ?? m.user.email}</div>
+                      <div className="font-headline text-[10px] uppercase tracking-widest text-muted truncate">{m.user.email}</div>
+                    </div>
+                    {m.role === "OWNER" ? (
+                      <span className="inline-flex items-center gap-1 font-headline text-[9px] font-bold uppercase tracking-widest text-dark bg-primary rounded px-1.5 py-0.5 shrink-0">
+                        <Crown className="w-3 h-3" /> Owner
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 font-headline text-[9px] font-bold uppercase tracking-widest text-white/40 border border-white/15 rounded px-1.5 py-0.5 shrink-0">
+                        <UserCog className="w-3 h-3" /> Manager
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

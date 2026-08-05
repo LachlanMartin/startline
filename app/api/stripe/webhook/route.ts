@@ -153,6 +153,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
         emergencyContactPhone: expanded.emergencyContactPhone,
         medicalNotes: expanded.medicalNotes || null,
         waiverAccepted: true,
+        estimatedFinishMinutes: participant.eft ?? null,
         waveLabel: waveOf(participant),
         amountCents: priceOf(participant),
         platformFeeCents: feeOf(participant),

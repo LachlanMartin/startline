@@ -14,6 +14,9 @@ import ReviewPayStep, { type ReviewRow } from "./ReviewPayStep";
 import { useAuthContext } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import {
+  Skeleton, PageHeaderSkeleton, PageShellSkeleton,
+} from "@/components/ui/skeleton";
+import {
   splitFullName,
   validateParticipants,
   getRegistrationFormErrors,
@@ -485,6 +488,7 @@ function RegisterContent() {
       rows.push({ label: "Email", value: p.email });
       rows.push({ label: "Date of birth", value: p.dateOfBirth || "—" });
       rows.push({ label: "Gender", value: p.gender || "—" });
+      if (p.estimatedFinish.trim()) rows.push({ label: "Estimated finish", value: p.estimatedFinish });
       rows.push({ label: "Emergency contact", value: `${p.emergencyContactName} · ${p.emergencyContactPhone}` });
       if (p.medicalNotes.trim()) rows.push({ label: "Medical notes", value: p.medicalNotes });
     } else {
@@ -504,9 +508,18 @@ function RegisterContent() {
   // ── Loading / not-found ──
   if (loading || status === "loading") {
     return (
-      <div className="min-h-screen bg-dark-darker flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-dark-lighter border-t-primary rounded-full animate-spin" />
-      </div>
+      <PageShellSkeleton maxWidth="max-w-[1100px]">
+        <Skeleton className="h-3 w-28 mb-6" />
+        <PageHeaderSkeleton actions={0} />
+        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-64 w-full rounded-2xl" />
+            <Skeleton className="h-40 w-full rounded-2xl" />
+          </div>
+          <Skeleton className="h-72 w-full rounded-2xl" />
+        </div>
+      </PageShellSkeleton>
     );
   }
   if (!event) {
@@ -902,8 +915,12 @@ function RegisterContent() {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-dark border border-dark-lighter rounded-[14px] p-10 flex items-center justify-center">
-                    <div className="w-6 h-6 border-2 border-dark-lighter border-t-primary rounded-full animate-spin" />
+                  <div className="bg-dark border border-dark-lighter rounded-[14px] p-6 space-y-4" role="status" aria-label="Loading payment">
+                    <Skeleton className="h-5 w-40" />
+                    <Skeleton className="h-12 w-full rounded-lg" />
+                    <Skeleton className="h-12 w-full rounded-lg" />
+                    <Skeleton className="h-12 w-full rounded-lg" />
+                    <Skeleton className="h-11 w-full rounded-lg" />
                   </div>
                 )
               ) : (

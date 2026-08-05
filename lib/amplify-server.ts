@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { jwtVerify, createRemoteJWKSet } from "jose";
+import type { OrganiserRole } from "@prisma/client";
 import prisma from "./prisma";
 
 export type ServerSession = {
@@ -23,6 +24,13 @@ export type OrganiserSession = {
   email:    string;
   status:   string;
   verified: boolean;
+  role:     OrganiserRole;
+};
+
+export type OrganiserMembership = {
+  organiserId:   string;
+  organiserName: string | null;
+  role:          OrganiserRole;
 };
 
 export type AdminSession = {
@@ -56,7 +64,7 @@ export async function getServerSession(): Promise<ServerSession | null> {
   if (isBypass) {
     return {
       sub: "dev-bypass-organiser",
-      email: "organiser@startline.test",
+      email: "sarah.mitchell@startline.test",
       groups: ["admins"],
     };
   }
@@ -64,12 +72,16 @@ export async function getServerSession(): Promise<ServerSession | null> {
   if (process.env.NODE_ENV === "development") {
     const cookieStore = await cookies().catch(() => null);
     const bypass = cookieStore?.get("__e2e_bypass")?.value;
-    if (bypass === "1") {
-      return {
-        sub: "dev-bypass-organiser",
-        email: "organiser@startline.test",
-        groups: ["admins"],
+    if (bypass) {
+      const identities: Record<string, ServerSession> = {
+        "1":        { sub: "dev-bypass-organiser", email: "sarah.mitchell@startline.test",  groups: ["admins"] },
+        "organiser": { sub: "dev-bypass-organiser", email: "sarah.mitchell@startline.test",  groups: [] },
+        "member":   { sub: "dev-bypass-member",    email: "tom.whitfield@startline.test",   groups: [] },
+        "admin":    { sub: "dev-bypass-admin",     email: "marcus.stirling@startline.test", groups: ["admins"] },
+        "user":     { sub: "dev-bypass-user",      email: "jade.nguyen@startline.test",      groups: [] },
       };
+      const identity = identities[bypass];
+      if (identity) return identity;
     }
   }
 
@@ -150,6 +162,11 @@ export async function getUserSession(): Promise<UserSession | null> {
   }
 }
 
+const ACTIVE_ORG_COOKIE = "startline_active_org";
+
+// Resolves the user's memberships to an active Organiser. If the user manages
+// multiple organisers, the `startline_active_org` cookie (set by the org
+// switcher) picks the active one; otherwise the OWNER membership wins.
 export async function getOrganiserSession(): Promise<OrganiserSession | null> {
   const cognitoSession = await getServerSession();
   if (!cognitoSession) return null;
@@ -157,16 +174,83 @@ export async function getOrganiserSession(): Promise<OrganiserSession | null> {
   try {
     const user = await prisma.user.findUnique({
       where: { cognitoSub: cognitoSession.sub },
+      include: {
+        memberships: {
+          include: {
+            organiser: {
+              select: { id: true, email: true, status: true, verified: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+    if (!user || user.memberships.length === 0) return null;
+
+    let membership = user.memberships[0];
+    if (user.memberships.length > 1) {
+      const cookieStore = await cookies().catch(() => null);
+      const activeId   = cookieStore?.get(ACTIVE_ORG_COOKIE)?.value;
+      const fromCookie = user.memberships.find((m) => m.organiser.id === activeId);
+      const superAdmin = user.memberships.find((m) => m.role === "OWNER");
+      membership = fromCookie ?? superAdmin ?? user.memberships[0];
+    }
+
+    const organiser = membership.organiser;
+    return {
+      sub:      organiser.id,
+      email:    organiser.email,
+      status:   String(organiser.status),
+      verified: organiser.verified,
+      role:     membership.role,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getOrganiserMemberships(): Promise<OrganiserMembership[] | null> {
+  const cognitoSession = await getServerSession();
+  if (!cognitoSession) return null;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { cognitoSub: cognitoSession.sub },
+      select: {
+        memberships: {
+          select: {
+            role:       true,
+            organiser:  { select: { id: true, orgName: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
     if (!user) return null;
 
-    const organiser = await prisma.organiser.findUnique({
-      where:  { userId: user.id },
-      select: { id: true, email: true, status: true, verified: true },
-    });
-    if (!organiser) return null;
+    return user.memberships.map((m) => ({
+      organiserId:   m.organiser.id,
+      organiserName: m.organiser.orgName,
+      role:          m.role,
+    }));
+  } catch {
+    return null;
+  }
+}
 
-    return { sub: organiser.id, email: organiser.email, status: String(organiser.status), verified: organiser.verified };
+export async function getOrganiserRole(organiserId: string): Promise<OrganiserRole | null> {
+  const cognitoSession = await getServerSession();
+  if (!cognitoSession) return null;
+
+  try {
+    const membership = await prisma.organiserMember.findFirst({
+      where: {
+        organiserId,
+        user: { cognitoSub: cognitoSession.sub },
+      },
+      select: { role: true },
+    });
+    return membership?.role ?? null;
   } catch {
     return null;
   }

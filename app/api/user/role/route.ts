@@ -9,14 +9,34 @@ export async function GET() {
   }
 
   if (session.groups.includes("admins")) {
-    return NextResponse.json({ role: "admin", hasOrganiser: false });
+    return NextResponse.json({ role: "admin", hasOrganiser: false, organiserCount: 0, memberships: [] });
   }
 
   const user = await prisma.user.findUnique({
-    where: { cognitoSub: session.sub },
-    include: { organiser: { select: { id: true } } },
+    where:  { cognitoSub: session.sub },
+    select: {
+      memberships: {
+        select: {
+          role: true,
+          organiser: { select: { id: true, orgName: true, logoUrl: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+    },
   });
 
-  const hasOrganiser = Boolean(user?.organiser);
-  return NextResponse.json({ role: hasOrganiser ? "organiser" : "user", hasOrganiser });
+  const memberships = (user?.memberships ?? []).map((m) => ({
+    organiserId:   m.organiser.id,
+    organiserName: m.organiser.orgName,
+    role:          m.role,
+    logoUrl:       m.organiser.logoUrl,
+  }));
+  const organiserCount = memberships.length;
+
+  return NextResponse.json({
+    role: organiserCount > 0 ? "organiser" : "user",
+    hasOrganiser: organiserCount > 0,
+    organiserCount,
+    memberships,
+  });
 }

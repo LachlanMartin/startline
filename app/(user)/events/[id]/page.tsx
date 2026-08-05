@@ -67,24 +67,26 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         <div className="absolute inset-0 bg-gradient-to-t from-dark-darker via-dark-darker/50 to-transparent" />
 
         {/* Title overlaid at bottom of banner */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 pb-5">
-          <span className="inline-block font-headline text-[10px] font-bold uppercase tracking-widest bg-primary text-dark px-3 py-1 rounded-full mb-3">
-            {formatDiscipline(event.discipline)}
-          </span>
-          <h1 className="font-headline text-[28px] sm:text-4xl lg:text-5xl font-black italic tracking-tighter text-light leading-tight mb-2">
-            {event.title}
-          </h1>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="flex items-center gap-1.5 font-headline text-xs font-medium uppercase tracking-widest text-muted">
-              <MapPin className="w-3.5 h-3.5 text-primary" />
-              {event.location}, {STATE_LABELS[event.state]}
+        <div className="absolute bottom-0 left-0 right-0 pb-5">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
+            <span className="inline-block font-headline text-[10px] font-bold uppercase tracking-widest bg-primary text-dark px-3 py-1 rounded-full mb-3">
+              {formatDiscipline(event.discipline)}
             </span>
-            <span className="flex items-center gap-1.5 font-headline text-xs font-medium uppercase tracking-widest text-muted">
-              <Calendar className="w-3.5 h-3.5 text-primary" />
-              {event.endDate && event.endDate !== event.date
-                ? formatEventDateRange(event.date, event.endDate)
-                : formatEventDate(event.date)}
-            </span>
+            <h1 className="font-headline text-[28px] sm:text-4xl lg:text-5xl font-black italic tracking-tighter text-light leading-tight mb-2">
+              {event.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="flex items-center gap-1.5 font-headline text-xs font-medium uppercase tracking-widest text-muted">
+                <MapPin className="w-3.5 h-3.5 text-primary" />
+                {event.location}, {STATE_LABELS[event.state]}
+              </span>
+              <span className="flex items-center gap-1.5 font-headline text-xs font-medium uppercase tracking-widest text-muted">
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                {event.endDate && event.endDate !== event.date
+                  ? formatEventDateRange(event.date, event.endDate)
+                  : formatEventDate(event.date)}
+              </span>
+            </div>
           </div>
         </div>
       </div>

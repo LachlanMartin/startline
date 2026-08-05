@@ -3,7 +3,8 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   ...(process.env.CI || process.env.PLAYWRIGHT ? { devIndicators: { buildActivity: false } } : {}),
-  serverExternalPackages: ["pg"],
+  serverExternalPackages: ["pg", "exceljs", "@react-pdf/renderer"],
+  transpilePackages: ["maplibre-gl"],
   // A package-lock.json under C:\Users\<you>\ makes Next pick the wrong workspace
   // root, which can make dev extremely slow or appear to hang on first load.
   outputFileTracingRoot: path.join(__dirname),
