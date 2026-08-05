@@ -57,18 +57,18 @@ export default function OrganiserNavBar() {
 
   const [isMenuOpen,   setIsMenuOpen]   = useState(false);
   const [isUserOpen,   setIsUserOpen]   = useState(false);
-  const [isOrgOpen,    setIsOrgOpen]    = useState(false);
   const [isNavOpen,    setIsNavOpen]    = useState(false);
   const [orgName,      setOrgName]      = useState("");
+  const [orgLogo,      setOrgLogo]      = useState<string | null>(null);
+  const [activeOrgId,  setActiveOrgId]  = useState<string | null>(null);
   const [role,         setRole]         = useState<string | null>(null);
-  const [memberships,  setMemberships]  = useState<{ organiserId: string; organiserName: string | null; role: string }[]>([]);
+  const [memberships,  setMemberships]  = useState<{ organiserId: string; organiserName: string | null; role: string; logoUrl: string | null }[]>([]);
   const [notifOpen,    setNotifOpen]    = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount,  setUnreadCount]  = useState(0);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef  = useRef<HTMLDivElement>(null);
-  const orgRef   = useRef<HTMLDivElement>(null);
   const navRef   = useRef<HTMLDivElement>(null);
 
   const fetchOrgInfo = useCallback(async () => {
@@ -81,6 +81,8 @@ export default function OrganiserNavBar() {
       startTransition(() => {
         setMemberships(data.memberships ?? []);
         setOrgName(active?.organiserName ?? "");
+        setOrgLogo(active?.logoUrl ?? null);
+        setActiveOrgId(active?.organiserId ?? null);
         setRole(active?.role ?? null);
       });
     } catch {}
@@ -110,16 +112,15 @@ export default function OrganiserNavBar() {
   }, [status, fetchNotifications]);
 
   useEffect(() => {
-    if (!isUserOpen && !notifOpen && !isOrgOpen && !isNavOpen) return;
+    if (!isUserOpen && !notifOpen && !isNavOpen) return;
     const handler = (e: MouseEvent) => {
       if (userRef.current  && !userRef.current.contains(e.target as Node))  setIsUserOpen(false);
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
-      if (orgRef.current   && !orgRef.current.contains(e.target as Node))   setIsOrgOpen(false);
       if (navRef.current   && !navRef.current.contains(e.target as Node))   setIsNavOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [isUserOpen, notifOpen, isOrgOpen, isNavOpen]);
+  }, [isUserOpen, notifOpen, isNavOpen]);
 
   const handleSignOut = async () => {
     await logout();
@@ -134,7 +135,8 @@ export default function OrganiserNavBar() {
         body: JSON.stringify({ organiserId }),
       });
     } catch {}
-    setIsOrgOpen(false);
+    setIsUserOpen(false);
+    await fetchOrgInfo();
     router.push("/organiser/dashboard");
   };
 
@@ -154,7 +156,6 @@ export default function OrganiserNavBar() {
 
   const displayName = orgName || user?.email || "";
   const initial     = displayName[0]?.toUpperCase() ?? "A";
-  const isOwner = role === "OWNER";
   const activePage  = ORGANISER_NAV.find(({ href }) =>
     pathname === href || (pathname?.startsWith(href + "/") ?? false)
   );
@@ -173,7 +174,7 @@ export default function OrganiserNavBar() {
 
           {/* ── Desktop nav links ── */}
           <div className="hidden md:flex items-center gap-0.5">
-            {ORGANISER_NAV.filter(({ href }) => href !== "/organiser/members" || isOwner).map(({ href, label }) => {
+            {ORGANISER_NAV.map(({ href, label }) => {
               const isActive = href === "/organiser/listings"
                 ? pathname === href || (pathname?.startsWith(href + "/") ?? false)
                 : pathname?.startsWith(href) ?? false;
@@ -194,36 +195,6 @@ export default function OrganiserNavBar() {
             <span className="hidden md:inline-flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-primary/80 border border-primary/40 rounded px-1.5 py-0.5">
               <Building2 className="w-2.5 h-2.5" /> Organiser
             </span>
-
-            {/* Org switcher */}
-            {memberships.length > 1 && (
-              <div ref={orgRef} className="relative hidden md:block">
-                <button onClick={() => { setIsOrgOpen(o => !o); setIsUserOpen(false); setNotifOpen(false); }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors max-w-[160px]">
-                  <Building2 className="w-4 h-4 text-primary shrink-0" />
-                  <span className="font-headline text-[12px] font-bold uppercase tracking-widest text-white/70 truncate">
-                    {orgName || "Organisation"}
-                  </span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-white/40 shrink-0 transition-transform duration-200 ${isOrgOpen ? "rotate-180" : ""}`} />
-                </button>
-                {isOrgOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-64 bg-dark-darker/95 backdrop-blur-xl border border-primary/40 rounded-xl shadow-2xl overflow-hidden">
-                    <div className="px-4 py-2 border-b border-white/10">
-                      <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">Switch organisation</span>
-                    </div>
-                    {memberships.map((m) => (
-                      <button key={m.organiserId} onClick={() => switchOrganiser(m.organiserId)}
-                        className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[12px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors text-left">
-                        <span className="truncate flex-1">{m.organiserName ?? "Organisation"}</span>
-                        {m.role === "OWNER"
-                          ? <span className="shrink-0 text-[9px] text-primary border border-primary/40 rounded px-1.5 py-0.5">OWNER</span>
-                          : <span className="shrink-0 text-[9px] text-white/40 border border-white/15 rounded px-1.5 py-0.5">MANAGER</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Notifications */}
             <div ref={notifRef} className="relative">
@@ -279,20 +250,48 @@ export default function OrganiserNavBar() {
 
             {/* User menu */}
             <div ref={userRef} className="relative">
-              <button onClick={() => { setIsUserOpen(o => !o); setNotifOpen(false); setIsOrgOpen(false); }}
+              <button onClick={() => { setIsUserOpen(o => !o); setNotifOpen(false); }}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
-                <span className="w-7 h-7 rounded-lg bg-primary text-dark font-headline font-black italic text-sm flex items-center justify-center shrink-0">
-                  {initial}
-                </span>
+                {orgLogo ? (
+                  <img src={orgLogo} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <span className="w-7 h-7 rounded-lg bg-primary text-dark font-headline font-black italic text-sm flex items-center justify-center shrink-0">
+                    {initial}
+                  </span>
+                )}
                 <ChevronDown className={`w-3.5 h-3.5 text-white/40 transition-transform duration-200 ${isUserOpen ? "rotate-180" : ""}`} />
               </button>
 
               {isUserOpen && (
-                <div className="absolute right-0 top-full mt-1 min-w-[200px] bg-dark-darker/95 backdrop-blur-xl border border-primary/40 rounded-xl shadow-2xl overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 min-w-[220px] bg-dark-darker border border-primary/40 rounded-xl shadow-2xl overflow-hidden">
                   <div className="px-4 py-3 border-b border-white/10">
                     <div className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/40 mb-0.5">{orgName || "Organisation"}</div>
                     {user?.email && <div className="font-headline text-[12px] text-white/70 truncate">{user.email}</div>}
                   </div>
+
+                  {/* Organisations */}
+                  {memberships.length > 0 && (
+                    <div className="py-1.5 border-b border-white/10">
+                      <div className="px-4 py-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">Organisations</div>
+                      {memberships.map((m) => {
+                        const isActive = m.organiserId === activeOrgId;
+                        return (
+                          <button key={m.organiserId} onClick={() => { setIsUserOpen(false); switchOrganiser(m.organiserId); }}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 font-headline text-[12px] font-bold uppercase tracking-widest text-left transition-colors
+                              ${isActive ? "text-primary bg-primary/10" : "text-white/60 hover:text-white hover:bg-white/10"}`}>
+                            {m.logoUrl
+                              ? <img src={m.logoUrl} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+                              : <Building2 className="w-3.5 h-3.5 shrink-0 text-white/40" />}
+                            <span className="truncate flex-1">{m.organiserName ?? "Organisation"}</span>
+                            {m.role === "OWNER"
+                              ? <span className="shrink-0 text-[9px] text-primary border border-primary/40 rounded px-1.5 py-0.5">OWNER</span>
+                              : <span className="shrink-0 text-[9px] text-white/40 border border-white/15 rounded px-1.5 py-0.5">MANAGER</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   <Link href="/organiser/profile" onClick={() => setIsUserOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                     <UserCircle className="w-4 h-4" /> Profile
@@ -340,7 +339,7 @@ export default function OrganiserNavBar() {
                 <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/30">{orgName || "Organiser"}</span>
               </div>
 
-              {ORGANISER_NAV.filter(({ href }) => href !== "/organiser/members" || isOwner).map(({ href, label }) => {
+              {ORGANISER_NAV.map(({ href, label }) => {
                 const isActive = href === "/organiser/listings"
                   ? pathname === href || (pathname?.startsWith(href + "/") ?? false)
                   : pathname?.startsWith(href) ?? false;
@@ -359,7 +358,10 @@ export default function OrganiserNavBar() {
                   {memberships.map((m) => (
                     <button key={m.organiserId} onClick={() => { setIsMenuOpen(false); switchOrganiser(m.organiserId); }}
                       className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[12px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors text-left">
-                      <Users className="w-4 h-4" /> {m.organiserName ?? "Organisation"}
+                      {m.logoUrl
+                        ? <img src={m.logoUrl} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+                        : <Users className="w-4 h-4 shrink-0" />}
+                      {m.organiserName ?? "Organisation"}
                     </button>
                   ))}
                 </>

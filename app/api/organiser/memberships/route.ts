@@ -20,7 +20,7 @@ export async function GET() {
         memberships: {
           select: {
             role: true,
-            organiser: { select: { id: true, orgName: true, status: true } },
+            organiser: { select: { id: true, orgName: true, status: true, logoUrl: true } },
           },
           orderBy: { createdAt: "asc" },
         },
@@ -35,6 +35,7 @@ export async function GET() {
       organiserName: m.organiser.orgName,
       role:          m.role,
       status:        m.organiser.status,
+      logoUrl:       m.organiser.logoUrl,
     }));
 
     const activeOrganiserId = memberships.find((m) => m.organiserId === activeId)?.organiserId

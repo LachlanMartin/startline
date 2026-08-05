@@ -154,7 +154,7 @@ export default function AdminNavBar() {
                 </button>
 
                 {isUserOpen && (
-                  <div className="absolute right-0 top-full mt-1 min-w-[180px] bg-dark-darker/95 backdrop-blur-xl border border-white/[0.05] rounded-xl shadow-2xl overflow-hidden">
+                  <div className="absolute right-0 top-full mt-1 min-w-[180px] bg-dark-darker border border-white/[0.05] rounded-xl shadow-2xl overflow-hidden">
                     <div className="px-4 py-3 border-b border-white/[0.08]">
                       <div className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/40 mb-0.5">Admin account</div>
                       {user?.email && <div className="font-headline text-[12px] text-white/70 truncate">{user.email}</div>}

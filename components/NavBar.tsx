@@ -151,7 +151,7 @@ export default function NavBar() {
                 </button>
 
                 {isUserOpen && (
-                  <div className="absolute right-0 top-full mt-1 min-w-[200px] bg-dark-darker/95 backdrop-blur-xl border border-white/[0.05] rounded-xl shadow-2xl overflow-hidden">
+                  <div className="absolute right-0 top-full mt-1 min-w-[200px] bg-dark-darker border border-white/[0.05] rounded-xl shadow-2xl overflow-hidden">
                     <Link href="/profile" onClick={() => setIsUserOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                       <User className="w-4 h-4" /> Profile
