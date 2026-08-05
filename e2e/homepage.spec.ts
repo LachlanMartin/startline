@@ -25,7 +25,8 @@ test.describe("homepage", () => {
     await goToHomepage(page);
     await expect(page.getByRole("link", { name: "HOME", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "EVENTS", exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "ACTIVITY", exact: true })).toBeVisible();
+    // ACTIVITY is only shown to signed-in users
+    await expect(page.getByRole("link", { name: "ACTIVITY", exact: true })).not.toBeVisible();
   });
 
   test("event cards or empty state renders", async ({ page }) => {
