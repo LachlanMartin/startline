@@ -231,16 +231,28 @@ export default function MembersPage() {
 
                 {/* Current user — leave the organisation */}
                 {m.id === currentMemberId && (
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="relative flex items-center gap-2 shrink-0 group">
                     <button
                       onClick={() => setConfirmLeave(true)}
                       disabled={role === "OWNER"}
-                      title={role === "OWNER" ? "Transfer ownership before leaving" : "Leave this organisation"}
+                      aria-disabled={role === "OWNER"}
                       className="flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest border rounded-lg px-3 py-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed
                         text-muted border-white/10 hover:text-red-400 hover:border-red-400/30"
                     >
                       <LogOut className="w-3.5 h-3.5" /> Leave
                     </button>
+                    {role === "OWNER" && (
+                      <div className="pointer-events-none absolute right-0 top-full mt-2 w-56 z-20 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-150">
+                        <div className="bg-dark-light border border-dark-lighter rounded-lg px-3 py-2.5 shadow-xl">
+                          <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-red-400 mb-1">
+                            Can&apos;t leave
+                          </p>
+                          <p className="text-[12px] text-muted leading-relaxed">
+                            You are the Owner of this organisation. Transfer ownership to another member before leaving.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

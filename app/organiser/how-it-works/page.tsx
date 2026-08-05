@@ -57,7 +57,7 @@ function Label({ children }: { children: React.ReactNode }) {
 function StepPill({ n, label }: { n: string; label: string }) {
   return (
     <div className="inline-flex items-center gap-2 mb-5">
-      <span className="w-7 h-7 rounded-lg bg-primary text-white font-headline font-black italic text-[12px] flex items-center justify-center shrink-0">
+      <span className="w-7 h-7 rounded-lg bg-primary text-dark font-headline font-black italic text-[12px] flex items-center justify-center shrink-0">
         {n}
       </span>
       <span className="font-headline text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
@@ -175,7 +175,7 @@ export default function HowItWorksPage() {
                     { n: "04", l: "Go live on Startline"          },
                   ].map(({ n, l }) => (
                     <div key={n} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-dark-light border border-dark-lighter hover:border-primary/40 hover:bg-primary/10 transition-colors">
-                      <span className="w-7 h-7 rounded-lg bg-primary text-white font-headline font-black italic text-[12px] flex items-center justify-center shrink-0">{n}</span>
+                      <span className="w-7 h-7 rounded-lg bg-primary text-dark font-headline font-black italic text-[12px] flex items-center justify-center shrink-0">{n}</span>
                       <span className="font-headline text-[13px] font-bold uppercase tracking-widest text-white/70">{l}</span>
                       <ChevronRight className="w-4 h-4 text-white/30 ml-auto shrink-0" />
                     </div>
@@ -516,7 +516,7 @@ export default function HowItWorksPage() {
                     <button key={tab} onClick={() => setActiveTab(tab)}
                       className={`font-headline text-[12px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-lg border transition-all duration-200
                         ${activeTab === tab
-                          ? "bg-primary text-white border-lime-500 shadow-sm"
+                          ? "bg-primary text-dark border-lime-500 shadow-sm"
                           : "bg-dark border-dark-lighter text-muted hover:border-primary hover:text-primary"}`}>
                       {tab === "home" ? "Homepage" : "Events Page"}
                     </button>
