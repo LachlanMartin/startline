@@ -26,6 +26,7 @@ export default function NavBar() {
   const [isSignInOpen, setIsSignInOpen] = useState(false);
   const [isUserOpen,   setIsUserOpen]   = useState(false);
   const [profileName,  setProfileName]  = useState<string | null>(null);
+  const [profilePic,   setProfilePic]   = useState<string | null>(null);
 
   const userRef = useRef<HTMLDivElement>(null);
   const navRef  = useRef<HTMLDivElement>(null);
@@ -38,15 +39,21 @@ export default function NavBar() {
   }, [status]);
 
   useEffect(() => {
-    if (status === "authenticated" && !organiserCount) {
+    if (status === "authenticated") {
       try {
         fetch("/api/user/profile")
           .then(r => (r.ok ? r.json() : null))
-          .then(data => data?.name && startTransition(() => setProfileName(data.name)))
+          .then(data => {
+            if (!data) return;
+            startTransition(() => {
+              if (data.name) setProfileName(data.name);
+              if (data.profilePicUrl) setProfilePic(data.profilePicUrl);
+            });
+          })
           .catch(() => {});
       } catch {}
     }
-  }, [status, organiserCount]);
+  }, [status]);
 
   useEffect(() => {
     if (!isUserOpen && !isMenuOpen) return;
@@ -166,9 +173,13 @@ export default function NavBar() {
               <div ref={userRef} className="hidden md:block relative">
                 <button onClick={() => setIsUserOpen(o => !o)}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
-                  <span className="w-7 h-7 rounded-lg bg-primary text-dark font-headline font-black italic text-sm flex items-center justify-center shrink-0">
-                    {initial}
-                  </span>
+                  {profilePic ? (
+                    <img src={profilePic} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                  ) : (
+                    <span className="w-7 h-7 rounded-lg bg-primary text-dark font-headline font-black italic text-sm flex items-center justify-center shrink-0">
+                      {initial}
+                    </span>
+                  )}
                   <span className="font-headline text-[12px] font-bold uppercase tracking-widest text-white/70 max-w-[120px] truncate">
                     {displayName}
                   </span>
