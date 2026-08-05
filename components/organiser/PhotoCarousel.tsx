@@ -148,11 +148,12 @@ export default function PhotoCarousel({ photos, isOrganiser, onUpload, uploading
               onClick={e => e.stopPropagation()}
             />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={lightbox}
               alt="Event photo"
-              className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl"
+              fill
+              unoptimized
+              className="object-contain rounded-xl shadow-2xl"
               onClick={e => e.stopPropagation()}
             />
           )}

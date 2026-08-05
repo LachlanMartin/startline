@@ -1,5 +1,6 @@
-﻿import type { Metadata } from "next";
+﻿import type { Metadata, Viewport } from "next";
 import { Inter, Chakra_Petch } from "next/font/google";
+import NativeLinkHandler from "@/components/NativeLinkHandler";
 import "./globals.css";
 
 const inter = Inter({
@@ -14,6 +15,12 @@ const chakraPetch = Chakra_Petch({
 });
 
 const SITE_URL = "https://www.startlineau.com";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -92,6 +99,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${inter.variable} ${chakraPetch.variable} bg-dark-darker text-light font-sans antialiased`}
       >
+        <NativeLinkHandler />
         {children}
       </body>
     </html>

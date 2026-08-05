@@ -253,7 +253,7 @@ export default function OrganiserNavBar() {
               <button onClick={() => { setIsUserOpen(o => !o); setNotifOpen(false); }}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
                 {orgLogo ? (
-                  <img src={orgLogo} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                  <Image src={orgLogo} alt="" width={28} height={28} className="w-7 h-7 rounded-lg object-cover shrink-0" />
                 ) : (
                   <span className="w-7 h-7 rounded-lg bg-primary text-dark font-headline font-black italic text-sm flex items-center justify-center shrink-0">
                     {initial}
@@ -284,7 +284,7 @@ export default function OrganiserNavBar() {
                             className={`w-full flex items-center gap-3 px-4 py-2.5 font-headline text-[12px] font-bold uppercase tracking-widest text-left transition-colors
                               ${isActive ? "text-primary bg-primary/10" : "text-white/60 hover:text-white hover:bg-white/10"}`}>
                             {m.logoUrl
-                              ? <img src={m.logoUrl} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+                              ? <Image src={m.logoUrl} alt="" width={20} height={20} className="w-5 h-5 rounded object-cover shrink-0" />
                               : <Building2 className="w-3.5 h-3.5 shrink-0 text-white/40" />}
                             <span className="truncate flex-1">{m.organiserName ?? "Organisation"}</span>
                             {m.role === "OWNER"
@@ -362,7 +362,7 @@ export default function OrganiserNavBar() {
                     <button key={m.organiserId} onClick={() => { setIsMenuOpen(false); switchOrganiser(m.organiserId); }}
                       className="w-full flex items-center gap-3 px-4 py-3 font-headline text-[12px] font-bold uppercase tracking-widest text-primary hover:bg-white/10 transition-colors text-left">
                       {m.logoUrl
-                        ? <img src={m.logoUrl} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+                        ? <Image src={m.logoUrl} alt="" width={20} height={20} className="w-5 h-5 rounded object-cover shrink-0" />
                         : <Users className="w-4 h-4 shrink-0" />}
                       {m.organiserName ?? "Organisation"}
                     </button>

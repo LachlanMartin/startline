@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, startTransition } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   ArrowLeft, ArrowRight, Check, Plus, Trash2,
   Upload, X, MapPin, Calendar, Users,
@@ -782,8 +783,7 @@ const MAX_GALLERY_PHOTOS = 8;
 function GalleryThumb({ src, onRemove }: { src: string; onRemove: () => void }) {
   return (
     <div className="relative aspect-square rounded-md overflow-hidden border border-dark-lighter">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" className="w-full h-full object-cover" />
+      <Image src={src} alt="" fill unoptimized className="object-cover" />
       <button type="button" onClick={onRemove}
         className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-dark/70 text-muted hover:text-white flex items-center justify-center transition-colors">
         <X className="w-3.5 h-3.5" />
@@ -819,8 +819,7 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
         <label className="block cursor-pointer">
           {coverSrc ? (
             <div className="relative rounded-md overflow-hidden border border-primary/40 aspect-video">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={coverSrc} alt="Cover preview" className="w-full h-full object-cover" />
+              <Image src={coverSrc} alt="Cover preview" fill unoptimized className="object-cover" />
               <button type="button" onClick={e => { e.preventDefault(); update({ coverImage: null, coverImageUrl: "" }); }}
                 className="absolute top-3 right-3 w-8 h-8 rounded-full bg-dark/70 text-muted hover:text-white flex items-center justify-center transition-colors">
                 <X className="w-4 h-4" />
@@ -973,11 +972,12 @@ function LivePreview({ form }: { form: FormState }) {
         {/* Image */}
         <div className="relative w-full aspect-video overflow-hidden rounded-t-2xl">
           {coverSrc ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={coverSrc}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover brightness-[0.55]"
+              fill
+              unoptimized
+              className="object-cover brightness-[0.55]"
             />
           ) : (
             <div className="absolute inset-0 placeholder-stripes scan-grid" />
@@ -1129,8 +1129,7 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
           {/* ── Banner — mirrors the public event page ── */}
           <div className="relative overflow-hidden w-full" style={{ aspectRatio: "4/3", maxHeight: "420px" }}>
             {coverSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={coverSrc} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <Image src={coverSrc} alt="" fill unoptimized className="object-cover" />
             ) : (
               <div className="absolute inset-0 placeholder-stripes scan-grid" />
             )}
@@ -1240,8 +1239,7 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                       {gallery.map((src, i) => (
                         <div key={i} className="relative aspect-video rounded-xl overflow-hidden bg-dark">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={src} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                          <Image src={src} alt="" fill unoptimized className="object-cover" />
                         </div>
                       ))}
                     </div>
@@ -1707,7 +1705,7 @@ export default function EventFormWizard({
             </div>
 
             {/* Live preview sidebar */}
-            <aside className="hidden lg:block border-l border-dark-lighter bg-dark p-6 sticky top-[152px] h-[calc(100vh-152px)] overflow-y-auto">
+            <aside className="hidden lg:block border-l border-dark-lighter bg-dark p-6 sticky top-[152px] h-[calc(100dvh-152px)] overflow-y-auto">
               <LivePreview form={form} />
             </aside>
           </div>

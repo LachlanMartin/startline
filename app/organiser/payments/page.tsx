@@ -9,6 +9,7 @@ import Link from "next/link";
 import {
   Skeleton, PageHeaderSkeleton, PageShellSkeleton,
 } from "@/components/ui/skeleton";
+import { isNative, openExternal } from "@/lib/capacitor";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,14 @@ interface Profile {
 function maskAccountId(id: string) {
   if (id.length <= 8) return id;
   return id.slice(0, 8) + "•".repeat(id.length - 8);
+}
+
+async function goToStripe(url: string) {
+  if (isNative()) {
+    await openExternal(url);
+  } else {
+    window.location.href = url;
+  }
 }
 
 function PaymentsContent() {
@@ -119,7 +128,7 @@ function PaymentsContent() {
         setError(data.error ?? "Failed to generate Stripe onboarding link. Please try again.");
         return;
       }
-      window.location.href = data.url;
+      await goToStripe(data.url);
     } finally {
       setConnecting(false);
     }
@@ -134,7 +143,7 @@ function PaymentsContent() {
         setError(data.error ?? "Failed to generate Stripe link.");
         return;
       }
-      window.location.href = data.url;
+      await goToStripe(data.url);
     } finally {
       setConnecting(false);
     }
