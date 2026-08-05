@@ -164,14 +164,11 @@ export default function OrganiserNavBar() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-darker/80 backdrop-blur-xl border-b-2 border-primary">
         <div className="flex items-center justify-between h-14 max-w-[1200px] mx-auto px-4 sm:px-6 gap-4">
 
-          {/* ── Logo + org ── */}
+          {/* ── Logo ── */}
           <div className="shrink-0 flex items-center gap-3 min-w-0">
             <Link href="/organiser/dashboard" className="py-1 flex items-center gap-2">
               <Image src="/images/logo-title.svg" alt="Startline" width={110} height={28} className="h-6 w-auto" />
             </Link>
-            <span className="hidden lg:inline-flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-primary/80 border border-primary/40 rounded px-1.5 py-0.5">
-              <Building2 className="w-2.5 h-2.5" /> Organiser
-            </span>
           </div>
 
           {/* ── Desktop nav links ── */}
@@ -191,7 +188,12 @@ export default function OrganiserNavBar() {
           </div>
 
           {/* ── Right side ── */}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+
+            {/* Portal badge */}
+            <span className="hidden md:inline-flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-primary/80 border border-primary/40 rounded px-1.5 py-0.5">
+              <Building2 className="w-2.5 h-2.5" /> Organiser
+            </span>
 
             {/* Org switcher */}
             {memberships.length > 1 && (

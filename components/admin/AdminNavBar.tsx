@@ -6,37 +6,35 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LogOut, ShieldCheck, Menu, X, ChevronDown, User,
-  LayoutDashboard, CalendarDays, Users, UserCircle, ClipboardList,
-  Star, BarChart2, Send, ScrollText,
 } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
 
-type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
+type NavItem = { href: string; label: string };
 
-const DASHBOARD: NavItem = { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard };
+const DASHBOARD: NavItem = { href: "/admin/dashboard", label: "Dashboard" };
 
 const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Content",
     items: [
-      { href: "/admin/events", label: "Events", icon: CalendarDays },
-      { href: "/admin/registrations", label: "Registrations", icon: ClipboardList },
-      { href: "/admin/reviews", label: "Reviews", icon: Star },
+      { href: "/admin/events", label: "Events" },
+      { href: "/admin/registrations", label: "Registrations" },
+      { href: "/admin/reviews", label: "Reviews" },
     ],
   },
   {
     label: "People",
     items: [
-      { href: "/admin/organisers", label: "Organisers", icon: Users },
-      { href: "/admin/users", label: "Users", icon: UserCircle },
+      { href: "/admin/organisers", label: "Organisers" },
+      { href: "/admin/users", label: "Users" },
     ],
   },
   {
     label: "Overview",
     items: [
-      { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
-      { href: "/admin/payouts", label: "Payouts", icon: Send },
-      { href: "/admin/audit", label: "Audit log", icon: ScrollText },
+      { href: "/admin/analytics", label: "Analytics" },
+      { href: "/admin/payouts", label: "Payouts" },
+      { href: "/admin/audit", label: "Audit log" },
     ],
   },
 ];
@@ -79,27 +77,23 @@ export default function AdminNavBar() {
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-darker/80 backdrop-blur-xl border-b-2 border-primary">
-        <div className="flex items-center justify-between h-14 max-w-[1200px] mx-auto px-4 sm:px-6 gap-4">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-14 max-w-[1200px] mx-auto px-4 sm:px-6 gap-4">
 
-          {/* ── Logo + badge ── */}
-          <div className="shrink-0 flex items-center gap-3 min-w-0">
+          {/* ── Logo ── */}
+          <div className="shrink-0 flex items-center gap-3 min-w-0 justify-self-start">
             <Link href="/admin/dashboard" className="py-1 flex items-center gap-2">
               <Image src="/images/logo-title.svg" alt="Startline" width={110} height={28} className="h-6 w-auto" />
             </Link>
-            <span className="hidden lg:inline-flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-primary/80 border border-primary/40 rounded px-1.5 py-0.5">
-              <ShieldCheck className="w-2.5 h-2.5" /> Admin
-            </span>
           </div>
 
-          {/* ── Desktop grouped nav dropdowns ── */}
-          <div className="hidden md:flex items-center gap-0.5">
+          {/* ── Desktop grouped nav dropdowns (centered) ── */}
+          <div className="hidden md:flex items-center justify-center gap-0.5">
             <Link
               href={DASHBOARD.href}
               onClick={() => setOpenGroup(null)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest transition-colors
-                ${isActivePage(DASHBOARD.href) ? "bg-white/15 text-white" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+                ${isActivePage(DASHBOARD.href) ? "bg-primary/15 text-primary" : "text-white/60 hover:text-white hover:bg-white/10"}`}
             >
-              <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden sm:block">{DASHBOARD.label}</span>
             </Link>
             {NAV_GROUPS.map((group) => (
@@ -113,7 +107,7 @@ export default function AdminNavBar() {
                 <button
                   onClick={() => { setOpenGroup(o => o === group.label ? null : group.label); setIsUserOpen(false); }}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest transition-colors
-                    ${openGroup === group.label ? "bg-white/15 text-white" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+                    ${openGroup === group.label ? "bg-primary/15 text-primary" : "text-white/60 hover:text-white hover:bg-white/10"}`}
                 >
                   <span className="hidden sm:block">{group.label}</span>
                   <ChevronDown className={`w-3.5 h-3.5 text-white/40 transition-transform duration-200 ${openGroup === group.label ? "rotate-180" : ""}`} />
@@ -121,14 +115,13 @@ export default function AdminNavBar() {
                 {openGroup === group.label && (
                   <div className="absolute left-0 top-full mt-2 w-56 bg-dark-darker border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden">
                     <div className="py-1.5">
-                      {group.items.map(({ href, label, icon: Icon }) => {
+                      {group.items.map(({ href, label }) => {
                         const isActive = isActivePage(href);
                         return (
                           <Link key={href} href={href} onClick={() => setOpenGroup(null)}
                             className={`flex items-center gap-3 px-4 py-2.5 font-headline text-[12px] font-bold uppercase tracking-widest transition-colors
                               ${isActive ? "text-primary bg-primary/10" : "text-white/60 hover:text-white hover:bg-white/[0.06]"}`}
                           >
-                            <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "text-white/40"}`} />
                             {label}
                             {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
                           </Link>
@@ -142,7 +135,12 @@ export default function AdminNavBar() {
           </div>
 
           {/* ── Right side ── */}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 justify-self-end">
+
+            {/* Portal badge */}
+            <span className="hidden md:inline-flex items-center gap-1.5 font-headline text-[10px] font-bold uppercase tracking-widest text-primary/80 border border-primary/40 rounded px-1.5 py-0.5">
+              <ShieldCheck className="w-2.5 h-2.5" /> Admin
+            </span>
 
             {/* Desktop: user menu */}
             {status === "authenticated" && (
@@ -195,7 +193,6 @@ export default function AdminNavBar() {
               <Link href={DASHBOARD.href} onClick={() => setIsMenuOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg font-headline text-[13px] font-bold uppercase tracking-widest transition-colors
                   ${isActivePage(DASHBOARD.href) ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/10"}`}>
-                <LayoutDashboard className={`w-4 h-4 shrink-0 ${isActivePage(DASHBOARD.href) ? "text-primary" : "text-white/40"}`} />
                 {DASHBOARD.label}
               </Link>
 
@@ -204,13 +201,12 @@ export default function AdminNavBar() {
                   <div className="px-4 pt-3 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/30">
                     {group.label}
                   </div>
-                  {group.items.map(({ href, label, icon: Icon }) => {
+                  {group.items.map(({ href, label }) => {
                     const isActive = isActivePage(href);
                     return (
                       <Link key={href} href={href} onClick={() => setIsMenuOpen(false)}
                         className={`flex items-center gap-3 px-4 py-3 rounded-lg font-headline text-[13px] font-bold uppercase tracking-widest transition-colors
                           ${isActive ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/10"}`}>
-                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : "text-white/40"}`} />
                         {label}
                       </Link>
                     );
