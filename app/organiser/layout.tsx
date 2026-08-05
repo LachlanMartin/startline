@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import OrganiserNavBar from "@/components/organiser/OrganiserNavBar";
+import PortalFooter from "@/components/PortalFooter";
 import AmplifyProvider from "./AmplifyProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { SettingsProvider } from "@/context/SettingsContext";
@@ -15,8 +16,11 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
     <AmplifyProvider>
       <AuthProvider>
         <SettingsProvider>
-          <OrganiserNavBar />
-          {children}
+          <div className="min-h-screen flex flex-col bg-dark-darker">
+            <OrganiserNavBar />
+            <div className="flex-1">{children}</div>
+            <PortalFooter />
+          </div>
           <SettingsModal />
         </SettingsProvider>
       </AuthProvider>
