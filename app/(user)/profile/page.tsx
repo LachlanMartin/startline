@@ -1,25 +1,17 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Calendar, Check, X, AlertCircle } from "lucide-react";
-import { STATE_OPTIONS, STATE_LABELS } from "@/types";
+import { parseISO } from "date-fns";
+import { MapPin, Timer, Edit2, ArrowUpRight } from "lucide-react";
+import { STATE_LABELS } from "@/types";
 import type { AustralianState } from "@/types";
-import { formatDiscipline, formatMediumDate } from "@/lib/utils";
+import { formatDiscipline, formatShortDate, cn } from "@/lib/utils";
 import { useAuthContext } from "@/context/AuthContext";
-
-type RaceRegistration = {
-  id: string;
-  eventId: string;
-  category: string | null;
-  resultDistance: string | null;
-  resultTime: string | null;
-  resultPlacement: string | null;
-  isPersonalBest: boolean;
-  isTopResult: boolean;
-  event: { title: string; discipline: string; eventDate: string; city: string; state: string };
-};
+import UserEditProfileModal from "@/components/UserEditProfileModal";
+import OrganiserIdentity from "@/components/OrganiserIdentity";
+import type { OrganiserRating } from "@/lib/reviews";
 
 type UserData = {
   id: string;
@@ -28,23 +20,221 @@ type UserData = {
   username: string | null;
   bio: string | null;
   profilePicUrl: string | null;
+  coverImageUrl: string | null;
+  coverPosition: string | null;
   isPublic: boolean;
   city: string | null;
   state: string | null;
-  registrations?: RaceRegistration[];
+  mobile: string | null;
+  dateOfBirth: string | null;
+  gender: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  createdAt: string;
+  organiser: { id: string; orgName: string | null; logoUrl: string | null; verified: boolean } | null;
 };
 
-function KStat({ n, l }: { n: number; l: string }) {
+type RaceHistory = {
+  completed: number;
+  registrations: {
+    id: string;
+    finishTime: string | null;
+    result: string | null;
+    event: {
+      id: string;
+      title: string;
+      discipline: string;
+      eventDate: string;
+      city: string;
+      state: string;
+      coverImageUrl: string | null;
+      organiser: {
+        id: string;
+        orgName: string | null;
+        logoUrl: string | null;
+        rating: OrganiserRating | null;
+      };
+    };
+  }[];
+};
+
+function formatCount(n: number) {
+  return n.toLocaleString("en-AU");
+}
+
+function ProfileStats({ completed }: { completed: number }) {
   return (
-    <div
-      className="flex-1 min-w-[100px] bg-dark border border-dark-lighter border-t-2 border-t-primary rounded-xl"
-      style={{ padding: "16px 18px" }}
-    >
-      <p className="font-headline text-[9.5px] font-bold uppercase tracking-widest text-muted">{l}</p>
-      <p className="font-headline text-[30px] font-black italic tracking-tighter text-light leading-none mt-2">
-        {n}
-      </p>
+    <div className="text-center">
+      <div className="font-headline text-xl sm:text-2xl font-black tracking-tighter text-light leading-none">
+        {formatCount(completed)}
+      </div>
+      <div className="font-headline text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-light mt-1">
+        Events Completed
+      </div>
     </div>
+  );
+}
+
+type HistoryRegistration = RaceHistory["registrations"][number];
+
+function groupHistoryByYear(registrations: HistoryRegistration[]) {
+  const sorted = [...registrations].sort(
+    (a, b) => parseISO(b.event.eventDate).getTime() - parseISO(a.event.eventDate).getTime(),
+  );
+  const groups: { year: number; registrations: HistoryRegistration[] }[] = [];
+  for (const reg of sorted) {
+    const year = parseISO(reg.event.eventDate).getFullYear();
+    const last = groups[groups.length - 1];
+    if (last && last.year === year) {
+      last.registrations.push(reg);
+    } else {
+      groups.push({ year, registrations: [reg] });
+    }
+  }
+  return groups;
+}
+
+function RaceHistoryCard({ reg }: { reg: HistoryRegistration }) {
+  const [day, month] = formatShortDate(reg.event.eventDate).split(" ");
+  const location = `${reg.event.city}, ${STATE_LABELS[reg.event.state as AustralianState]}`;
+  const hasResult = Boolean(reg.result || reg.finishTime);
+
+  return (
+    <Link
+      href={`/events/${reg.event.id}`}
+      className={cn(
+        "group relative grid grid-cols-1 md:grid-cols-[140px_minmax(0,1fr)] xl:grid-cols-[160px_minmax(0,1fr)_340px]",
+        "bg-dark border border-dark-lighter rounded-2xl overflow-hidden",
+        "transition-all duration-200 ease-[cubic-bezier(0.2,0.7,0.2,1)]",
+        "hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
+      )}
+    >
+      {/* Cover / media */}
+      <div className="relative h-28 md:h-auto md:min-h-[120px] bg-dark-light overflow-hidden">
+        {reg.event.coverImageUrl ? (
+          <Image
+            src={reg.event.coverImageUrl}
+            alt=""
+            fill
+            className="object-cover brightness-[0.58] saturate-110 transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 768px) 100vw, 160px"
+          />
+        ) : (
+          <div className="absolute inset-0 placeholder-stripes opacity-40" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-dark via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-dark/40" />
+        <div className="absolute top-2.5 left-2.5 md:top-3 md:left-3 bg-dark-light/90 backdrop-blur-sm rounded-lg px-2.5 py-1.5 text-center leading-tight">
+          <span className="block font-headline text-[9px] font-bold uppercase tracking-widest text-muted">
+            {month}
+          </span>
+          <span className="block font-headline text-xl font-black text-light leading-none mt-0.5">
+            {day}
+          </span>
+        </div>
+      </div>
+
+      {/* Details */}
+      <div className="flex flex-col justify-center gap-1.5 p-4 sm:p-5 min-w-0">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="inline-flex items-center rounded-full bg-primary/10 border border-primary/25 px-2.5 py-1 font-headline text-[10px] font-bold uppercase tracking-widest text-primary">
+            {formatDiscipline(reg.event.discipline)}
+          </span>
+          <span className="flex items-center gap-1.5 font-headline text-xs font-normal uppercase tracking-widest text-light">
+            <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+            {location}
+          </span>
+        </div>
+
+        <div className="min-w-0">
+          <h3 className="font-headline text-xl sm:text-2xl font-black tracking-tighter text-light group-hover:text-primary transition-colors leading-[1.1]">
+            {reg.event.title}
+          </h3>
+          {reg.event.organiser?.orgName && (
+            <div className="mt-1.5">
+              <OrganiserIdentity
+                organiserId={reg.event.organiser.id}
+                name={reg.event.organiser.orgName}
+                logoUrl={reg.event.organiser.logoUrl}
+                rating={reg.event.organiser.rating}
+                nestedInLink
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Mobile / tablet result strip */}
+        {hasResult && (
+          <div className="xl:hidden flex items-center gap-8 pt-1 border-t border-dark-lighter">
+            {reg.finishTime && (
+              <div>
+                <p className="font-headline text-[11px] font-bold uppercase tracking-widest text-light">
+                  Finish
+                </p>
+                <p className="flex items-center gap-1.5 font-headline text-xl font-black tracking-tighter text-light leading-none mt-0.5">
+                  <Timer className="w-3.5 h-3.5 text-muted" />
+                  {reg.finishTime}
+                </p>
+              </div>
+            )}
+            {reg.result && (
+              <div>
+                <p className="font-headline text-[11px] font-bold uppercase tracking-widest text-light">
+                  Result
+                </p>
+                <p className="font-headline text-xl font-black tracking-tighter text-light leading-none mt-0.5">
+                  {reg.result}
+                </p>
+              </div>
+            )}
+            <ArrowUpRight className="w-4 h-4 text-muted ml-auto group-hover:text-primary transition-colors" />
+          </div>
+        )}
+      </div>
+
+      {/* Desktop result instrument panel */}
+      <div
+        className={cn(
+          "hidden xl:flex items-center justify-center relative border-l border-dark-lighter px-5 py-4",
+          "scan-grid"
+        )}
+      >
+        {hasResult ? (
+          <div className="grid grid-cols-2 gap-x-10 gap-y-2 w-full pr-5">
+            {reg.finishTime && (
+              <div>
+                <p className="font-headline text-[11px] font-bold uppercase tracking-[0.18em] text-light">
+                  Finish time
+                </p>
+                <p className="flex items-center gap-1.5 font-headline text-2xl font-black tracking-tighter text-light leading-none mt-1">
+                  <Timer className="w-4 h-4 text-muted shrink-0" />
+                  {reg.finishTime}
+                </p>
+              </div>
+            )}
+            {reg.result && (
+              <div className="pl-2 border-l border-dark-lighter">
+                <p className="font-headline text-[11px] font-bold uppercase tracking-[0.18em] text-light">
+                  Result
+                </p>
+                <p className="font-headline text-2xl font-black tracking-tighter text-light leading-none mt-1">
+                  {reg.result}
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <p className="font-headline text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+              Status
+            </p>
+            <p className="font-headline text-sm font-bold uppercase tracking-widest text-muted mt-1">
+              Completed
+            </p>
+          </div>
+        )}
+        <ArrowUpRight className="absolute top-4 right-4 w-4 h-4 text-muted-dark group-hover:text-primary transition-colors" />
+      </div>
+    </Link>
   );
 }
 
@@ -53,45 +243,8 @@ export default function ProfilePage() {
 
   const [userData, setUserData] = useState<UserData | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
-
+  const [history, setHistory] = useState<RaceHistory | null>(null);
   const [editing, setEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editUsername, setEditUsername] = useState("");
-  const [editBio, setEditBio] = useState("");
-  const [editIsPublic, setEditIsPublic] = useState(true);
-  const [editCity, setEditCity] = useState("");
-  const [editState, setEditState] = useState("");
-  const [editSaving, setEditSaving] = useState(false);
-
-  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
-  const [usernameError, setUsernameError] = useState("");
-  const checkTimer = useRef<ReturnType<typeof setTimeout>>(null);
-
-  const usernameValidation = useMemo(() => {
-    const val = editUsername.trim().toLowerCase();
-    if (!val || val === userData?.username) return { status: "idle" as const, error: "" };
-    if (val.length < 3) return { status: "invalid" as const, error: "Username must be at least 3 characters." };
-    if (val.length > 30) return { status: "invalid" as const, error: "Username must be 30 characters or less." };
-    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/.test(val)) return { status: "invalid" as const, error: "Only lowercase letters, numbers, and hyphens allowed." };
-    return null;
-  }, [editUsername, userData?.username]);
-
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (usernameValidation) { setUsernameStatus(usernameValidation.status); setUsernameError(usernameValidation.error); return; }
-    setUsernameStatus("checking");
-    if (checkTimer.current) clearTimeout(checkTimer.current);
-    checkTimer.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/user/profile/check-username?username=${encodeURIComponent(editUsername.trim().toLowerCase())}`);
-        const data = await res.json();
-        if (data.available) { setUsernameStatus("valid"); setUsernameError(""); }
-        else { setUsernameStatus("invalid"); setUsernameError(data.error || "This username is already taken."); }
-      } catch { setUsernameStatus("idle"); setUsernameError(""); }
-    }, 400);
-    return () => { if (checkTimer.current) clearTimeout(checkTimer.current); };
-  }, [usernameValidation, editUsername, userData?.username]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (status !== "authenticated") {
@@ -100,58 +253,24 @@ export default function ProfilePage() {
       return;
     }
     fetch("/api/user/profile")
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (!data) return;
         setUserData(data);
-        setEditName(data.name ?? "");
-        setEditUsername(data.username ?? "");
-        setEditBio(data.bio ?? "");
-        setEditIsPublic(data.isPublic);
-        setEditCity(data.city ?? "");
-        setEditState(data.state ?? "");
+        setHistory(data.history ?? null);
       })
       .catch(() => {})
       .finally(() => setProfileLoading(false));
   }, [status]);
 
-  const handleSaveProfile = async () => {
-    setEditSaving(true);
-    try {
-      const res = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editName,
-          username: editUsername || null,
-          bio: editBio,
-          isPublic: editIsPublic,
-          city: editCity || null,
-          state: editState || null,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUserData((prev) => prev ? { ...prev, ...data } : prev);
-        setEditing(false);
-      }
-    } catch {
-      // silent
-    } finally {
-      setEditSaving(false);
-    }
-  };
-
-  const initial = userData?.name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? "A";
-  const locationStr = [userData?.city, userData?.state ? STATE_LABELS[userData.state as AustralianState] : null]
-    .filter(Boolean)
-    .join(", ");
+  const displayHandle = userData?.username ?? user?.email?.split("@")[0] ?? "Athlete";
+  const initial = displayHandle[0]?.toUpperCase() ?? "A";
 
   if (status !== "authenticated") {
     return (
       <main className="min-h-screen bg-dark-darker pt-20">
         <section className="max-w-[1440px] mx-auto px-6 py-24 text-center">
-          <h1 className="font-headline text-3xl font-black italic tracking-tighter text-light mb-4">
+          <h1 className="font-headline text-3xl font-black tracking-tighter text-light mb-4">
             Sign in to see your profile
           </h1>
           <p className="font-headline text-sm text-muted mb-8">
@@ -163,337 +282,195 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-dark-darker">
-      <div className="max-w-[1200px] mx-auto px-6 pt-20 pb-16">
-
-        {/* Edit form — full-width, replaces main content when open */}
-        {editing && (
-          <div className="max-w-[640px] mx-auto space-y-5 py-8">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-headline text-sm font-bold uppercase tracking-widest text-primary">
-                Edit Profile
-              </h2>
-              <button
-                onClick={() => setEditing(false)}
-                className="font-headline text-[11px] uppercase tracking-widest text-muted hover:text-primary transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-
-            <div>
-              <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">
-                Full name
-              </label>
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="w-full bg-dark border border-dark-lighter rounded-xl px-4 py-2.5 text-[15px] text-light placeholder:text-muted-dark focus:border-primary focus:outline-none transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">
-                Username
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={editUsername}
-                  onChange={(e) => setEditUsername(e.target.value)}
-                  placeholder="e.g. johndoe"
-                  className={`w-full bg-dark border rounded-xl px-4 py-2.5 pr-10 text-[15px] text-light placeholder:text-muted-dark focus:outline-none transition-colors ${
-                    usernameStatus === "invalid"
-                      ? "border-red-500/50 focus:border-red-500"
-                      : usernameStatus === "valid"
-                      ? "border-green-500/50 focus:border-green-500"
-                      : "border-dark-lighter focus:border-primary"
-                  }`}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {usernameStatus === "checking" && (
-                    <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin block" />
-                  )}
-                  {usernameStatus === "valid" && <Check className="w-4 h-4 text-green-500" />}
-                  {usernameStatus === "invalid" && <X className="w-4 h-4 text-red-500" />}
-                </span>
-              </div>
-              {usernameError && (
-                <p className="flex items-center gap-1 font-headline text-[10px] uppercase tracking-widest text-red-400 mt-1">
-                  <AlertCircle className="w-3 h-3" /> {usernameError}
-                </p>
-              )}
-              {usernameStatus === "idle" && !usernameError && (
-                <p className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-1">
-                  3–30 characters, lowercase letters, numbers, and hyphens only.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">
-                Bio
-              </label>
-              <textarea
-                value={editBio}
-                onChange={(e) => setEditBio(e.target.value)}
-                rows={3}
-                className="w-full bg-dark border border-dark-lighter rounded-xl px-4 py-2.5 text-[15px] text-light placeholder:text-muted-dark focus:border-primary focus:outline-none transition-colors resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">
-                City
-              </label>
-              <input
-                type="text"
-                value={editCity}
-                onChange={(e) => setEditCity(e.target.value)}
-                placeholder="e.g. Melbourne"
-                className="w-full bg-dark border border-dark-lighter rounded-xl px-4 py-2.5 text-[15px] text-light placeholder:text-muted-dark focus:border-primary focus:outline-none transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">
-                State
-              </label>
-              <select
-                value={editState}
-                onChange={(e) => setEditState(e.target.value)}
-                className="w-full bg-dark border border-dark-lighter rounded-xl px-4 py-2.5 text-[15px] text-light focus:border-primary focus:outline-none transition-colors"
-              >
-                <option value="">—</option>
-                {STATE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <label className="flex items-center gap-3 cursor-pointer">
-              <button
-                onClick={() => setEditIsPublic(!editIsPublic)}
-                className={`w-10 h-6 rounded-full transition-colors relative ${editIsPublic ? "bg-primary" : "bg-dark-lighter"}`}
-              >
-                <div
-                  className={`w-4 h-4 rounded-full bg-dark absolute top-1 transition-transform ${editIsPublic ? "translate-x-5" : "translate-x-1"}`}
-                />
-              </button>
-              <span className="font-headline text-[12px] uppercase tracking-widest text-muted">
-                {editIsPublic ? "Public profile" : "Private profile"}
-              </span>
-            </label>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={handleSaveProfile}
-                disabled={editSaving || usernameStatus === "invalid" || usernameStatus === "checking"}
-                className="bg-machined shadow-machined text-dark font-headline text-[11px] font-bold uppercase tracking-widest py-2.5 px-6 rounded-xl flex items-center gap-2 hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-all disabled:opacity-50"
-              >
-                {editSaving ? "Saving…" : <><Check className="w-4 h-4" /> Save</>}
-              </button>
-            </div>
-
-            <div className="pt-4 border-t border-dark-lighter">
-              <label className="font-headline text-[10px] uppercase tracking-widest text-muted-dark block mb-1">
-                User ID
-              </label>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 font-mono text-[12px] text-muted bg-dark px-3 py-2 rounded-xl truncate">
-                  {userData?.id ?? ""}
-                </code>
-                <button
-                  onClick={() => navigator.clipboard.writeText(userData?.id ?? "")}
-                  className="font-headline text-[10px] uppercase tracking-widest text-primary hover:underline flex-shrink-0"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-          </div>
+    <main className="min-h-screen bg-dark-darker pt-14">
+      {/* ── Cover ── */}
+      <div className="relative w-full h-44 sm:h-60 overflow-hidden">
+        {userData?.coverImageUrl ? (
+          <Image
+            src={userData.coverImageUrl}
+            alt=""
+            fill
+            className="object-cover brightness-[0.55]"
+            style={{ objectPosition: userData.coverPosition ?? "50% 50%" }}
+            sizes="100vw"
+            priority
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-dark via-dark-lighter to-dark-darker" />
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-dark-darker via-dark-darker/40 to-transparent" />
+      </div>
 
-        {/* Single-column layout */}
-        {!editing && (
-          <div>
-
-            {/* Profile header — horizontal banner */}
-            <div className="bg-dark border border-dark-lighter rounded-2xl p-6 flex items-center gap-6 mb-8 flex-wrap">
-              {profileLoading ? (
-                <div className="flex items-center gap-6 w-full">
-                  <div className="w-20 h-20 rounded-full bg-dark-lighter animate-pulse flex-shrink-0" />
-                  <div className="space-y-2 flex-1">
-                    <div className="w-48 h-5 bg-dark-lighter rounded animate-pulse" />
-                    <div className="w-32 h-3 bg-dark-lighter rounded animate-pulse" />
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {/* Avatar */}
-                    <div
-                      className="relative w-20 h-20 rounded-full bg-primary border-2 border-primary flex items-center justify-center overflow-hidden flex-shrink-0"
-                      style={{ boxShadow: "3px 3px 0 rgba(179, 225, 83, 0.25)" }}
-                    >
-                      {userData?.profilePicUrl ? (
-                        <Image
-                          src={userData.profilePicUrl}
-                          alt={userData?.name ?? "Profile"}
-                          fill
-                          className="pointer-events-none object-cover"
-                          sizes="80px"
-                        />
-                    ) : (
-                      <span className="font-headline text-3xl font-black text-dark">{initial}</span>
-                    )}
-                  </div>
-
-                  {/* Name + handle + bio + meta */}
-                  <div className="flex-1 min-w-0">
-                    <h1 className="font-headline text-2xl font-black italic tracking-tighter text-light leading-none">
-                      {userData?.name ?? user?.email}
-                    </h1>
-                    {userData?.username && (
-                      <p className="font-headline text-[10.5px] font-bold uppercase tracking-widest text-muted mt-1.5">
-                        @{userData.username}
-                      </p>
-                    )}
-                    {userData?.bio && (
-                      <p className="font-headline text-sm text-muted leading-relaxed mt-2 max-w-xl">
-                        {userData.bio}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-4 mt-3">
-                      {locationStr && (
-                        <div className="flex items-center gap-1.5 font-headline text-[11px] font-medium uppercase tracking-widest text-muted">
-                          <MapPin className="w-[13px] h-[13px] text-primary flex-shrink-0" />
-                          {locationStr}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1.5 font-headline text-[11px] font-medium uppercase tracking-widest text-muted">
-                        <Calendar className="w-[13px] h-[13px] text-primary flex-shrink-0" />
-                        Member since Startline
-                      </div>
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 pb-12">
+        {/* ── Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-5 -mt-16 sm:-mt-20 relative z-10">
+          {profileLoading ? (
+            <>
+              <div className="flex items-end justify-between gap-4 sm:contents">
+                <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-2xl bg-dark-lighter animate-pulse shrink-0" />
+                <div className="sm:hidden w-16 h-12 bg-dark-lighter rounded animate-pulse mb-1" />
+              </div>
+              <div className="flex-1 space-y-3 pb-1">
+                <div className="w-48 h-10 bg-dark-lighter rounded animate-pulse" />
+                <div className="w-32 h-3 bg-dark-lighter rounded animate-pulse" />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Mobile: avatar + events completed side-by-side; desktop: avatar only (stats sit with edit) */}
+              <div className="flex items-end justify-between gap-4 sm:contents">
+                <div className="relative w-36 h-36 sm:w-40 sm:h-40 rounded-2xl overflow-hidden border-2 border-dark-lighter bg-dark shrink-0">
+                  {userData?.profilePicUrl ? (
+                    <Image
+                      src={userData.profilePicUrl}
+                      alt={displayHandle}
+                      fill
+                      className="object-cover"
+                      sizes="160px"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-headline text-5xl font-black text-primary">
+                      {initial}
                     </div>
-                  </div>
+                  )}
+                </div>
+                <div className="sm:hidden">
+                  <ProfileStats completed={history?.completed ?? 0} />
+                </div>
+              </div>
 
-                  {/* Edit button */}
+              <div className="flex flex-1 min-w-0 flex-col sm:flex-row sm:items-end gap-4 sm:gap-5 pb-1">
+                <div className="min-w-0 shrink-0">
+                  <h1 className="font-headline text-4xl sm:text-5xl font-black tracking-tighter text-light leading-none">
+                    {displayHandle}
+                  </h1>
+                  {userData?.bio && (
+                    <p className="mt-3 text-lg sm:text-xl font-medium text-light leading-relaxed max-w-3xl sm:hidden">
+                      {userData.bio}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-end gap-4 sm:gap-5 sm:ml-auto shrink-0">
+                  <div className="hidden sm:block">
+                    <ProfileStats completed={history?.completed ?? 0} />
+                  </div>
                   <button
+                    type="button"
                     onClick={() => setEditing(true)}
-                    className="h-10 px-5 rounded-xl bg-transparent border border-dark-lighter font-headline text-[12px] font-bold uppercase tracking-[0.12em] text-muted hover:border-primary hover:text-primary transition-colors flex-shrink-0"
+                    className="inline-flex items-center gap-2 shrink-0 bg-machined shadow-machined text-dark font-headline text-[12px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-md hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-transform"
                   >
+                    <Edit2 className="w-4 h-4" />
                     Edit Profile
                   </button>
-                </>
-              )}
-            </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
-            {/* Stats + history */}
-            <div>
-              {(() => {
-                const withResults = (userData?.registrations ?? []).filter(
-                  (r) => r.resultTime || r.resultPlacement,
-                );
-                const statesRaced = new Set(
-                  withResults.map((r) => r.event.state).filter(Boolean),
-                ).size;
-                const disciplines = new Set(
-                  withResults.map((r) => r.event.discipline).filter(Boolean),
-                ).size;
-
-                return (
-                  <>
-                    <div className="flex gap-3.5 flex-wrap mb-10">
-                      <KStat n={withResults.length} l="Events Completed" />
-                      <KStat n={statesRaced} l="States Raced" />
-                      <KStat n={disciplines} l="Disciplines" />
-                    </div>
-
-                    <div className="flex items-baseline justify-between mb-4">
-                      <h3 className="font-headline text-2xl font-black italic tracking-tighter text-light">
-                        Race History
-                      </h3>
-                      <span className="font-headline text-[10.5px] font-bold uppercase tracking-widest text-muted-dark">
-                        {withResults.length} {withResults.length === 1 ? "event" : "events"}
-                      </span>
-                    </div>
-
-                    {withResults.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-16 gap-3 border border-dashed border-dark-lighter rounded-2xl">
-                        <p className="font-headline text-lg font-black italic tracking-tighter text-light">
-                          No race history yet.
-                        </p>
-                        <p className="font-headline text-sm text-muted text-center max-w-xs leading-relaxed">
-                          Completed events will appear here once race results are available.
-                        </p>
-                        <Link
-                          href="/events"
-                          className="mt-2 font-headline text-[11px] font-bold uppercase tracking-widest text-primary hover:underline"
-                        >
-                          Find Events
-                        </Link>
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto border border-dark-lighter rounded-xl bg-dark">
-                        <table className="w-full min-w-[640px] border-collapse">
-                          <thead>
-                            <tr className="border-b border-dark-lighter">
-                              {["Event", "Discipline", "Date", "Division", "Time", "Place"].map((h) => (
-                                <th
-                                  key={h}
-                                  className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted-dark text-left px-3.5 py-3"
-                                >
-                                  {h}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {withResults.map((reg) => (
-                              <tr key={reg.id} className="border-b border-dark-lighter last:border-0">
-                                <td className="py-4 px-3.5">
-                                  <Link
-                                    href={`/events/${reg.eventId}`}
-                                    className="font-headline text-[14px] font-bold italic tracking-tighter text-light hover:text-primary transition-colors"
-                                  >
-                                    {reg.event.title}
-                                  </Link>
-                                </td>
-                                <td className="py-4 px-3.5">
-                                  <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 border border-primary/20 rounded px-2 py-0.5">
-                                    {formatDiscipline(reg.event.discipline)}
-                                  </span>
-                                </td>
-                                <td className="py-4 px-3.5 font-headline text-[12px] text-muted whitespace-nowrap">
-                                  {formatMediumDate(reg.event.eventDate)}
-                                </td>
-                                <td className="py-4 px-3.5 font-headline text-[13px] text-muted-light whitespace-nowrap">
-                                  {reg.category?.trim() || reg.resultDistance || "—"}
-                                </td>
-                                <td className="py-4 px-3.5 font-headline text-[13px] font-bold text-light whitespace-nowrap">
-                                  {reg.resultTime ?? "—"}
-                                  {reg.isPersonalBest && (
-                                    <span className="ml-1.5 font-black text-primary text-[10px] uppercase tracking-widest">PB</span>
-                                  )}
-                                </td>
-                                <td className={`py-4 px-3.5 font-headline font-bold text-[13px] whitespace-nowrap ${reg.isTopResult ? "text-primary" : "text-muted"}`}>
-                                  {reg.resultPlacement ?? "—"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-
+        {userData?.bio && (
+          <div className="hidden sm:block mt-6 max-w-3xl">
+            <p className="text-lg sm:text-xl font-medium text-light leading-relaxed">{userData.bio}</p>
           </div>
         )}
-      </div>
+
+        <div className="mt-12">
+          <div className="mb-6">
+            <h2 className="font-headline text-3xl sm:text-4xl font-black tracking-tighter text-light leading-none">
+              Race <span className="text-primary">History</span>
+            </h2>
+          </div>
+
+          {profileLoading ? (
+            <div className="space-y-4">
+              {[0, 1].map((i) => (
+                <div
+                  key={i}
+                  className="h-36 rounded-2xl bg-dark border border-dark-lighter animate-pulse"
+                />
+              ))}
+            </div>
+          ) : history && history.registrations.length > 0 ? (
+            <div className="space-y-8">
+              {groupHistoryByYear(history.registrations).map(({ year, registrations }) => (
+                <div key={year}>
+                  <p className="font-headline text-2xl font-black tracking-tighter text-light mb-3">
+                    {year}
+                  </p>
+                  <div className="space-y-4">
+                    {registrations.map((reg) => (
+                      <RaceHistoryCard key={reg.id} reg={reg} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-dark border border-dashed border-dark-lighter rounded-2xl px-6 py-14 text-center">
+              <p className="font-headline text-xl font-black tracking-tighter text-light">
+                No races logged yet.
+              </p>
+              <p className="text-sm text-muted mt-2 max-w-sm mx-auto leading-relaxed">
+                Finish an event and your result will land here — placing, time, and the full race story.
+              </p>
+              <Link
+                href="/events"
+                className="inline-block mt-5 font-headline text-xs font-bold uppercase tracking-widest text-primary hover:underline"
+              >
+                Find Events
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {userData && (
+        <UserEditProfileModal
+          open={editing}
+          initial={{
+            name: userData.name ?? "",
+            username: userData.username ?? "",
+            bio: userData.bio ?? "",
+            isPublic: userData.isPublic,
+            city: userData.city ?? "",
+            state: userData.state ?? "",
+            profilePicUrl: userData.profilePicUrl ?? "",
+            coverImageUrl: userData.coverImageUrl ?? "",
+            coverPosition: userData.coverPosition ?? "50% 50%",
+            mobile: userData.mobile ?? "",
+            dateOfBirth: userData.dateOfBirth ?? "",
+            gender: userData.gender ?? "",
+            emergencyContactName: userData.emergencyContactName ?? "",
+            emergencyContactPhone: userData.emergencyContactPhone ?? "",
+            currentUsername: userData.username,
+          }}
+          onClose={() => setEditing(false)}
+          onSaved={(data) => {
+            setUserData((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    name: data.name || null,
+                    username: data.username || null,
+                    bio: data.bio || null,
+                    isPublic: data.isPublic,
+                    city: data.city || null,
+                    state: data.state || null,
+                    profilePicUrl: data.profilePicUrl || null,
+                    coverImageUrl: data.coverImageUrl || null,
+                    coverPosition: data.coverPosition || "50% 50%",
+                    mobile: data.mobile || null,
+                    dateOfBirth: data.dateOfBirth || null,
+                    gender: data.gender || null,
+                    emergencyContactName: data.emergencyContactName || null,
+                    emergencyContactPhone: data.emergencyContactPhone || null,
+                  }
+                : prev
+            );
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -88,6 +88,8 @@ export interface TicketSelection {
   quantity: number;
 }
 
+export const GENDER_OPTIONS = ["Prefer not to say", "Male", "Female", "Non-binary", "Other"] as const;
+
 export function splitFullName(name: string | null | undefined): { firstName: string; lastName: string } {
   if (!name?.trim()) return { firstName: "", lastName: "" };
   const parts = name.trim().split(/\s+/);

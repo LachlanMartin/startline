@@ -39,7 +39,6 @@ export interface UserEvent {
   id: string;
   title: string;
   description: string;
-  fullDescription?: string;
   date: string;
   endDate?: string;
   time: string;
@@ -69,7 +68,6 @@ export interface UserEvent {
   isOfficial?: boolean;
   ticketDrops?: TicketDrop[];
   fromPrice: number | null;
-  tagline?: string | null;
   coverImageUrl?: string | null;
   photos?: string[];
   registrationCount: number;

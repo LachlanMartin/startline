@@ -60,6 +60,9 @@ interface ProfilePrefill {
   lastName: string;
   mobile: string;
   dateOfBirth: string;
+  gender: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
 }
 
 interface WaveAvailability {
@@ -224,7 +227,15 @@ function RegisterContent() {
     prefilledRef.current = true;
     fetch("/api/user/profile")
       .then((r) => (r.ok ? r.json() : null))
-      .then((profile: { email?: string; name?: string | null; mobile?: string | null; dateOfBirth?: string | null } | null) => {
+      .then((profile: {
+        email?: string;
+        name?: string | null;
+        mobile?: string | null;
+        dateOfBirth?: string | null;
+        gender?: string | null;
+        emergencyContactName?: string | null;
+        emergencyContactPhone?: string | null;
+      } | null) => {
         if (!profile) return;
         const { firstName, lastName } = splitFullName(profile.name);
         const prefill: ProfilePrefill = {
@@ -233,6 +244,11 @@ function RegisterContent() {
           lastName,
           mobile: profile.mobile ? formatPhoneForDisplay(profile.mobile) : "",
           dateOfBirth: profile.dateOfBirth ?? "",
+          gender: profile.gender ?? "",
+          emergencyContactName: profile.emergencyContactName ?? "",
+          emergencyContactPhone: profile.emergencyContactPhone
+            ? formatPhoneForDisplay(profile.emergencyContactPhone)
+            : "",
         };
         setParticipants((prev) => {
           const first = prev[0];

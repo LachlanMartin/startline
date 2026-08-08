@@ -116,7 +116,6 @@ export async function POST(req: NextRequest) {
         status:           eventStatus,
         title:            body.title,
         discipline:       body.discipline        ?? "",
-        tagline:          body.tagline           ?? null,
         description:      body.description       ?? null,
         eventDate:        body.eventDate         ?? "",
         endDate:          body.endDate           ?? null,

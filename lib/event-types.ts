@@ -11,7 +11,6 @@ export interface PublicEvent {
   id: string;
   title: string;
   discipline: string;
-  tagline: string | null;
   description: string | null;
   eventDate: string;
   endDate: string | null;

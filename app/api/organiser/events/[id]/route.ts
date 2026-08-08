@@ -67,7 +67,6 @@ export async function PATCH(
       data: {
         title:             data.title             ?? undefined,
         discipline:        data.discipline        ?? undefined,
-        tagline:           data.tagline           ?? undefined,
         description:       data.description       ?? undefined,
         eventDate:         data.eventDate         ?? undefined,
         endDate:           data.endDate           ?? null,

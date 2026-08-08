@@ -3,14 +3,13 @@
 import { ChevronDown, X } from "lucide-react";
 import { RegisterField, registerInputCls } from "@/components/registration/RegisterField";
 import {
+  GENDER_OPTIONS,
   maxDateOfBirthForMinAge,
   MAX_MEDICAL_NOTES_LENGTH,
   type RegistrationFormData,
   type RegistrationFormErrors,
   type RegistrationFormField,
 } from "@/lib/registration-form";
-
-const GENDER_OPTIONS = ["Prefer not to say", "Male", "Female", "Non-binary", "Other"];
 
 function SectionDivider({ children }: { children: React.ReactNode }) {
   return (

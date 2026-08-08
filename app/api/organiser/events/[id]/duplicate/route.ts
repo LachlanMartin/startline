@@ -29,7 +29,6 @@ export async function POST(
         status: "DRAFT",
         title: source.title,
         discipline: source.discipline,
-        tagline: source.tagline,
         description: source.description,
         eventDate,
         endDate,

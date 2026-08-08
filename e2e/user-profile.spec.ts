@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 const BYPASS_COOKIE = { name: "__e2e_bypass", value: "1", domain: "localhost", path: "/", sameSite: "Lax" as const };
 
-// Bypass cookie maps server-side to sarah.mitchell@startline.test, which owns
+// Bypass cookie maps server-side to organiser@startline.test, which owns
 // Apex Endurance Events and follows Coastal Fitness Collective.
 const COASTAL_ORG = "Coastal Fitness Collective";
 
@@ -24,15 +24,39 @@ test.describe("user profile: race history", () => {
     await page.goto("/profile");
     await page.waitForLoadState("networkidle");
 
-    // Bypass user is sarah.mitchell@startline.test — seeded with 2 completed events
+    // Bypass user is organiser@startline.test — seeded with 2 completed events
     await expect(page.getByText("Events Completed")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Race History" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /race history/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /edit profile/i })).toBeVisible();
     await expect(page.getByText("The Apex Throwdown 2025")).toBeVisible();
     await expect(page.getByText("Apex Bay Run")).toBeVisible();
 
     // Results + times are shown for seeded registrations
     await expect(page.getByText("5th", { exact: true })).toBeVisible();
     await expect(page.getByText("02:01:12", { exact: true })).toBeVisible();
+
+    // Edit opens a modal with photo + public/private fields (no internal User ID)
+    await page.getByRole("button", { name: /edit profile/i }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(/cover photo/i)).toBeVisible();
+    await expect(dialog.getByText(/profile photo/i)).toBeVisible();
+    await expect(dialog.getByText(/public profile/i)).toBeVisible();
+    await expect(dialog.getByText(/private details/i)).toBeVisible();
+    await expect(dialog.getByText(/prefill your own event registrations/i)).toBeVisible();
+    await expect(dialog.getByLabel(/full name/i)).toBeVisible();
+    await expect(dialog.getByLabel(/^phone$/i)).toBeVisible();
+    await expect(dialog.getByLabel(/date of birth/i)).toBeVisible();
+    await expect(dialog.getByLabel(/^gender$/i)).toBeVisible();
+    await expect(dialog.getByLabel(/emergency contact name/i)).toBeVisible();
+    await expect(dialog.getByLabel(/emergency contact phone/i)).toBeVisible();
+    await expect(dialog.getByText(/user id/i)).toHaveCount(0);
+    await expect(dialog.getByText(/location/i)).toHaveCount(0);
+
+    await dialog.getByPlaceholder("A short line about you as an athlete").fill("#testing");
+    await dialog.getByRole("button", { name: /^save$/i }).click();
+    await expect(dialog).toBeHidden({ timeout: 10000 });
+    await expect(page.getByText("#testing")).toBeVisible();
   });
 
   test("saving an event from the listing appears on the activity Saved tab", async ({ page }) => {
