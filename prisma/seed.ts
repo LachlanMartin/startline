@@ -25,6 +25,14 @@ function seedCoords(city: string, state: string, coords?: [number, number]) {
   return { latitude, longitude };
 }
 
+// Tier close dates are relative to seed time so the seeded catalogue stays
+// valid (open/closed tiers) no matter when the seed is (re)run.
+function isoDaysFromNow(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
@@ -487,9 +495,9 @@ async function main() {
     categories: ["Individual Scaled", "Individual RX", "Individual Elite", "Team of 2"],
     cap: 320, minAge: 16,
     waves: [
-      { label: "Early Bird", price: "95",  closes: "2026-05-01", startTime: "",      qty: 80  },
-      { label: "General",    price: "115", closes: "2026-07-15", startTime: "",      qty: 150 },
-      { label: "Late Entry", price: "135", closes: "2026-08-07", startTime: "09:00", qty: 90  },
+      { label: "Early Bird", price: "95",  closes: isoDaysFromNow(-120), startTime: "",      qty: 80  },
+      { label: "General",    price: "115", closes: isoDaysFromNow(-30),  startTime: "",      qty: 150 },
+      { label: "Late Entry", price: "135", closes: isoDaysFromNow(14),   startTime: "09:00", qty: 90  },
     ],
     // Organiser-built start waves (heats) banded by estimated finish time.
     startWaves: [
