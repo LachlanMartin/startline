@@ -42,8 +42,7 @@ test.describe("user profile: race history", () => {
     // The first matching save button may live in a hidden list container —
     // target a visible one instead.
     const saveButtons = page.locator('[aria-label="Save event"]:visible');
-    const count = await saveButtons.count();
-    expect(count).toBeGreaterThan(0);
+    await expect(saveButtons.first()).toBeVisible();
     await saveButtons.first().click();
     await expect(page.getByRole("button", { name: /unsave event/i }).first()).toBeVisible();
 
