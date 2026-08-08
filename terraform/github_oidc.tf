@@ -31,13 +31,19 @@ data "aws_iam_policy_document" "terraform_ci_assume" {
 
     # Admin role is only assumable from protected branches (push/tag events).
     # PRs use the separate read-only role below.
+    # Numeric org/repo ID forms: GitHub issues OIDC subjects as
+    # repo:ORG@ORGID/REPO@REPOID for org-owned repos — named form alone
+    # doesn't match (verified: Aug 2026, repo renamed startline→startline-web-app).
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
+      values = concat([
         "repo:${var.github_repository}:*:refs/heads/main",
         "repo:${var.github_repository}:*:refs/heads/prod",
-      ]
+        ], [
+        "repo:StartlineAU@277168955/startline-web-app@1163051258:*:refs/heads/main",
+        "repo:StartlineAU@277168955/startline-web-app@1163051258:*:refs/heads/prod",
+      ])
     }
   }
 }
@@ -76,7 +82,11 @@ data "aws_iam_policy_document" "terraform_ci_readonly_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:*"]
+      values = concat([
+        "repo:${var.github_repository}:*",
+        ], [
+        "repo:StartlineAU@277168955/startline-web-app@1163051258:*",
+      ])
     }
   }
 }
