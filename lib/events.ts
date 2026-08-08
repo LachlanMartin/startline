@@ -88,6 +88,7 @@ const publicEventSelect = {
   refundPolicy: true,
   coverImageUrl: true,
   photos: true,
+  informationPdfUrl: true,
   registrationType: true,
   registrationUrl: true,
   feeStructure: true,

@@ -1,7 +1,8 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Calendar, ExternalLink, Trophy, Clock, Ticket } from "lucide-react";
+import type { Metadata } from "next";
+import { MapPin, Calendar, ExternalLink, Trophy, Clock, Ticket, FileText } from "lucide-react";
 import { getAllEvents, getPublicEventById } from "@/lib/events";
 import { todayIso } from "@/lib/event-types";
 import { parsePrizePool } from "@/lib/prize-pool";
@@ -22,6 +23,7 @@ import EventGallery from "@/components/EventGallery";
 import EventReviewsSection from "@/components/EventReviewsSection";
 import OrganiserRating from "@/components/OrganiserRating";
 import SaveEventButton from "@/components/SaveEventButton";
+import ShareEventButton from "@/components/ShareEventButton";
 import { getPublishedOrganiserReviews, averageOverallRating } from "@/lib/reviews";
 
 export const revalidate = 60;
@@ -33,6 +35,41 @@ export async function generateStaticParams() {
   } catch {
     return [];
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const found = await getPublicEventById(id);
+  if (!found) return { title: "Event" };
+
+  const title = found.title;
+  const description =
+    found.description?.replace(/<[^>]+>/g, "").slice(0, 160) ||
+    `${found.title} — ${found.city}, ${found.state.toUpperCase()}`;
+  const image = found.coverImageUrl || undefined;
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://startlineau.com"}/events/${id}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "website",
+      ...(image ? { images: [{ url: image }] } : {}),
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+  };
 }
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -189,34 +226,43 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           {/* ── Sidebar: CTAs + details — first on mobile so key facts aren't buried ── */}
           <div className="order-1 lg:order-none space-y-4">
             {/* CTAs — top of sidebar so they're visible above the fold on desktop; hidden on mobile (sticky bar instead) */}
-            <div className="hidden lg:flex flex-col gap-3">
-              {event.registrationType === "startline" && event.ticketDrops && event.ticketDrops.length > 0 && (
-                <Button asChild variant="machined" size="ctaLg">
-                  <Link href={`/events/${event.id}/register`}>
-                    Register Now
-                    <Ticket className="w-4 h-4" />
+            <div className="flex flex-col gap-3">
+              <div className="hidden lg:flex flex-col gap-3">
+                {event.registrationType === "startline" && event.ticketDrops && event.ticketDrops.length > 0 && (
+                  <Button asChild variant="machined" size="ctaLg">
+                    <Link href={`/events/${event.id}/register`}>
+                      Register Now
+                      <Ticket className="w-4 h-4" />
+                    </Link>
+                  </Button>
+                )}
+                {event.registrationUrl && (
+                  <Button asChild variant="machined" size="ctaLg">
+                    <a href={event.registrationUrl ?? undefined} target="_blank" rel="noopener noreferrer">
+                      Register Now
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </Button>
+                )}
+                <Button asChild variant="outline" size="ctaLg">
+                  <Link href={`https://maps.google.com/?q=${encodeURIComponent(
+                    (event.address || event.location) + ", " + event.city + ", Australia"
+                  )}`} target="_blank" rel="noopener noreferrer">
+                    <MapPin className="w-4 h-4" />
+                    View on Maps
                   </Link>
                 </Button>
-              )}
-              {event.registrationUrl && (
-                <Button asChild variant="machined" size="ctaLg">
-                  <a href={event.registrationUrl ?? undefined} target="_blank" rel="noopener noreferrer">
-                    Register Now
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                </Button>
-              )}
-              <Button asChild variant="outline" size="ctaLg">
-                <Link href={`https://maps.google.com/?q=${encodeURIComponent(
-                  (event.address || event.location) + ", " + event.city + ", Australia"
-                )}`} target="_blank" rel="noopener noreferrer">
-                  <MapPin className="w-4 h-4" />
-                  View on Maps
-                </Link>
-              </Button>
-              <div className="flex items-center justify-center gap-2 border border-dark-lighter rounded-xl py-2.5 px-4">
-                <SaveEventButton eventId={event.id} />
-                <span className="font-headline text-xs font-bold uppercase tracking-widest text-muted">Save Event</span>
+              </div>
+              <div className="flex items-center justify-center gap-4 border border-dark-lighter rounded-xl py-2.5 px-4">
+                <div className="flex items-center gap-2">
+                  <SaveEventButton eventId={event.id} />
+                  <span className="font-headline text-xs font-bold uppercase tracking-widest text-muted">Save</span>
+                </div>
+                <div className="w-px h-5 bg-dark-lighter" />
+                <div className="flex items-center gap-2">
+                  <ShareEventButton eventId={event.id} title={event.title} />
+                  <span className="font-headline text-xs font-bold uppercase tracking-widest text-muted">Share</span>
+                </div>
               </div>
             </div>
 
@@ -316,6 +362,22 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 )}
               </div>
             </div>
+
+            {event.informationPdfUrl && (
+              <div className="bg-dark rounded-xl p-5 sm:p-6">
+                <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-muted mb-3">Event information</h3>
+                <a
+                  href={event.informationPdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 font-headline text-[12px] font-bold uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  Download PDF
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            )}
 
             {event.refundPolicy && (
               <div className="bg-dark rounded-xl p-5 sm:p-6">

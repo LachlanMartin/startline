@@ -32,6 +32,7 @@ export interface PublicEvent {
   refundPolicy: string | null;
   coverImageUrl: string | null;
   photos: string[];
+  informationPdfUrl: string | null;
   registrationType: string;
   registrationUrl: string | null;
   feeStructure: string;

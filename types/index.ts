@@ -70,6 +70,7 @@ export interface UserEvent {
   fromPrice: number | null;
   coverImageUrl?: string | null;
   photos?: string[];
+  informationPdfUrl?: string | null;
   registrationCount: number;
   organiser?: {
     id: string;

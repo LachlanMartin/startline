@@ -74,6 +74,7 @@ export function toUserEvent(event: PublicEvent): UserEvent {
     fromPrice: lowestPrice(waves),
     coverImageUrl: event.coverImageUrl,
     photos: Array.isArray(event.photos) ? event.photos : [],
+    informationPdfUrl: event.informationPdfUrl,
     registrationCount: event.registrationCount,
     organiser: event.organiser
       ? {

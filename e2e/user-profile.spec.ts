@@ -15,6 +15,32 @@ async function coastalOrganiserId(page: import("@playwright/test").Page): Promis
   return event.organiserId;
 }
 
+test.describe("public profile", () => {
+  test("matches signed-in profile layout without edit controls", async ({ page }) => {
+    // Public API needs no auth — pick the first available public profile.
+    const candidates = ["jade-nguyen", "sarah-mitchell", "sweet"];
+    let username: string | null = null;
+    for (const candidate of candidates) {
+      const res = await page.request.get(`/api/user/profile/${candidate}`);
+      if (res.ok()) {
+        username = candidate;
+        break;
+      }
+    }
+    test.skip(!username, "no public profile available for e2e");
+
+    await page.goto(`/profile/${username}`);
+    await page.waitForLoadState("domcontentloaded");
+
+    await expect(page.getByRole("heading", { name: username!, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /race history/i })).toBeVisible();
+    await expect(page.getByText("Events Completed")).toBeVisible();
+    await expect(page.getByRole("button", { name: /edit profile/i })).toHaveCount(0);
+    // Public view must not use the old "Events Attended" list layout
+    await expect(page.getByText(/events attended/i)).toHaveCount(0);
+  });
+});
+
 test.describe("user profile: race history", () => {
   test.beforeEach(async ({ page }) => {
     await page.context().addCookies([BYPASS_COOKIE]);
@@ -25,8 +51,8 @@ test.describe("user profile: race history", () => {
     await page.waitForLoadState("networkidle");
 
     // Bypass user is organiser@startline.test — seeded with 2 completed events
-    await expect(page.getByText("Events Completed")).toBeVisible();
     await expect(page.getByRole("heading", { name: /race history/i })).toBeVisible();
+    await expect(page.getByText("Events Completed")).toBeVisible();
     await expect(page.getByRole("button", { name: /edit profile/i })).toBeVisible();
     await expect(page.getByText("The Apex Throwdown 2025")).toBeVisible();
     await expect(page.getByText("Apex Bay Run")).toBeVisible();

@@ -169,13 +169,14 @@ model Event {
   payoutAt          DateTime?
 
   // Step 5 — media & logistics
-  coverImageUrl     String?
-  photos            String[]
-  registrationUrl   String?
-  bagDrop           String?
-  parking           String?
-  accessibilityInfo String?
-  additionalNotes   String?
+  coverImageUrl       String?
+  photos              String[]
+  informationPdfUrl   String?
+  registrationUrl     String?
+  bagDrop             String?
+  parking             String?
+  accessibilityInfo   String?
+  additionalNotes     String?
 
   // Admin review
   adminNotes      String?

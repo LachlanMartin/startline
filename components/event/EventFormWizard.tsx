@@ -8,7 +8,7 @@ import {
   Upload, X, MapPin, Calendar, Users,
   ChevronDown, ChevronLeft, ChevronRight, Clock, Eye,
   Ticket, ExternalLink, DollarSign, Bold, Italic, Underline,
-  AlignLeft, Trophy,
+  AlignLeft, Trophy, FileText,
 } from "lucide-react";
 import { encodePrizePool, parsePrizePool, normalisePrizeAmount } from "@/lib/prize-pool";
 import AddressAutocomplete  from "@/components/ui/AddressAutocomplete";
@@ -67,6 +67,8 @@ interface FormState {
   registrationUrl: string;
   coverImage: File | null;
   coverImageUrl: string;
+  informationPdf: File | null;
+  informationPdfUrl: string;
   photos: File[];
   photoUrls: string[];
 }
@@ -81,6 +83,7 @@ const INITIAL: FormState = {
   refundPolicy: "",
   registrationType: "startline", feeStructure: "athlete", registrationUrl: "",
   coverImage: null, coverImageUrl: "",
+  informationPdf: null, informationPdfUrl: "",
   photos: [], photoUrls: [],
 };
 
@@ -678,7 +681,15 @@ const STARTLINE_FLAT = 1.45;
 const STRIPE_PCT     = 0.0175;
 const STRIPE_FLAT    = 0.30;
 
-function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<FormState>) => void }) {
+function TicketsStep({
+  form,
+  update,
+  hasAbn,
+}: {
+  form: FormState;
+  update: (p: Partial<FormState>) => void;
+  hasAbn: boolean;
+}) {
   const updateWave = (i: number, patch: Partial<Wave>) => {
     const waves = [...form.waves]; waves[i] = { ...waves[i], ...patch }; update({ waves });
   };
@@ -711,16 +722,27 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
     <div>
       {/* Registration platform */}
       <Field label="Registration platform" required>
+        {!hasAbn && (
+          <div className="mb-3 rounded-xl border border-orange-500/30 bg-orange-500/5 px-4 py-3 text-[13px] text-orange-300">
+            An ABN is required to host paid events on Startline. Add your ABN in Payments (or during onboarding). You can still list free or external-registration events.
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {([
-            { value: "startline", title: "Startline",        sub: "Managed on this platform"      },
-            { value: "external",  title: "External website", sub: "Link to your own registration" },
-          ] as const).map(({ value, title, sub }) => {
+            { value: "startline", title: "Startline",        sub: "Managed on this platform", disabled: !hasAbn },
+            { value: "external",  title: "External website", sub: "Link to your own registration", disabled: false },
+          ] as const).map(({ value, title, sub, disabled }) => {
             const active = form.registrationType === value;
             return (
-              <button key={value} type="button" onClick={() => update({ registrationType: value })}
+              <button
+                key={value}
+                type="button"
+                disabled={disabled}
+                onClick={() => !disabled && update({ registrationType: value })}
                 className={`flex flex-col items-start gap-1 rounded-xl border-2 px-5 py-4 text-left transition-colors
-                  ${active ? "border-primary bg-primary/10" : "border-dark-lighter bg-dark-light hover:border-primary/40"}`}>
+                  ${disabled ? "opacity-40 cursor-not-allowed border-dark-lighter bg-dark-light" : ""}
+                  ${active ? "border-primary bg-primary/10" : "border-dark-lighter bg-dark-light hover:border-primary/40"}`}
+              >
                 <div className={`font-headline text-[13px] font-bold uppercase tracking-widest ${active ? "text-primary" : "text-light"}`}>{title}</div>
                 <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">{sub}</div>
               </button>
@@ -1006,6 +1028,44 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
         </p>
       </Field>
 
+      <Field label="Event information PDF" hint="Optional · Max 15 MB">
+        {form.informationPdf || form.informationPdfUrl ? (
+          <div className="flex items-center gap-3 rounded-md border border-primary/40 bg-dark-light px-4 py-3">
+            <FileText className="w-5 h-5 text-primary shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="font-headline text-[12px] font-bold uppercase tracking-widest text-light truncate">
+                {form.informationPdf?.name ?? "Event information PDF"}
+              </div>
+              <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">
+                Athletes can download this from the event page
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => update({ informationPdf: null, informationPdfUrl: "" })}
+              className="w-8 h-8 rounded-full bg-dark/70 text-muted hover:text-white flex items-center justify-center transition-colors"
+              aria-label="Remove PDF"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <label className="block cursor-pointer">
+            <div className="rounded-md border-2 border-dashed border-dark-lighter hover:border-primary/40 bg-dark-light px-5 py-8 flex flex-col items-center justify-center transition-colors">
+              <Upload className="w-6 h-6 text-primary mb-2" />
+              <span className="font-headline text-[11px] font-bold uppercase tracking-widest text-light">Upload PDF</span>
+              <span className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-1">Course maps, info packs, athlete guides</span>
+            </div>
+            <input
+              type="file"
+              accept="application/pdf"
+              className="sr-only"
+              onChange={(e) => update({ informationPdf: e.target.files?.[0] ?? null })}
+            />
+          </label>
+        )}
+      </Field>
+
       <Field label="Full description" required hint={`${stripHtml(form.description).length} chars`}>
         <RichTextEditor value={form.description} onChange={html => update({ description: html })} />
       </Field>
@@ -1041,6 +1101,7 @@ function ReviewStep({ form, setStep, confirmed, onConfirm }: {
     { k: "Refund policy",  v: form.refundPolicy || "—",                                                            step: 2 },
     { k: "Prize money",    v: form.prizeMoney ? (normalisePrizeAmount(form.prizeMoneyAmount) ? `$${normalisePrizeAmount(form.prizeMoneyAmount)} prize pool` : "Yes") : "No", step: 2 },
     { k: "Cover image",    v: form.coverImage || form.coverImageUrl ? "Uploaded" : "No image",                    step: 3 },
+    { k: "Info PDF",       v: form.informationPdf || form.informationPdfUrl ? "Uploaded" : "None",               step: 3 },
     { k: "Gallery",        v: (() => { const n = form.photoUrls.length + form.photos.length; return n ? `${n} photo${n !== 1 ? "s" : ""}` : "None"; })(), step: 3 },
     { k: "Description",    v: form.description ? `${stripHtml(form.description).slice(0, 60)}…` : "—", step: 3 },
   ];
@@ -1525,9 +1586,27 @@ export default function EventFormWizard({
   const [direction,       setDirection]       = useState<"forward" | "back">("forward");
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [eventId,         setEventId]         = useState<string | null>(null);
+  const [hasAbn,          setHasAbn]          = useState(true);
   const originalFields = useRef<Record<string, unknown>>({});
 
   const update = (patch: Partial<FormState>) => setForm(f => ({ ...f, ...patch }));
+
+  useEffect(() => {
+    if (apiBase !== "/api/organiser") return;
+    fetch("/api/organiser/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { abn?: string | null } | null) => {
+        const digits = (data?.abn ?? "").replace(/\D/g, "");
+        const ok = digits.length >= 9;
+        setHasAbn(ok);
+        if (!ok) {
+          setForm((f) =>
+            f.registrationType === "startline" ? { ...f, registrationType: "external" } : f,
+          );
+        }
+      })
+      .catch(() => {});
+  }, [apiBase]);
 
   useEffect(() => {
     const id = eventIdProp ?? new URLSearchParams(window.location.search).get("id");
@@ -1569,6 +1648,8 @@ export default function EventFormWizard({
           registrationUrl:   e.registrationUrl   ?? "",
           coverImage:        null,
           coverImageUrl:     e.coverImageUrl  ?? "",
+          informationPdf:    null,
+          informationPdfUrl: e.informationPdfUrl ?? "",
           photos:            [],
           photoUrls:         Array.isArray(e.photos) ? e.photos.filter((p: unknown): p is string => typeof p === "string") : [],
         });
@@ -1626,6 +1707,16 @@ export default function EventFormWizard({
         const { fileUrl } = await uploadRes.json(); coverImageUrl = fileUrl;
       }
 
+      let informationPdfUrl: string | null = form.informationPdfUrl || null;
+      if (form.informationPdf) {
+        const fd = new FormData();
+        fd.append("file", form.informationPdf);
+        fd.append("type", "document");
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+        if (!uploadRes.ok) { setApiError("PDF upload failed. Please try again or remove the file."); return false; }
+        const { fileUrl } = await uploadRes.json(); informationPdfUrl = fileUrl;
+      }
+
       const photoUrls: string[] = [...form.photoUrls];
       for (const photo of form.photos) {
         const fd = new FormData();
@@ -1666,6 +1757,7 @@ export default function EventFormWizard({
         accessibilityInfo: originalFields.current.accessibilityInfo ?? null,
         submit:            !asDraft,
         coverImageUrl:     coverImageUrl ?? form.coverImageUrl ?? null,
+        informationPdfUrl,
         photos:            photoUrls,
         ...(!eventId && organiserId ? { organiserId } : {}),
       };
@@ -1781,7 +1873,7 @@ export default function EventFormWizard({
 
                 {step === 0 && <BasicsStep  form={form} update={update} />}
                 {step === 1 && <WhenStep    form={form} update={update} />}
-                {step === 2 && <TicketsStep form={form} update={update} />}
+                {step === 2 && <TicketsStep form={form} update={update} hasAbn={hasAbn || apiBase !== "/api/organiser"} />}
                 {step === 3 && <MediaStep   key={loadingEvent ? "loading" : (eventId ?? "new")} form={form} update={update} />}
                 {step === 4 && <ReviewStep  form={form} setStep={goTo} confirmed={confirmed} onConfirm={setConfirmed} />}
 

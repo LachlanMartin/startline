@@ -242,6 +242,23 @@ export default function NavBar() {
                 </Link>
               )}
 
+              {status === "authenticated" && (
+                <>
+                  <div className="border-t border-white/10 my-1.5" />
+                  <div className="px-4 pt-3 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/30">User</div>
+                  <Link href="/profile" onClick={() => setIsMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg font-headline text-[13px] font-bold uppercase tracking-widest transition-colors
+                      ${pathname?.startsWith("/profile") ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/10"}`}>
+                    <User className="w-4 h-4" /> Profile
+                  </Link>
+                  <Link href="/settings/security" onClick={() => setIsMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg font-headline text-[13px] font-bold uppercase tracking-widest transition-colors
+                      ${pathname?.startsWith("/settings/security") ? "text-white bg-white/10" : "text-white/60 hover:text-white hover:bg-white/10"}`}>
+                    <Shield className="w-4 h-4" /> Security
+                  </Link>
+                </>
+              )}
+
               {status === "authenticated" && (memberships.length > 0 || isAdmin) && (
                 <>
                   <div className="border-t border-white/10 my-1.5" />

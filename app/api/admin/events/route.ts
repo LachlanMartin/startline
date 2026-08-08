@@ -142,6 +142,7 @@ export async function POST(req: NextRequest) {
         registrationUrl:  body.registrationUrl   ?? null,
         accessibilityInfo: body.accessibilityInfo ?? null,
         coverImageUrl:    body.coverImageUrl      ?? null,
+        informationPdfUrl: body.informationPdfUrl ?? null,
         photos:           Array.isArray(body.photos) ? body.photos : [],
       },
     });

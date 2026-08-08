@@ -68,6 +68,20 @@ test.describe("event detail page", () => {
     await expect(page.getByText(/Apex Endurance Events/i).first()).toBeVisible();
   });
 
+  test("share control copies a clean event URL", async ({ page, context }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.goto("/events/seed-event-001");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole("button", { name: /share event/i })).toBeVisible();
+    await page.getByRole("button", { name: /share event/i }).click();
+    await page.getByRole("button", { name: /copy link/i }).click();
+    await expect(page.getByRole("button", { name: /link copied/i })).toBeVisible();
+    const text = await page.evaluate(() => navigator.clipboard.readText());
+    expect(text).toMatch(/\/events\/seed-event-001$/);
+    expect(text).not.toContain("?");
+  });
+
   test("event card shows organiser name and rating", async ({ page }) => {
     await page.goto("/events?view=list");
     await page.waitForLoadState("networkidle");

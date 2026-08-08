@@ -91,6 +91,7 @@ export async function PATCH(
         registrationUrl:   data.registrationUrl   ?? undefined,
         accessibilityInfo: data.accessibilityInfo ?? undefined,
         coverImageUrl:     data.coverImageUrl     ?? undefined,
+        informationPdfUrl: data.informationPdfUrl === undefined ? undefined : data.informationPdfUrl,
         photos:            Array.isArray(data.photos) ? data.photos : undefined,
         status:            nextStatus,
       },

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import FaqContent, { type FaqItem } from "@/components/faq/FaqContent";
 
 export const metadata: Metadata = {
   title: "FAQ",
@@ -15,14 +16,22 @@ export const metadata: Metadata = {
   },
 };
 
-const faqs = [
+const faqs: FaqItem[] = [
   {
     q: "What is Startline?",
-    a: "Startline is Australia's fitness event calendar. We help athletes discover, compare, and register for races, competitions, and fitness events across the country.",
+    a: "Startline is Australia's fitness event calendar. We help athletes discover, filter and register for races, competitions and fitness events across the country.",
+  },
+  {
+    q: "What is my Startline profile?",
+    a: "Your Startline profile is your personal fitness event history. It can show the events you've completed, your results and the disciplines you've competed in, helping you build a record of your fitness journey. Create an account via the sign in button.",
   },
   {
     q: "How do I register for an event?",
-    a: "Browse events on the platform, select one you're interested in, and click Register. You'll complete payment and receive a confirmation email with your event details.",
+    a: "Browse events on the platform, select one you're interested in and click Register. You'll complete payment and receive a confirmation email with your event details.",
+  },
+  {
+    q: "Where can I see my past results?",
+    a: "Your completed events and results can be displayed on your profile, helping you keep track of your racing history and performance over time.",
   },
   {
     q: "Can I get a refund if I can't attend?",
@@ -30,7 +39,7 @@ const faqs = [
   },
   {
     q: "How do I create an account?",
-    a: "Click Sign In at the top of any page and select Create Account. You'll need an email address and a password. You can also sign in with passkeys on supported devices.",
+    a: "Click Sign In at the top of any page and select Create Account. You'll need an email address and a password.",
   },
   {
     q: "How do I become an organiser?",
@@ -41,41 +50,11 @@ const faqs = [
     a: "Yes. All payments are processed securely through Stripe, a PCI-compliant payment processor. We never store your full payment details on our servers.",
   },
   {
-    q: "Can I edit or cancel my registration?",
-    a: "Contact the event organiser directly for changes to your registration. Their contact details are available on the event listing page.",
-  },
-  {
     q: "How do I contact support?",
-    a: "Send us a message through the Feedback page or email support@startline.com.au. We aim to respond within 24 hours.",
+    a: "Send us a message through the Contact page or email admin@startlineau.com. We aim to respond within 24 hours.",
   },
 ];
 
 export default function FAQPage() {
-  return (
-    <main className="min-h-screen bg-dark-darker">
-      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 py-20 sm:py-28">
-        <div className="max-w-3xl">
-          <p className="font-headline text-[10px] font-bold uppercase tracking-[0.25em] text-primary mb-3.5">
-            Help
-          </p>
-          <h1 className="font-headline text-[32px] sm:text-4xl font-black italic leading-none tracking-tighter text-light mb-10">
-            Frequently Asked <span className="text-primary">Questions</span>
-          </h1>
-
-          <div className="space-y-6">
-            {faqs.map((faq, i) => (
-              <div key={i} className="border border-dark-lighter rounded-xl p-6 bg-dark">
-                <h2 className="font-headline text-sm font-bold uppercase tracking-[0.15em] text-light mb-3">
-                  {faq.q}
-                </h2>
-                <p className="text-[15px] text-muted leading-relaxed">
-                  {faq.a}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    </main>
-  );
+  return <FaqContent faqs={faqs} />;
 }

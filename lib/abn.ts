@@ -11,6 +11,28 @@ export interface AbnResult {
   postcode:   string;
 }
 
+export function digitsOnlyAbn(abn: string) {
+  return abn.replace(/\D/g, "");
+}
+
+/** Client/server helper: whether an ABN is acceptable for Stripe / paid hosting. */
+export function isAbnAcceptableForPaid(
+  lookup:
+    | { status: "idle" }
+    | { status: "loading" }
+    | { status: "unavailable"; message: string }
+    | { status: "not_found" }
+    | { status: "found"; entityName: string; entityStatus: string; active: boolean },
+  abn: string,
+): boolean {
+  const clean = digitsOnlyAbn(abn);
+  if (clean.length < 9) return false;
+  if (lookup.status === "found") return lookup.active;
+  // Allow proceed when ABR is unavailable (local/CI) if digits look complete
+  if (lookup.status === "unavailable") return clean.length === 11;
+  return false;
+}
+
 export async function lookupAbn(abn: string): Promise<AbnResult | null> {
   const guid = process.env.ABR_GUID;
   if (!guid) return null;

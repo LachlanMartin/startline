@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
+import AbnField from "@/components/organiser/AbnField";
 
 const inputCls = (err?: string) =>
   `w-full bg-dark border rounded-md px-4 py-3 text-[15px] text-light placeholder:text-muted-dark focus:outline-none transition-colors ${
@@ -49,7 +50,7 @@ export default function OnboardingPage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState({
-    orgName: "", bio: "",
+    orgName: "", abn: "", bio: "",
     firstName: "", lastName: "", phone: "", contactEmail: "",
     agreedToCommunity: false, agreedToTerms: false,
   });
@@ -100,7 +101,7 @@ export default function OnboardingPage() {
     const res = await fetch("/api/organiser/setup", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ orgName: form.orgName }),
+      body:    JSON.stringify({ orgName: form.orgName, abn: form.abn }),
     });
     const data = await res.json();
     if (!res.ok) { if (!silent) setError(data.error); return false; }
@@ -119,7 +120,15 @@ export default function OnboardingPage() {
       const res = await fetch("/api/organiser/profile", {
         method:  "PUT",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ orgName: form.orgName, bio: form.bio, contactName, contactEmail: form.contactEmail, phone: form.phone, submit }),
+        body:    JSON.stringify({
+          orgName: form.orgName,
+          bio: form.bio,
+          abn: form.abn,
+          contactName,
+          contactEmail: form.contactEmail,
+          phone: form.phone,
+          submit,
+        }),
       });
       const data = await res.json();
       if (!res.ok) { if (!silent) setError(data.error); return; }
@@ -226,6 +235,15 @@ export default function OnboardingPage() {
                   <input value={form.orgName} onChange={(e) => u({ orgName: e.target.value })}
                     placeholder="Endurance Events Australia" className={inputCls()} />
                 </Field>
+
+                <div className="mb-5">
+                  <AbnField
+                    value={form.abn}
+                    onChange={(abn) => u({ abn })}
+                    inputClassName={inputCls()}
+                    showPaidNote
+                  />
+                </div>
 
                 <Field label="About your organisation" hint={`${form.bio.length}/500`}>
                   <textarea rows={6} maxLength={500} value={form.bio} onChange={(e) => u({ bio: e.target.value })}

@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
   }
 
-  const { orgName } = await req.json();
+  const { orgName, abn } = await req.json();
   if (!orgName?.trim()) {
     return NextResponse.json({ error: "Organisation name is required." }, { status: 400 });
   }
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
           orgName: orgName.trim(),
           verified: false,
           status: "APPROVED",
-          abn: "",
+          abn: typeof abn === "string" ? abn.trim() : "",
           photos: [],
         },
         select: { id: true, orgName: true },

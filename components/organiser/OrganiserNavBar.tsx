@@ -16,7 +16,7 @@ type NavItem = { href: string; label: string };
 const ORGANISER_NAV: NavItem[] = [
   { href: "/organiser/dashboard", label: "Dashboard" },
   { href: "/organiser/listings", label: "Listings" },
-  { href: "/organiser/profile", label: "Profile" },
+  { href: "/organiser/profile", label: "Organisation" },
   { href: "/organiser/members", label: "Members" },
   { href: "/organiser/payments", label: "Payments" },
   { href: "/organiser/how-it-works", label: "Guide" },
@@ -301,7 +301,7 @@ export default function OrganiserNavBar() {
                   <div className="px-4 pt-2 pb-1 font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">User</div>
                   <Link href="/profile" onClick={() => setIsUserOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">
-                    <UserCircle className="w-4 h-4" /> Profile
+                    <UserCircle className="w-4 h-4" /> My profile
                   </Link>
                   <Link href="/settings/security" onClick={() => setIsUserOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-colors">

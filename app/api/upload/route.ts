@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const type = formData.get("type") as string;
 
   if (!file) return NextResponse.json({ error: "No file provided." }, { status: 400 });
-  if (!["logo", "cover", "photo", "video", "avatar"].includes(type)) {
+  if (!["logo", "cover", "photo", "video", "avatar", "document"].includes(type)) {
     return NextResponse.json({ error: "Invalid upload type." }, { status: 400 });
   }
 
@@ -38,12 +38,31 @@ export async function POST(req: NextRequest) {
     "video/quicktime",
     "video/avi",
     "video/ogg",
+    "application/pdf",
   ];
   if (!allowed.includes(file.type)) {
     return NextResponse.json({ error: "File type not allowed." }, { status: 400 });
   }
+  if (type === "document" && file.type !== "application/pdf") {
+    return NextResponse.json({ error: "Documents must be PDF." }, { status: 400 });
+  }
+  if (type === "document" && file.size > 15 * 1024 * 1024) {
+    return NextResponse.json({ error: "PDF must be 15 MB or smaller." }, { status: 400 });
+  }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const mimeExt: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "video/mp4": "mp4",
+    "video/webm": "webm",
+    "video/quicktime": "mov",
+    "video/avi": "avi",
+    "video/ogg": "ogv",
+    "application/pdf": "pdf",
+  };
+  const ext = mimeExt[file.type] ?? "bin";
   const filename = `${randomUUID()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 

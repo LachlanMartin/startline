@@ -192,6 +192,35 @@ test.describe("organiser pages", () => {
     await argosScreenshot(page, "organiser-payments");
   });
 
+  test("top nav distinguishes Organisation from My profile", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await organiserLogin(page);
+    const orgNav = page.locator("nav").getByRole("link", { name: "Organisation", exact: true });
+    await expect(orgNav).toBeVisible();
+    await Promise.all([
+      page.waitForURL(/\/organiser\/profile/),
+      orgNav.click(),
+    ]);
+  });
+
+  test("payments page shows ABN field and paid-events note", async ({ page }) => {
+    await organiserLogin(page);
+    await page.goto("/organiser/payments");
+    await page.waitForLoadState("domcontentloaded");
+    await expect(page.locator("#abn")).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText(/Without an ABN you can still list/i)).toBeVisible();
+  });
+
+  test("new listing media step offers event information PDF upload", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await organiserLogin(page);
+    await page.goto("/organiser/new-listing");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: /Media & Description/i }).click();
+    await expect(page.getByText(/event information pdf/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/upload pdf/i)).toBeVisible();
+  });
+
   test("organiser how it works page visual snapshot", async ({ page }) => {
 
     await organiserLogin(page);
