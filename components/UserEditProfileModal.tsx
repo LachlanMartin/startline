@@ -132,28 +132,6 @@ export default function UserEditProfileModal({ open, initial, onClose, onSaved }
 
   useEffect(() => {
     if (!open) return;
-    setForm({
-      name: initial.name,
-      username: initial.username,
-      bio: initial.bio,
-      isPublic: initial.isPublic,
-      city: initial.city,
-      state: initial.state,
-      profilePicUrl: initial.profilePicUrl,
-      mobile: initial.mobile,
-      dateOfBirth: initial.dateOfBirth,
-      gender: initial.gender,
-      emergencyContactName: initial.emergencyContactName,
-      emergencyContactPhone: initial.emergencyContactPhone,
-    });
-    setError("");
-    setSaved(false);
-    setUsernameStatus("idle");
-    setUsernameError("");
-  }, [open, initial]);
-
-  useEffect(() => {
-    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };

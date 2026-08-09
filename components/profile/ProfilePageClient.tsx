@@ -65,9 +65,10 @@ export default function ProfilePageClient({ profile, isOwner, ownerData }: Props
         }
       />
 
-      {isOwner && ownerData && (
+      {isOwner && ownerData && editing && (
         <UserEditProfileModal
-          open={editing}
+          open
+          key={ownerData.id}
           initial={{
             name: ownerData.name ?? "",
             username: ownerData.username ?? "",
