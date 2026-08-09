@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   ArrowLeft, ArrowRight, Check, Plus, Trash2,
   Upload, X, MapPin, Calendar, Users,
-  ChevronDown, ChevronLeft, ChevronRight, Clock, Eye,
+  ChevronDown, Clock, Eye,
   Ticket, ExternalLink, DollarSign, Bold, Italic, Underline,
   AlignLeft, Trophy,
 } from "lucide-react";
@@ -14,6 +14,8 @@ import { encodePrizePool, parsePrizePool, normalisePrizeAmount } from "@/lib/pri
 import AddressAutocomplete  from "@/components/ui/AddressAutocomplete";
 import SuburbAutocomplete   from "@/components/ui/SuburbAutocomplete";
 import LocationPreviewMap   from "@/components/organiser/LocationPreviewMap";
+import DatePicker           from "@/components/ui/DatePicker";
+import SelectMenu           from "@/components/ui/SelectMenu";
 
 /* ── Step definitions ───────────────────────────────────────── */
 const STEPS = [
@@ -103,153 +105,6 @@ function Field({ label, hint, required, children }: {
 
 const inputCls    = "w-full bg-dark-light border border-dark-lighter rounded-md px-4 py-3 font-headline text-[15px] text-light placeholder:text-muted focus:border-primary focus:outline-none transition-colors";
 const textareaCls = "w-full bg-dark-light border border-dark-lighter rounded-md px-4 py-3 font-headline text-[14px] text-light placeholder:text-muted focus:border-primary focus:outline-none resize-none transition-colors";
-
-/* ═══════════════════════════════════════════════════════════════
-   DATE PICKER POPOVER
-   ══════════════════════════════════════════════════════════════ */
-const MONTH_NAMES = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
-];
-
-function fmtDateShort(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-AU", {
-    weekday: "short", day: "numeric", month: "short", year: "numeric",
-  });
-}
-
-function DatePickerPopover({
-  value, onChange, rangeEnd, onChangeEnd,
-  placeholder = "Select date", disablePast = true,
-}: {
-  value: string; onChange: (v: string) => void;
-  rangeEnd?: string; onChangeEnd?: (v: string) => void;
-  placeholder?: string; disablePast?: boolean;
-}) {
-  const isRange    = !!onChangeEnd;
-  const todayDate  = new Date(); todayDate.setHours(0, 0, 0, 0);
-  const parseView  = (iso: string) => {
-    if (iso) { const [y, m] = iso.split("-").map(Number); return { year: y, month: m - 1 }; }
-    return { year: todayDate.getFullYear(), month: todayDate.getMonth() };
-  };
-  const [open, setOpen]           = useState(false);
-  const [viewYear, setViewYear]   = useState(parseView(value).year);
-  const [viewMonth, setViewMonth] = useState(parseView(value).month);
-  const [picking, setPicking]     = useState<"start" | "end">("start");
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-  useEffect(() => {
-    if (value) { startTransition(() => { const [y, m] = value.split("-").map(Number); setViewYear(y); setViewMonth(m - 1); }); }
-  }, [value]);
-
-  const toIso = (d: number) => `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-  const selectDay = (d: number) => {
-    const iso = toIso(d);
-    if (!isRange) { onChange(iso); setOpen(false); return; }
-    if (picking === "start" || !value) { onChange(iso); if (onChangeEnd) onChangeEnd(""); setPicking("end"); }
-    else if (iso < value) { onChange(iso); if (onChangeEnd) onChangeEnd(""); setPicking("end"); }
-    else if (iso === value) { if (onChangeEnd) onChangeEnd(iso); setOpen(false); setPicking("start"); }
-    else { if (onChangeEnd) onChangeEnd(iso); setOpen(false); setPicking("start"); }
-  };
-  const prevMonth = () => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); } else setViewMonth(m => m - 1); };
-  const nextMonth = () => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); } else setViewMonth(m => m + 1); };
-
-  const isPast     = (d: number) => !disablePast ? false : new Date(viewYear, viewMonth, d) < todayDate;
-  const isStart    = (d: number) => !!value    && toIso(d) === value;
-  const isEnd      = (d: number) => !!rangeEnd && toIso(d) === rangeEnd;
-  const isSelected = (d: number) => !isRange   && !!value && toIso(d) === value;
-  const isInRange  = (d: number) => { if (!isRange || !value || !rangeEnd) return false; const iso = toIso(d); return iso > value && iso < rangeEnd; };
-  const isToday    = (d: number) => d === todayDate.getDate() && viewMonth === todayDate.getMonth() && viewYear === todayDate.getFullYear();
-
-  const firstDow    = (() => { const d = new Date(viewYear, viewMonth, 1).getDay() - 1; return d < 0 ? 6 : d; })();
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const cells: (number | null)[] = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-
-  const displayValue = isRange
-    ? value
-      ? rangeEnd && rangeEnd !== value ? `${fmtDateShort(value)} — ${fmtDateShort(rangeEnd)}`
-        : rangeEnd && rangeEnd === value ? fmtDateShort(value) + " (1 day)"
-        // Only prompt for an end date while the picker is open — a closed
-        // picker with just a start date is a valid single-day event.
-        : open ? fmtDateShort(value) + " → pick end date" : fmtDateShort(value)
-      : ""
-    : value ? fmtDateShort(value) : "";
-
-  const selectToday = () => {
-    const now = new Date();
-    const iso = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
-    onChange(iso);
-    if (isRange && onChangeEnd) { onChangeEnd(""); setPicking("end"); } else setOpen(false);
-  };
-
-  return (
-    <div ref={ref} className="relative">
-      <button type="button"
-        onClick={() => { setOpen(v => !v); if (!open) setPicking(value && !rangeEnd ? "end" : "start"); }}
-        className={`w-full bg-dark-light border rounded-md px-4 py-3 font-headline text-[15px] text-left flex items-center justify-between transition-colors
-          ${open ? "border-primary" : "border-dark-lighter hover:border-primary/40"}
-          ${displayValue ? "text-light" : "text-muted-dark"}`}>
-        <span className="flex items-center gap-2.5 min-w-0">
-          <Calendar className="w-4 h-4 text-muted-dark shrink-0" />
-          <span className="truncate">{displayValue || placeholder}</span>
-        </span>
-        <ChevronDown className={`w-4 h-4 text-muted-dark shrink-0 ml-2 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {open && (
-        <div className="absolute top-full left-0 mt-2 z-50 bg-dark border border-dark-lighter rounded-xl shadow-xl p-4 w-full sm:w-72 modal-in">
-          {isRange && (
-            <div className="mb-3 flex items-center justify-between">
-              <span className={`font-headline text-[10px] uppercase tracking-widest font-bold px-2 py-1 rounded-md ${picking === "start" ? "bg-primary/10 text-primary" : "text-muted-dark"}`}>
-                {picking === "start" ? "▸ Tap start date" : "▸ Tap end date"}
-              </span>
-              {value && !rangeEnd && (
-                <button type="button" onClick={() => { onChange(""); if (onChangeEnd) onChangeEnd(""); setPicking("start"); }}
-                  className="font-headline text-[10px] uppercase tracking-widest text-muted hover:text-primary transition-colors">Reset</button>
-              )}
-            </div>
-          )}
-          <div className="flex items-center justify-between mb-4">
-            <button type="button" onClick={prevMonth} className="w-9 h-9 rounded-md hover:bg-white/5 flex items-center justify-center text-muted hover:text-primary transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-            <span className="font-headline text-[13px] font-bold text-light">{MONTH_NAMES[viewMonth]} {viewYear}</span>
-            <button type="button" onClick={nextMonth} className="w-9 h-9 rounded-md hover:bg-white/5 flex items-center justify-center text-muted hover:text-primary transition-colors"><ChevronRight className="w-4 h-4" /></button>
-          </div>
-          <div className="grid grid-cols-7 mb-1">
-            {["Mo","Tu","We","Th","Fr","Sa","Su"].map(d => (
-              <div key={d} className="font-headline text-[9px] uppercase tracking-widest text-muted-dark text-center py-1">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7">
-            {cells.map((d, i) => {
-              if (d === null) return <div key={i} className="h-9" />;
-              const inRange = isInRange(d), start = isStart(d), end = isEnd(d), sel = isSelected(d), past = isPast(d), today = isToday(d);
-              return (
-                <div key={i} className={`flex items-center justify-center h-9 ${inRange ? "bg-primary/10" : ""} ${start && (rangeEnd || picking === "end") ? "bg-gradient-to-r from-transparent to-primary/10" : ""} ${end ? "bg-gradient-to-l from-transparent to-primary/10" : ""}`}>
-                  <button type="button" disabled={past} onClick={() => selectDay(d)}
-                    className={`w-9 h-9 rounded-full text-[13px] font-headline font-bold transition-colors
-                      ${start || sel ? "bg-primary text-dark" : end ? "bg-primary/80 text-dark" : inRange ? "text-primary hover:bg-primary/10" : past ? "text-muted-dark opacity-50 cursor-not-allowed" : today ? "text-primary border border-primary/40 hover:bg-primary/10" : "text-muted hover:bg-white/5 hover:text-light"}`}>
-                    {d}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-3 pt-3 border-t border-dark-lighter flex items-center justify-between">
-            <button type="button" onClick={() => { onChange(""); if (onChangeEnd) onChangeEnd(""); setOpen(false); setPicking("start"); }}
-              className="font-headline text-[11px] uppercase tracking-widest text-muted hover:text-primary transition-colors">Clear</button>
-            <button type="button" onClick={selectToday}
-              className="font-headline text-[11px] uppercase tracking-widest text-primary hover:underline transition-colors">Today</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════
    TIME PICKER
@@ -570,13 +425,13 @@ const AUS_STATES: [AusState, string, string][] = [
 
 function StateSelect({ value, onChange }: { value: AusState; onChange: (v: AusState) => void }) {
   return (
-    <select value={value} onChange={e => onChange(e.target.value as AusState)}
-      className={`w-full bg-dark-light border border-dark-lighter rounded-md px-4 py-3 font-headline text-[15px] focus:border-primary focus:outline-none transition-colors ${value ? "text-light" : "text-muted-dark"}`}>
-      <option value="" disabled className="bg-dark text-muted-dark">Select state…</option>
-      {AUS_STATES.map(([v, abbr]) => (
-        <option key={v} value={v} className="bg-dark text-light">{abbr}</option>
-      ))}
-    </select>
+    <SelectMenu
+      value={value}
+      onChange={v => onChange(v as AusState)}
+      placeholder="Select state…"
+      ariaLabel="State"
+      options={AUS_STATES.map(([v, abbr, full]) => ({ value: v, label: abbr, hint: full }))}
+    />
   );
 }
 
@@ -584,7 +439,7 @@ function WhenStep({ form, update }: { form: FormState; update: (p: Partial<FormS
   return (
     <div>
       <Field label="Event date(s)" required hint="Tap start then end for multi-day">
-        <DatePickerPopover
+        <DatePicker
           value={form.date} onChange={v => update({ date: v })}
           rangeEnd={form.endDate} onChangeEnd={v => update({ endDate: v })}
           placeholder="Pick start date"
@@ -831,7 +686,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
                 </div>
                 <div>
                   <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mb-1.5">Category closes</div>
-                  <DatePickerPopover value={w.closes} onChange={v => updateWave(i, { closes: v })} placeholder="Optional close date" disablePast={false} />
+                  <DatePicker value={w.closes} onChange={v => updateWave(i, { closes: v })} placeholder="Optional close date" disablePast={false} />
                 </div>
               </div>
 
@@ -1665,7 +1520,7 @@ export default function EventFormWizard({
         registrationUrl:   form.registrationType === "external" ? form.registrationUrl : null,
         accessibilityInfo: originalFields.current.accessibilityInfo ?? null,
         submit:            !asDraft,
-        coverImageUrl:     coverImageUrl ?? form.coverImageUrl ?? null,
+        coverImageUrl:     coverImageUrl || form.coverImageUrl || null,
         photos:            photoUrls,
         ...(!eventId && organiserId ? { organiserId } : {}),
       };

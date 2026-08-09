@@ -1,7 +1,9 @@
 "use client";
 
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import { RegisterField, registerInputCls } from "@/components/registration/RegisterField";
+import DatePicker from "@/components/ui/DatePicker";
+import SelectMenu from "@/components/ui/SelectMenu";
 import {
   maxDateOfBirthForMinAge,
   MAX_MEDICAL_NOTES_LENGTH,
@@ -11,6 +13,9 @@ import {
 } from "@/lib/registration-form";
 
 const GENDER_OPTIONS = ["Prefer not to say", "Male", "Female", "Non-binary", "Other"];
+
+/** Oldest selectable birthday — keeps the year list to a sane length. */
+const EARLIEST_DATE_OF_BIRTH = `${new Date().getFullYear() - 100}-01-01`;
 
 function SectionDivider({ children }: { children: React.ReactNode }) {
   return (
@@ -122,30 +127,28 @@ export default function ParticipantFormSection({
         <SectionDivider>Personal</SectionDivider>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-[14px]">
           <RegisterField label="Date of birth" required error={errors.dateOfBirth} fieldKey={fieldKey("dateOfBirth")} htmlFor={id("dob")}>
-            <input
+            <DatePicker
               id={id("dob")}
-              type="date"
+              size="sm"
               value={participant.dateOfBirth}
-              onChange={(e) => onChange("dateOfBirth", e.target.value)}
-              max={maxDateOfBirthForMinAge()}
-              className={registerInputCls(!!errors.dateOfBirth)}
+              onChange={(v) => onChange("dateOfBirth", v)}
+              placeholder="Select date of birth"
+              disablePast={false}
+              minDate={EARLIEST_DATE_OF_BIRTH}
+              maxDate={maxDateOfBirthForMinAge()}
+              yearPicker
+              invalid={!!errors.dateOfBirth}
             />
           </RegisterField>
           <RegisterField label="Gender" htmlFor={id("gender")}>
-            <div className="relative">
-              <select
-                id={id("gender")}
-                value={participant.gender}
-                onChange={(e) => onChange("gender", e.target.value)}
-                className={cnSelect(!!participant.gender)}
-              >
-                <option value="">Select…</option>
-                {GENDER_OPTIONS.map((g) => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-muted-dark absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+            <SelectMenu
+              id={id("gender")}
+              size="sm"
+              value={participant.gender}
+              onChange={(v) => onChange("gender", v)}
+              options={GENDER_OPTIONS.map((g) => ({ value: g, label: g }))}
+              ariaLabel="Gender"
+            />
           </RegisterField>
           <div className="sm:col-span-2">
             <RegisterField label="Estimated finish time" htmlFor={id("estFinish")}>
@@ -210,12 +213,5 @@ export default function ParticipantFormSection({
         </div>
       </div>
     </div>
-  );
-}
-
-function cnSelect(hasValue: boolean) {
-  return (
-    "w-full appearance-none cursor-pointer bg-dark-light border border-dark-lighter rounded-[10px] px-[13px] py-[11px] pr-9 text-[13.5px] font-headline focus:outline-none focus:border-primary transition-colors " +
-    (hasValue ? "text-light" : "text-muted-dark")
   );
 }

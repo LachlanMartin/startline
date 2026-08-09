@@ -86,7 +86,7 @@ export default function EventCard({ event, className, cardClassName, onSelect, s
             rating={event.organiser?.rating}
             nestedInLink
             nameClassName="text-light hover:text-primary"
-            className="self-start mb-3 bg-dark-lighter border border-dark-lighter rounded-lg px-2 py-0.5"
+            className="self-start mb-3 bg-dark-lighter border border-dark-lighter rounded-lg px-2 py-1"
           />
         )}
 

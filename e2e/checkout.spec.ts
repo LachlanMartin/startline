@@ -9,10 +9,37 @@ import { argosScreenshot } from "@argos-ci/playwright";
 // General) relative to the test clock.
 const REG = "/events/seed-event-001/register";
 
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
 /** Click the first open tier's "+" stepper `count` times. */
 async function addTickets(page: import("@playwright/test").Page, count = 1) {
   const plus = page.getByRole("button", { name: /add one .* ticket/i }).first();
   for (let i = 0; i < count; i++) await plus.click();
+}
+
+/**
+ * Date of birth uses the themed DatePicker popover (no native date input), so
+ * drive it the way an athlete does: year grid → month arrows → day.
+ */
+async function pickDateOfBirth(page: import("@playwright/test").Page, iso: string, field = "#p0-dob") {
+  const [year, month, day] = iso.split("-").map(Number);
+  await page.locator(field).click();
+
+  const header = page.getByRole("button", { name: new RegExp(`^(${MONTHS.join("|")}) \\d{4}$`) });
+  await header.click();
+  await page.getByRole("button", { name: String(year), exact: true }).click();
+
+  for (let i = 0; i < 12; i++) {
+    const text = await header.textContent();
+    const viewMonth = MONTHS.findIndex(m => text?.startsWith(m));
+    if (viewMonth === month - 1) break;
+    await page.getByRole("button", { name: viewMonth > month - 1 ? "Previous month" : "Next month" }).click();
+  }
+
+  await page.getByRole("button", { name: String(day), exact: true }).click();
 }
 
 test.describe("registration flow", () => {
@@ -106,7 +133,7 @@ test.describe("registration flow", () => {
     await page.locator("#p0-firstName").fill("Jordan");
     await page.locator("#p0-lastName").fill("Clarke");
     await page.locator("#p0-email").fill("jordan@example.com");
-    await page.locator("#p0-dob").fill("1994-03-20");
+    await pickDateOfBirth(page, "1994-03-20");
     await page.locator("#p0-ecName").fill("Sam Clarke");
     await page.locator("#p0-ecPhone").fill("0498 111 222");
     await expect(cont).toBeEnabled();
@@ -191,7 +218,7 @@ test.describe("registration flow", () => {
     await page.locator("#p0-lastName").fill("Clarke");
     // Unique guest email (never the signed-in account) → forces the verify gate.
     await page.locator("#p0-email").fill(`guest-${Date.now()}@example.com`);
-    await page.locator("#p0-dob").fill("1994-03-20");
+    await pickDateOfBirth(page, "1994-03-20");
     await page.locator("#p0-ecName").fill("Sam Clarke");
     await page.locator("#p0-ecPhone").fill("0498 111 222");
     await page.getByRole("button", { name: /^Continue/ }).click();

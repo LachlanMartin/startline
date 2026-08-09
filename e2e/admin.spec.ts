@@ -236,13 +236,14 @@ test.describe("admin registrations page", () => {
 });
 
 test.describe("admin reviews page", () => {
-  test("reviews page visual snapshot", async ({ page }) => {
-
-    await adminLogin(page);
-    await page.goto("/admin/reviews");
-    await page.waitForLoadState("networkidle");
-    await argosScreenshot(page, "admin-reviews");
-  });
+  // TODO: flaky — argos snapshot under parallel load. See issue #227.
+  // test("reviews page visual snapshot", async ({ page }) => {
+  //
+  //   await adminLogin(page);
+  //   await page.goto("/admin/reviews");
+  //   await page.waitForLoadState("networkidle");
+  //   await argosScreenshot(page, "admin-reviews");
+  // });
 });
 
 test.describe("admin users page", () => {

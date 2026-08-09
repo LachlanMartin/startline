@@ -8,6 +8,7 @@ import { STATE_OPTIONS, STATE_LABELS } from "@/types";
 import type { AustralianState } from "@/types";
 import { formatDiscipline, formatMediumDate } from "@/lib/utils";
 import { useAuthContext } from "@/context/AuthContext";
+import SelectMenu from "@/components/ui/SelectMenu";
 
 type RaceRegistration = {
   id: string;
@@ -260,16 +261,13 @@ export default function ProfilePage() {
               <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted block mb-1.5">
                 State
               </label>
-              <select
+              <SelectMenu
                 value={editState}
-                onChange={(e) => setEditState(e.target.value)}
-                className="w-full bg-dark border border-dark-lighter rounded-xl px-4 py-2.5 text-[15px] text-light focus:border-primary focus:outline-none transition-colors"
-              >
-                <option value="">—</option>
-                {STATE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+                onChange={setEditState}
+                placeholder="Select state…"
+                ariaLabel="State"
+                options={STATE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              />
             </div>
 
             <label className="flex items-center gap-3 cursor-pointer">
