@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Check, Building2, ShieldCheck, CreditCard, Users } from "lucide-react";
@@ -17,16 +17,20 @@ export default function OrganiserSetupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
+
   if (status === "unauthenticated") {
     try { sessionStorage.setItem("startline_intent_organiser", "true"); } catch {}
     return (
       <main className="min-h-screen bg-dark-darker flex items-center justify-center pt-20">
         <div className="text-center max-w-md px-6">
-          <Building2 className="w-16 h-16 text-muted mx-auto mb-4" />
+          <Building2 className="w-16 h-16 text-light mx-auto mb-4" />
           <h1 className="font-headline text-3xl font-black italic tracking-tighter text-light mb-2">
             Sign in to continue
           </h1>
-          <p className="text-muted text-sm mb-8">You need a Startline account before you can set one up. Sign in or create an account and we&apos;ll bring you straight back here.</p>
+          <p className="text-light text-sm mb-8">You need a Startline account before you can set one up. Sign in or create an account and we&apos;ll bring you straight back here.</p>
           <Link
             href="/?signin=true"
             className="bg-machined shadow-machined inline-flex items-center gap-2 text-dark font-headline text-sm font-bold uppercase tracking-widest py-4 px-8 rounded-md hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-transform"
@@ -94,9 +98,9 @@ export default function OrganiserSetupPage() {
               </span>
               <h1 className="font-headline text-4xl sm:text-5xl font-black italic tracking-tighter leading-[0.9] text-light mb-4">
                 Publish your events<br />
-                <span className="text-primary">on Startline.</span>
+                on <span className="text-primary">Startline.</span>
               </h1>
-              <p className="text-muted text-[15px] leading-relaxed max-w-md mx-auto">
+              <p className="text-light text-[15px] leading-relaxed max-w-md mx-auto">
                 Set up an organiser profile once, then list events, take entries and manage race day from one dashboard. It takes about a minute.
               </p>
             </div>
@@ -109,17 +113,17 @@ export default function OrganiserSetupPage() {
                   </div>
                   <div>
                     <h3 className="font-headline text-sm font-bold text-light">{s.label}</h3>
-                    <p className="text-muted text-[13px] leading-relaxed mt-1">{s.desc}</p>
+                    <p className="text-light text-[13px] leading-relaxed mt-1">{s.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
 
             <div className="bg-dark rounded-xl p-6 border border-dark-lighter mb-8">
-              <h3 className="font-headline text-sm font-bold uppercase tracking-widest text-primary mb-3 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4" /> How verification works
+              <h3 className="font-headline text-sm font-bold uppercase tracking-widest text-light mb-3 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-primary" /> How verification works
               </h3>
-              <div className="space-y-4 text-muted text-[13px] leading-relaxed">
+              <div className="space-y-4 text-light text-[13px] leading-relaxed">
                 <div>
                   <p className="font-headline text-[12px] font-bold text-light mb-1">Do I need to be verified to list an event?</p>
                   <p>No. You can build a listing as soon as your profile exists. While you are unverified, our team checks each event before it goes live.</p>
@@ -142,9 +146,9 @@ export default function OrganiserSetupPage() {
               Continue <ArrowRight className="w-4 h-4" />
             </button>
 
-            <p className="mt-4 text-center font-headline text-[11px] uppercase tracking-widest text-muted">
+            <p className="mt-4 text-center font-headline text-[11px] uppercase tracking-widest text-light">
               By continuing you agree to our{" "}
-              <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link>
+              <Link href="/terms" className="text-light underline hover:text-primary">Terms of Service</Link>
             </p>
           </>
         )}
@@ -159,7 +163,7 @@ export default function OrganiserSetupPage() {
                 Name your<br />
                 <span className="text-primary">organisation.</span>
               </h2>
-              <p className="text-muted text-[14px] leading-relaxed">
+              <p className="text-light text-[14px] leading-relaxed">
                 This is the name athletes see on your listings. You can add your logo, bio and contact details straight after.
               </p>
             </div>
@@ -172,14 +176,14 @@ export default function OrganiserSetupPage() {
 
             <div className="space-y-5">
               <div>
-                <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted block mb-2">
-                  Organisation name <span className="text-primary">*</span>
+                <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-light block mb-2">
+                  Organisation name <span className="text-primary text-[15px] leading-none">*</span>
                 </label>
                 <input
                   type="text" required value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
                   placeholder="e.g. Apex Endurance Events"
-                  className="w-full bg-dark border border-dark-lighter rounded-md px-4 py-3 text-[15px] text-light placeholder:text-muted-dark focus:border-primary focus:outline-none transition-colors"
+                  className="w-full bg-dark border border-dark-lighter rounded-md px-4 py-3 text-[15px] text-light placeholder:text-light/70 focus:border-primary focus:outline-none transition-colors"
                 />
               </div>
 
@@ -197,7 +201,7 @@ export default function OrganiserSetupPage() {
 
               <button
                 onClick={() => setStep("info")}
-                className="w-full text-center font-headline text-[11px] uppercase tracking-widest text-muted hover:text-primary transition-colors"
+                className="w-full text-center font-headline text-[11px] uppercase tracking-widest text-light hover:text-primary transition-colors"
               >
                 Back
               </button>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
 const ADMIN_EMAIL = "admin@startlineau.com";
+const DEFAULT_FROM = "Startline <events@startlineau.com>";
 
 function escapeHtml(value: string): string {
   return value
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
   }
 
   const resend = new Resend(resendApiKey);
+  const from = process.env.RESEND_FROM?.trim() || DEFAULT_FROM;
 
   const body = (await request.json().catch(() => null)) as {
     name?: string;
@@ -44,8 +46,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    await resend.emails.send({
-      from: "Startline Contact <events@startlineau.com>",
+    const { data, error } = await resend.emails.send({
+      from,
       to: ADMIN_EMAIL,
       replyTo: email,
       subject: `[Contact] ${subject}`,
@@ -73,7 +75,15 @@ export async function POST(request: Request) {
       `,
     });
 
-    return NextResponse.json({ success: true });
+    if (error) {
+      console.error("Contact email Resend error:", error);
+      return NextResponse.json(
+        { error: "Could not send your message right now. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, id: data?.id ?? null });
   } catch (error) {
     console.error("Contact email send error:", error);
     return NextResponse.json(
