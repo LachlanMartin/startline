@@ -5,6 +5,7 @@ import Link from "next/link";
 import { X, CheckCircle, AlertCircle, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SignInModal from "@/components/SignInModal";
+import SelectMenu from "@/components/ui/SelectMenu";
 import { useAuthContext } from "@/context/AuthContext";
 import { topRatedEventsFromReviews } from "@/lib/review-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -325,18 +326,14 @@ function WriteReviewModal({ organiserId, events, onClose, onSuccess }: ModalProp
                 <div className="font-headline text-[11px] font-bold uppercase tracking-widest text-light mb-1.5">
                   Event attended <span className="text-muted-dark font-normal">(optional)</span>
                 </div>
-                <select
+                <SelectMenu
+                  size="sm"
                   value={eventId}
-                  onChange={(e) => setEventId(e.target.value)}
-                  className="w-full bg-dark-darker border border-dark-lighter rounded-md px-3 py-2.5 text-[14px] text-light focus:border-primary focus:outline-none transition-colors"
-                >
-                  <option value="">Select an event…</option>
-                  {events.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.title}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setEventId}
+                  placeholder="Select an event…"
+                  ariaLabel="Event attended"
+                  options={events.map((e) => ({ value: e.id, label: e.title }))}
+                />
               </div>
 
               {/* Title */}

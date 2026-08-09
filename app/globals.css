@@ -127,13 +127,26 @@ input[type="radio"] {
   }
 }
 
-/* Minimum 44px touch targets for all interactive elements on mobile */
+/* Minimum 44px touch targets for all interactive elements on mobile.
+   Add .chip-sm to opt out where a fixed-size control (icon button, map pin,
+   inline chip) would otherwise be stretched into an oval. */
 @media (max-width: 1023px) {
   button:not(.chip-sm),
   [role="button"],
   a.btn {
     min-height: 44px;
   }
+}
+
+/* Pages that fill the viewport below the fixed 56px nav instead of scrolling
+   (the events list/map split). The organiser portal renders a second 36px nav
+   row, so those pages have to subtract it or they run past the fold. */
+.app-shell {
+  height: calc(100dvh - 56px);
+}
+
+body:has([data-organiser-bar]) .app-shell {
+  height: calc(100dvh - 92px);
 }
 
 /* Animation utilities */

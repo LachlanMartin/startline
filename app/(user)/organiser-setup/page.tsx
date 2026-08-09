@@ -26,7 +26,7 @@ export default function OrganiserSetupPage() {
           <h1 className="font-headline text-3xl font-black italic tracking-tighter text-light mb-2">
             Sign in to continue
           </h1>
-          <p className="text-muted text-sm mb-8">You need to be signed in to set up an organiser profile. If you don&apos;t have an account yet, create one first — we&apos;ll guide you back here.</p>
+          <p className="text-muted text-sm mb-8">You need a Startline account before you can set one up. Sign in or create an account and we&apos;ll bring you straight back here.</p>
           <Link
             href="/?signin=true"
             className="bg-machined shadow-machined inline-flex items-center gap-2 text-dark font-headline text-sm font-bold uppercase tracking-widest py-4 px-8 rounded-md hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-transform"
@@ -76,10 +76,10 @@ export default function OrganiserSetupPage() {
     }
   };
 
-  const steps = [
-    { icon: Users, label: "Publish events", desc: "List events on Australia's fitness calendar and reach thousands of athletes." },
-    { icon: CreditCard, label: "Sell tickets", desc: "Sell tickets directly on Startline with Stripe-powered payouts." },
-    { icon: ShieldCheck, label: "Verification", desc: "Verified organisers publish immediately. Unverified events need admin approval — a quick review to ensure quality." },
+  const benefits = [
+    { icon: Users, label: "Publish events", desc: "List your events on Australia's fitness calendar and put them in front of thousands of athletes." },
+    { icon: CreditCard, label: "Take entries", desc: "Sell tickets on Startline and get paid out to your bank account through Stripe." },
+    { icon: ShieldCheck, label: "Manage it all", desc: "Track entries, message athletes and run race day from a single organiser dashboard." },
   ];
 
   return (
@@ -90,19 +90,19 @@ export default function OrganiserSetupPage() {
           <>
             <div className="text-center mb-10">
               <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-4">
-                Become an Organiser
+                Step 1 of 2
               </span>
               <h1 className="font-headline text-4xl sm:text-5xl font-black italic tracking-tighter leading-[0.9] text-light mb-4">
                 Publish your events<br />
                 <span className="text-primary">on Startline.</span>
               </h1>
               <p className="text-muted text-[15px] leading-relaxed max-w-md mx-auto">
-                Reach thousands of athletes across Australia. Set up once, manage everything from one dashboard.
+                Set up an organiser profile once, then list events, take entries and manage race day from one dashboard. It takes about a minute.
               </p>
             </div>
 
             <div className="space-y-4 mb-10">
-              {steps.map((s, i) => (
+              {benefits.map((s, i) => (
                 <div key={i} className="flex gap-4 bg-dark rounded-xl p-5 border border-dark-lighter">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <s.icon className="w-5 h-5 text-primary" />
@@ -117,20 +117,20 @@ export default function OrganiserSetupPage() {
 
             <div className="bg-dark rounded-xl p-6 border border-dark-lighter mb-8">
               <h3 className="font-headline text-sm font-bold uppercase tracking-widest text-primary mb-3 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4" /> Verification FAQ
+                <ShieldCheck className="w-4 h-4" /> How verification works
               </h3>
               <div className="space-y-4 text-muted text-[13px] leading-relaxed">
                 <div>
-                  <p className="font-headline text-[12px] font-bold text-light mb-1">How does verification work?</p>
-                  <p>New organisers start unverified. Events you create will be reviewed by our admin team before going live. Once you&apos;ve built a track record, we may grant verified status — letting you publish immediately.</p>
+                  <p className="font-headline text-[12px] font-bold text-light mb-1">Do I need to be verified to list an event?</p>
+                  <p>No. You can build a listing as soon as your profile exists. While you are unverified, our team checks each event before it goes live.</p>
                 </div>
                 <div>
-                  <p className="font-headline text-[12px] font-bold text-light mb-1">How long does review take?</p>
-                  <p>Our team reviews events within 24-48 hours on business days. You&apos;ll get a notification as soon as it&apos;s approved.</p>
+                  <p className="font-headline text-[12px] font-bold text-light mb-1">How long does that check take?</p>
+                  <p>Usually 24 to 48 hours on business days. We notify you as soon as your event is approved.</p>
                 </div>
                 <div>
-                  <p className="font-headline text-[12px] font-bold text-light mb-1">Can I apply for verification?</p>
-                  <p>Verification is currently granted by our team. We look at event quality, consistency, and community feedback.</p>
+                  <p className="font-headline text-[12px] font-bold text-light mb-1">How do I get verified?</p>
+                  <p>Our team grants verification once you have run events with us. We look at event quality, consistency and athlete feedback. Verified organisers publish straight away.</p>
                 </div>
               </div>
             </div>
@@ -139,7 +139,7 @@ export default function OrganiserSetupPage() {
               onClick={() => setStep("form")}
               className="bg-machined shadow-machined w-full text-dark font-headline text-sm font-bold uppercase tracking-widest py-4 rounded-md flex items-center justify-center gap-2 hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-transform"
             >
-              Accept &amp; Continue <ArrowRight className="w-4 h-4" />
+              Continue <ArrowRight className="w-4 h-4" />
             </button>
 
             <p className="mt-4 text-center font-headline text-[11px] uppercase tracking-widest text-muted">
@@ -160,7 +160,7 @@ export default function OrganiserSetupPage() {
                 <span className="text-primary">organisation.</span>
               </h2>
               <p className="text-muted text-[14px] leading-relaxed">
-                You can fill out the rest of your profile after this.
+                This is the name athletes see on your listings. You can add your logo, bio and contact details straight after.
               </p>
             </div>
 

@@ -17,6 +17,10 @@ const AUSTRALIA_VIEW = {
   zoom: 3.25,
 };
 
+// Selecting a pin opens a card above it. Drop the pin below the map's centre
+// so the card has room instead of being clipped at the top edge.
+const SELECTED_PIN_OFFSET: [number, number] = [0, 70];
+
 const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "";
 const mapStyle =
   process.env.NEXT_PUBLIC_MAPBOX_STYLE_URL ?? "mapbox://styles/mapbox/dark-v11";
@@ -133,7 +137,7 @@ const EventMap = forwardRef<EventMapHandle, EventMapProps>(function EventMap(
       const event = mapEvents.find((e) => e.id === selectedId);
       const ll = event ? eventLngLat(event) : null;
       if (ll && lastFlownIdRef.current !== selectedId) {
-        map.flyTo({ center: [ll.lng, ll.lat], zoom: 11, duration: 900 });
+        map.flyTo({ center: [ll.lng, ll.lat], zoom: 11, duration: 900, offset: SELECTED_PIN_OFFSET });
         lastFlownIdRef.current = selectedId;
       }
       return;
@@ -176,7 +180,7 @@ const EventMap = forwardRef<EventMapHandle, EventMapProps>(function EventMap(
       const ll = event ? eventLngLat(event) : null;
       const map = mapRef.current?.getMap();
       if (!ll || !map) return;
-      map.flyTo({ center: [ll.lng, ll.lat], zoom: 11, duration: 1500 });
+      map.flyTo({ center: [ll.lng, ll.lat], zoom: 11, duration: 1500, offset: SELECTED_PIN_OFFSET });
       lastFlownIdRef.current = id;
     },
     fitFilteredBounds: frameMapView,
@@ -273,7 +277,10 @@ const EventMap = forwardRef<EventMapHandle, EventMapProps>(function EventMap(
     : AUSTRALIA_VIEW;
 
   return (
-    <div className="relative h-full min-h-[320px]" data-testid="events-map">
+    // overflow-hidden keeps marker cards inside the map. Without it a pin near
+    // the top edge renders its card over whatever sits above the map (on
+    // mobile, the event list).
+    <div className="relative h-full min-h-[260px] lg:min-h-[320px] overflow-hidden" data-testid="events-map">
       <Map
         ref={mapRef}
         mapboxAccessToken={mapboxToken}
@@ -300,7 +307,7 @@ const EventMap = forwardRef<EventMapHandle, EventMapProps>(function EventMap(
             return (
               <Marker key={event.id} longitude={ll.lng} latitude={ll.lat} anchor="bottom">
                 <div
-                  className="flex flex-col items-center pointer-events-auto"
+                  className="group/pin flex flex-col items-center pointer-events-auto"
                   onMouseEnter={() => setHoveredId(event.id)}
                   onMouseLeave={() =>
                     setHoveredId((current) => (current === event.id ? null : current))
@@ -315,17 +322,26 @@ const EventMap = forwardRef<EventMapHandle, EventMapProps>(function EventMap(
                     />
                   )}
 
+                  {/* The dot is a child so the button can carry a 44px
+                      transparent tap area without the global mobile
+                      min-height stretching the pin into a pill. The negative
+                      margin keeps the padding out of the layout box, so the
+                      pin still sits exactly on its coordinates. */}
                   <button
                     type="button"
                     onClick={() => onMarkerClick?.(event.id)}
-                    className={`shrink-0 rounded-full border-2 border-white/90 shadow-[0_0_0_2px_rgba(0,0,0,0.35)] transition-all ${
-                      isSelected
-                        ? "w-5 h-5 bg-primary scale-125 shadow-[0_0_0_4px_rgba(179,225,83,0.35)]"
-                        : "w-4 h-4 bg-primary hover:scale-110"
-                    }`}
+                    className="chip-sm shrink-0 grid place-items-center p-3.5 -m-3.5"
                     aria-label={`View ${event.title}`}
                     aria-pressed={isSelected}
-                  />
+                  >
+                    <span
+                      className={`block rounded-full border-2 border-white/90 shadow-[0_0_0_2px_rgba(0,0,0,0.35)] transition-all ${
+                        isSelected
+                          ? "w-5 h-5 bg-primary scale-125 shadow-[0_0_0_4px_rgba(179,225,83,0.35)]"
+                          : "w-4 h-4 bg-primary group-hover/pin:scale-110"
+                      }`}
+                    />
+                  </button>
                 </div>
               </Marker>
             );

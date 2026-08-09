@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback, useLayoutEffect, Sus
 import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, MapPin, X, LayoutGrid, ChevronDown, Check, ArrowUpDown, Locate, Loader2 } from "lucide-react";
+import { Search, MapPin, X, LayoutGrid, ChevronDown, Check, ArrowUpDown, Locate, Loader2, SlidersHorizontal } from "lucide-react";
 import type { UserEvent, FilterState, EventType, AustralianState, CompetitionFormat, ExperienceLevel, SortOption } from "@/types";
 import {
   EVENT_TYPE_LABELS, STATE_LABELS, STATE_OPTIONS, EVENT_TYPE_OPTIONS,
@@ -36,6 +36,16 @@ function pillClass(active: boolean): string {
 
 function toggleInArray<T>(arr: T[], value: T, setArr: (v: T[]) => void) {
   setArr(arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value]);
+}
+
+/** One labelled group inside the mobile filter sheet. */
+function SheetSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h3 className="font-headline text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-3">{title}</h3>
+      {children}
+    </section>
+  );
 }
 
 function FilterTrigger({
@@ -146,6 +156,7 @@ function EventsListingInner() {
   const [sortBy,        setSortBy]        = useState<SortOption>("date");
   const [openDropdown,  setOpenDropdown]  = useState<string | null>(null);
   const [mobileSearch,  setMobileSearch]  = useState(false);
+  const [filterSheet,   setFilterSheet]   = useState(false);
   const [view, setView] = useState<"list" | "map">(searchParams.get("view") === "list" ? "list" : "map");
   // Latches true the first time the Map tab is viewed, so EventMap mounts
   // once and then just toggles visibility (avoids re-init/re-fetch on every tab switch).
@@ -302,6 +313,20 @@ function EventsListingInner() {
     return chips;
   }, [typeFilters, stateFilters, formatFilters, levelFilters, dateFilter, priceRange]);
 
+  // The sheet covers the viewport, so freeze the page behind it and let
+  // Escape close it like any other overlay.
+  useEffect(() => {
+    if (!filterSheet) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFilterSheet(false); };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [filterSheet]);
+
   const handleSelect = useCallback((id: string) => {
     if (!id) {
       setSelectedId(null);
@@ -336,27 +361,31 @@ function EventsListingInner() {
     <div className="hidden lg:block px-4 pt-4 pb-2 border-b border-dark-lighter bg-dark-darker flex-shrink-0">
       <div className="flex items-center gap-2">
         <div className="flex flex-1 items-stretch bg-dark rounded-xl overflow-hidden border border-dark-lighter">
-          <div className="flex-1 px-3.5 py-2.5 border-r border-dark-lighter min-w-0">
-            <label className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</label>
-            <div className="flex items-center gap-1.5">
+          {/* Icons are siblings of the label+input stack, not children of the
+              input row, so they centre against the full height of the field
+              instead of sitting on the input's baseline. Labels wrap the text
+              stack so the field label is part of the clickable area. */}
+          <div className="flex-1 px-3.5 py-2.5 border-r border-dark-lighter min-w-0 flex items-center gap-1.5">
+            <label className="flex-1 min-w-0 cursor-text">
+              <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</span>
               <input type="text" placeholder="Event name, type or keyword" value={whatQuery}
                 onChange={(e) => setWhatQuery(e.target.value)}
                 className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none" />
-              {whatQuery && <button onClick={() => setWhatQuery("")} className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
-            </div>
+            </label>
+            {whatQuery && <button type="button" onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
           </div>
-          <div className="flex-1 px-3.5 py-2.5 min-w-0">
-            <label className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Where</label>
-            <div className="flex items-center gap-1.5">
+          <div className="flex-1 px-3.5 py-2.5 min-w-0 flex items-center gap-1.5">
+            <label className="flex-1 min-w-0 cursor-text">
+              <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Where</span>
               <input type="text" placeholder="State, city, or suburb" value={whereQuery}
                 onChange={(e) => setWhereQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleWhereSearch()}
                 className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none" />
-              {isGeocoding
-                ? <Loader2 data-testid="geocoding-spinner" className="w-3.5 h-3.5 text-muted animate-spin flex-shrink-0" />
-                : <button onClick={locateMe} aria-label="Use my location" title="Use my location" className="text-muted hover:text-primary flex-shrink-0"><Locate className="w-3.5 h-3.5" /></button>}
-              {whereQuery && <button onClick={clearWhere} aria-label="Clear where" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
-            </div>
+            </label>
+            {isGeocoding
+              ? <Loader2 data-testid="geocoding-spinner" className="w-3.5 h-3.5 text-muted animate-spin flex-shrink-0" />
+              : <button type="button" onClick={locateMe} aria-label="Use my location" title="Use my location" className="text-muted hover:text-primary flex-shrink-0"><Locate className="w-3.5 h-3.5" /></button>}
+            {whereQuery && <button type="button" onClick={clearWhere} aria-label="Clear where" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
           </div>
         </div>
         {viewToggle}
@@ -505,9 +534,45 @@ function EventsListingInner() {
     </div>
   );
 
+  const sortLabel = SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? "Sort";
+
+  // Phones get a Sort control plus a single Filters button that opens the
+  // sheet below; six pills in a sideways-scrolling row was unusable at 390px.
+  const mobileFilterBar = (
+    <div className="lg:hidden border-b border-dark-lighter bg-dark-darker px-3 py-2 flex items-center gap-2">
+      <FilterTrigger label={sortLabel} active={sortBy !== "date"}
+        isOpen={openDropdown === "sort-mobile"}
+        onToggle={() => setOpenDropdown(openDropdown === "sort-mobile" ? null : "sort-mobile")}
+        panelClassName="w-48" icon={<ArrowUpDown className="w-3.5 h-3.5" />}
+      >
+        {sortDropdown}
+      </FilterTrigger>
+
+      <button onClick={() => { setOpenDropdown(null); setFilterSheet(true); }} data-testid="mobile-filters-open"
+        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full font-headline text-xs font-bold uppercase tracking-widest border transition-colors ${activeChips.length > 0 ? "border-primary/35 bg-primary/[0.08] text-primary" : "border-transparent text-muted"}`}
+      >
+        <SlidersHorizontal className="w-3.5 h-3.5" />
+        Filters
+        {activeChips.length > 0 && (
+          <span className="ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-dark text-[10px] font-black flex items-center justify-center">
+            {activeChips.length}
+          </span>
+        )}
+      </button>
+
+      {activeChips.length > 0 && (
+        <button onClick={clearFilters} className="ml-auto font-headline text-xs font-medium uppercase tracking-widest text-muted hover:text-light transition-colors">
+          Clear All
+        </button>
+      )}
+    </div>
+  );
+
   const filterSubNav = (
-    <div ref={subNavRef} className="border-b border-dark-lighter bg-dark-darker px-3 lg:px-6 py-2 flex items-center gap-1 overflow-x-auto flex-shrink-0">
-      <FilterTrigger label={SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? "Sort"} active={sortBy !== "date"}
+    <div ref={subNavRef} className="flex-shrink-0">
+      {mobileFilterBar}
+      <div className="hidden lg:flex border-b border-dark-lighter bg-dark-darker px-3 lg:px-6 py-2 items-center gap-1 overflow-x-auto">
+      <FilterTrigger label={sortLabel} active={sortBy !== "date"}
         isOpen={openDropdown === "sort"} onToggle={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
         panelClassName="w-48" icon={<ArrowUpDown className="w-3.5 h-3.5" />}
       >
@@ -536,8 +601,41 @@ function EventsListingInner() {
       {hasActiveFilters && (
         <button onClick={clearFilters} className="ml-1 flex-shrink-0 font-headline text-xs font-medium uppercase tracking-widest text-muted hover:text-light transition-colors">Clear All</button>
       )}
+      </div>
     </div>
   );
+
+  const filterSheetOverlay = filterSheet ? createPortal(
+    <div className="lg:hidden fixed inset-0 z-[60] flex flex-col bg-dark-darker" role="dialog" aria-modal="true" aria-label="Filters">
+      <div className="flex items-center justify-between px-4 h-14 border-b border-dark-lighter flex-shrink-0">
+        <span className="font-headline text-sm font-black uppercase tracking-widest text-light">Filters</span>
+        <button onClick={() => setFilterSheet(false)} aria-label="Close filters"
+          className="w-10 h-10 -mr-2 flex items-center justify-center text-muted hover:text-light transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-7">
+        <SheetSection title="Discipline">{disciplineDropdown}</SheetSection>
+        <SheetSection title="Location">{locationDropdown}</SheetSection>
+        <SheetSection title="Date">{dateDropdown}</SheetSection>
+        <SheetSection title="Price">{priceDropdown}</SheetSection>
+        <SheetSection title="Format & Level">{formatLevelDropdown}</SheetSection>
+      </div>
+
+      <div className="flex-shrink-0 border-t border-dark-lighter px-4 py-3 flex items-center gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <button onClick={clearFilters} disabled={activeChips.length === 0}
+          className="font-headline text-xs font-bold uppercase tracking-widest text-muted hover:text-light transition-colors disabled:opacity-40">
+          Clear all
+        </button>
+        <button onClick={() => setFilterSheet(false)}
+          className="flex-1 bg-machined text-dark font-headline text-xs font-bold uppercase tracking-widest h-11 rounded-xl">
+          Show {displayEvents.length} event{displayEvents.length !== 1 ? "s" : ""}
+        </button>
+      </div>
+    </div>,
+    document.body,
+  ) : null;
 
   const resultsHeader = (
     <div className="px-3 lg:px-6 pt-4 pb-1 flex items-center justify-between gap-3 flex-wrap flex-shrink-0">
@@ -586,7 +684,9 @@ function EventsListingInner() {
   // re-initialising Mapbox / re-fetching tiles on every toggle.
   const mapContent = (
     <div className={view === "map" ? "flex flex-col lg:flex-row flex-1 min-h-0" : "hidden"}>
-      <div ref={listRef} className="flex flex-col w-full lg:flex-1 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-dark-lighter bg-dark-darker overflow-y-auto max-h-[38vh] lg:max-h-none px-4 py-3 lg:py-4">
+      {/* Phones show the map alone in this tab — a 32vh list on top of a short
+          map left neither usable. The List tab is the list. */}
+      <div ref={listRef} className="hidden lg:flex flex-col w-full lg:flex-1 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-dark-lighter bg-dark-darker overflow-y-auto lg:max-h-none px-4 py-3 lg:py-4">
         {displayEvents.length === 0 ? (
           <div className="p-8 text-center">
             <p className="font-headline text-lg font-black italic tracking-tighter text-light mb-3">No events found.</p>
@@ -602,7 +702,7 @@ function EventsListingInner() {
           </div>
         )}
       </div>
-      <div className="flex-1 relative min-h-[320px]">
+      <div className="flex-1 relative min-h-[260px] lg:min-h-[320px]">
         {mapEverViewed && (
           <EventMap
             events={displayEvents}
@@ -617,7 +717,7 @@ function EventsListingInner() {
   );
 
   return (
-    <div className="flex flex-col" style={{ height: "calc(100dvh - 56px)" }}>
+    <div className="app-shell flex flex-col">
       {desktopHeader}
       {mobileHeader}
       {filterSubNav}
@@ -628,6 +728,8 @@ function EventsListingInner() {
         {gridContent}
         {mapContent}
       </div>
+
+      {filterSheetOverlay}
     </div>
   );
 }
