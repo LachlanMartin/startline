@@ -1,6 +1,21 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import FeedbackForm from "@/components/feedback/FeedbackForm";
 
-/** Legacy URL — contact is the canonical bug/report page. */
-export default function FeedbackRedirectPage() {
-  redirect("/contact");
+export const metadata: Metadata = {
+  title: "Feedback",
+  description:
+    "Report a bug, request a feature, or send feedback to the Startline team.",
+  openGraph: {
+    title: "Feedback | Startline",
+    description:
+      "Report a bug, request a feature, or send feedback to the Startline team.",
+    url: "/feedback",
+  },
+  alternates: {
+    canonical: "/feedback",
+  },
+};
+
+export default function FeedbackPage() {
+  return <FeedbackForm />;
 }
