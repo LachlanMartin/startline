@@ -116,7 +116,6 @@ export async function POST(req: NextRequest) {
         status:           eventStatus,
         title:            body.title,
         discipline:       body.discipline        ?? "",
-        tagline:          body.tagline           ?? null,
         description:      body.description       ?? null,
         eventDate:        body.eventDate         ?? "",
         endDate:          body.endDate           ?? null,
@@ -143,6 +142,7 @@ export async function POST(req: NextRequest) {
         registrationUrl:  body.registrationUrl   ?? null,
         accessibilityInfo: body.accessibilityInfo ?? null,
         coverImageUrl:    body.coverImageUrl      ?? null,
+        informationPdfUrl: body.informationPdfUrl ?? null,
         photos:           Array.isArray(body.photos) ? body.photos : [],
       },
     });

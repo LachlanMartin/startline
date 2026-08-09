@@ -50,6 +50,21 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const registrationType = body.registrationType ?? "startline";
+  if (registrationType === "startline") {
+    const org = await prisma.organiser.findUnique({
+      where: { id: session.sub },
+      select: { abn: true },
+    });
+    const abnDigits = org?.abn?.replace(/\D/g, "") ?? "";
+    if (abnDigits.length < 9) {
+      return NextResponse.json(
+        { error: "An ABN is required to host paid events on Startline. Add your ABN in Payments or onboarding, or use external registration." },
+        { status: 400 },
+      );
+    }
+  }
+
   const eventStatus = submit
     ? (session.verified ? "APPROVED" : "PENDING")
     : "DRAFT";
@@ -61,7 +76,6 @@ export async function POST(req: NextRequest) {
         status:           eventStatus,
         title:            body.title,
         discipline:       body.discipline        ?? "",
-        tagline:          body.tagline           ?? null,
         description:      body.description       ?? null,
         eventDate:        body.eventDate         ?? "",
         endDate:          body.endDate           ?? null,
@@ -83,11 +97,12 @@ export async function POST(req: NextRequest) {
         extras:           body.extras            ?? null,
         activations:      body.activations       ?? null,
         refundPolicy:     body.refundPolicy      ?? null,
-        registrationType: body.registrationType  ?? "startline",
+        registrationType,
         feeStructure:     body.feeStructure      ?? "athlete",
         registrationUrl:  body.registrationUrl   ?? null,
         accessibilityInfo: body.accessibilityInfo ?? null,
         coverImageUrl:    body.coverImageUrl      ?? null,
+        informationPdfUrl: body.informationPdfUrl ?? null,
         photos:           Array.isArray(body.photos) ? body.photos : [],
       },
     });

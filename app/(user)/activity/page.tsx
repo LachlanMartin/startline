@@ -140,7 +140,7 @@ function RegisteredCard({
           <p className="font-headline text-[9.5px] font-bold uppercase tracking-widest text-muted-dark leading-none">
             Bib
           </p>
-          <p className={`font-headline text-[13px] font-black italic mt-1 ${meta?.bibNumber ? "text-primary" : "text-muted-dark"}`}>
+          <p className={`font-headline text-[13px] font-black mt-1 ${meta?.bibNumber ? "text-primary" : "text-muted-dark"}`}>
             {meta?.bibNumber ? `#${meta.bibNumber}` : "—"}
           </p>
         </div>
@@ -194,13 +194,13 @@ function OrganiserCard({
           {organiser.logoUrl ? (
             <Image src={organiser.logoUrl} alt={`${organiser.orgName} logo`} fill className="object-cover" sizes="56px" />
           ) : (
-            <span className="w-full h-full flex items-center justify-center font-headline text-xl font-black italic text-primary">
+            <span className="w-full h-full flex items-center justify-center font-headline text-xl font-black text-primary">
               {(organiser.orgName ?? "O").charAt(0)}
             </span>
           )}
         </span>
         <span className="min-w-0">
-          <span className="block font-headline text-lg font-black italic tracking-tighter text-light group-hover:text-primary transition-colors leading-tight truncate">
+          <span className="block font-headline text-lg font-black tracking-tighter text-light group-hover:text-primary transition-colors leading-tight truncate">
             {organiser.orgName ?? "Organiser"}
           </span>
           <span className="flex items-center gap-2 mt-1 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
@@ -226,10 +226,10 @@ function OrganiserCard({
 function EmptyState({ tab }: { tab: "registered" | "saved" | "following" }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-3">
-      <p className="font-headline text-xl font-black italic tracking-tighter text-light">
+      <p className="font-headline text-xl font-black tracking-tighter text-light">
         Nothing here yet.
       </p>
-      <p className="font-headline text-sm text-muted text-center max-w-xs leading-relaxed">
+      <p className="font-headline text-sm text-light text-center max-w-xs leading-relaxed">
         {tab === "registered"
           ? "Register your interest in events to see them here."
           : tab === "saved"
@@ -237,10 +237,10 @@ function EmptyState({ tab }: { tab: "registered" | "saved" | "following" }) {
             : "Follow organisers to keep up with their upcoming events."}
       </p>
       <Link
-        href={tab === "following" ? "/organisers" : "/events"}
-        className="mt-2 font-headline text-[11px] font-bold uppercase tracking-widest text-primary hover:underline"
+        href="/events"
+        className="mt-3 inline-flex items-center h-[46px] px-6 rounded-xl bg-machined text-dark font-headline text-[13px] font-black uppercase tracking-[0.12em] shadow-machined hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-all duration-150"
       >
-        {tab === "following" ? "Browse Organisers" : "Browse Events"}
+        Find Events
       </Link>
     </div>
   );
@@ -388,46 +388,13 @@ export default function ActivityPage() {
   return (
     <main className="min-h-screen bg-dark-darker">
       <div className="max-w-[1440px] mx-auto px-6 pt-20 pb-16">
-        <div className="flex items-end justify-between gap-6 flex-wrap mb-8">
-          <div>
-            <p className="font-headline text-[11px] font-bold uppercase tracking-[0.25em] text-primary mb-2.5">
-              Your Activity
-            </p>
-            <h1 className="font-headline text-5xl sm:text-[52px] font-black italic tracking-tighter text-light leading-none">
-              Your race<br /><span className="text-primary">calendar.</span>
-            </h1>
-            <p className="font-headline text-[15px] text-muted max-w-[460px] leading-relaxed mt-4">
-              Everything you&apos;ve entered, saved, and who you follow. Keep your start lines in one place.
-            </p>
-          </div>
-          <Link
-            href="/events"
-            className="inline-flex items-center h-[46px] px-6 rounded-xl bg-machined text-dark font-headline text-[13px] font-black uppercase tracking-[0.12em] shadow-machined hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-all duration-150 flex-shrink-0"
-          >
-            Find Events
-          </Link>
+        <div className="mb-8">
+          <h1 className="font-headline text-5xl sm:text-[52px] font-black tracking-tighter text-light leading-none">
+            Your activity<br /><span className="text-primary">calendar.</span>
+          </h1>
         </div>
 
         <NotificationsPanel notifs={notifs} onMarkAllRead={markAllRead} />
-
-        <div className="flex gap-4 flex-wrap mb-9">
-          {[
-            { n: registeredEvents.length, l: "Registered" },
-            { n: savedEvents.length, l: "Saved" },
-            { n: following.length, l: "Following" },
-          ].map(({ n, l }) => (
-            <div
-              key={l}
-              className="flex-1 min-w-[140px] bg-dark border border-dark-lighter rounded-xl"
-              style={{ padding: "18px 20px" }}
-            >
-              <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted">{l}</p>
-              <p className="font-headline text-[34px] font-black italic tracking-tighter text-light leading-none mt-2">
-                {n}
-              </p>
-            </div>
-          ))}
-        </div>
 
         <div className="flex gap-2.5 mb-6">
           {(["registered", "saved", "following"] as const).map((id) => {

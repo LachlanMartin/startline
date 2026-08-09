@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getOrganiserRatings } from "@/lib/reviews";
 
 export async function GET(
   _req: Request,
@@ -11,22 +12,16 @@ export async function GET(
   }
 
   const user = await prisma.user.findUnique({
-    where:  { username },
+    where: { username },
     select: {
-      id: true, name: true, username: true, bio: true,
-      profilePicUrl: true, isPublic: true, city: true, state: true, createdAt: true,
-      registrations: {
-        where: { status: "CONFIRMED" },
-        select: {
-          id: true, eventId: true,
-          category: true,
-          resultDistance: true, resultTime: true, resultPlacement: true,
-          isPersonalBest: true, isTopResult: true,
-          event: { select: { title: true, discipline: true, eventDate: true, city: true, state: true } },
-        },
-        orderBy: { event: { eventDate: "desc" } },
-        take: 20,
-      },
+      id: true,
+      username: true,
+      bio: true,
+      profilePicUrl: true,
+      isPublic: true,
+      city: true,
+      state: true,
+      createdAt: true,
     },
   });
 
@@ -38,5 +33,47 @@ export async function GET(
     return NextResponse.json({ error: "This profile is private." }, { status: 403 });
   }
 
-  return NextResponse.json(user);
+  const registrations = await prisma.registration.findMany({
+    where: { userId: user.id, status: "CONFIRMED" },
+    orderBy: { event: { eventDate: "asc" } },
+    select: {
+      id: true,
+      finishTime: true,
+      result: true,
+      event: {
+        select: {
+          id: true,
+          title: true,
+          discipline: true,
+          eventDate: true,
+          city: true,
+          state: true,
+          coverImageUrl: true,
+          organiser: { select: { id: true, orgName: true, logoUrl: true } },
+        },
+      },
+    },
+  });
+
+  const ratings = await getOrganiserRatings(
+    registrations.map((r) => r.event.organiser.id),
+  );
+  const historyRegistrations = registrations.map((r) => ({
+    ...r,
+    event: {
+      ...r.event,
+      organiser: {
+        ...r.event.organiser,
+        rating: ratings.get(r.event.organiser.id) ?? null,
+      },
+    },
+  }));
+
+  return NextResponse.json({
+    ...user,
+    history: {
+      completed: registrations.length,
+      registrations: historyRegistrations,
+    },
+  });
 }

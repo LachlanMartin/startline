@@ -65,7 +65,6 @@ export async function PATCH(
       data: {
         title:             data.title             ?? undefined,
         discipline:        data.discipline        ?? undefined,
-        tagline:           data.tagline           ?? undefined,
         description:       data.description       ?? undefined,
         eventDate:         data.eventDate         ?? undefined,
         endDate:           data.endDate           ?? null,
@@ -92,6 +91,7 @@ export async function PATCH(
         registrationUrl:   data.registrationUrl   ?? undefined,
         accessibilityInfo: data.accessibilityInfo ?? undefined,
         coverImageUrl:     data.coverImageUrl     ?? undefined,
+        informationPdfUrl: data.informationPdfUrl === undefined ? undefined : data.informationPdfUrl,
         photos:            Array.isArray(data.photos) ? data.photos : undefined,
         status:            nextStatus,
       },

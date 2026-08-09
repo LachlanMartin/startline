@@ -5,6 +5,7 @@ import { RegisterField, registerInputCls } from "@/components/registration/Regis
 import DatePicker from "@/components/ui/DatePicker";
 import SelectMenu from "@/components/ui/SelectMenu";
 import {
+  GENDER_OPTIONS,
   maxDateOfBirthForMinAge,
   MAX_MEDICAL_NOTES_LENGTH,
   type RegistrationFormData,
@@ -12,11 +13,8 @@ import {
   type RegistrationFormField,
 } from "@/lib/registration-form";
 
-const GENDER_OPTIONS = ["Prefer not to say", "Male", "Female", "Non-binary", "Other"];
-
 /** Oldest selectable birthday — keeps the year list to a sane length. */
 const EARLIEST_DATE_OF_BIRTH = `${new Date().getFullYear() - 100}-01-01`;
-
 function SectionDivider({ children }: { children: React.ReactNode }) {
   return (
     <div className="font-headline text-[9.5px] font-bold uppercase tracking-[0.2em] text-muted-dark pb-2.5 border-b border-dark-lighter mb-4">
