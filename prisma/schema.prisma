@@ -421,8 +421,6 @@ model User {
   username      String?  @unique // public handle, chosen during profile setup
   bio           String?
   profilePicUrl String?
-  coverImageUrl String?
-  coverPosition String?  @default("50% 50%")
   isPublic      Boolean  @default(true) // public profile visible to others
   isBanned      Boolean  @default(false)
   mfaEnabled    Boolean  @default(false)

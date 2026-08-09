@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { AlertCircle, Check, CheckCircle, Move, Upload, X } from "lucide-react";
+import { AlertCircle, Check, CheckCircle, Upload, X } from "lucide-react";
 import { GENDER_OPTIONS, maxDateOfBirthForMinAge } from "@/lib/registration-form";
 
 const inputCls =
@@ -16,8 +16,6 @@ type ProfileDraft = {
   city: string;
   state: string;
   profilePicUrl: string;
-  coverImageUrl: string;
-  coverPosition: string;
   mobile: string;
   dateOfBirth: string;
   gender: string;
@@ -44,159 +42,6 @@ function FieldLabel({ label, hint, htmlFor }: { label: string; hint?: string; ht
       {hint && (
         <span className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">{hint}</span>
       )}
-    </div>
-  );
-}
-
-function CoverEditor({
-  imageUrl,
-  position,
-  uploading,
-  onUpload,
-  onPositionChange,
-  onRemove,
-  fileRef,
-}: {
-  imageUrl: string;
-  position: string;
-  uploading: boolean;
-  onUpload: (f: File) => void;
-  onPositionChange: (p: string) => void;
-  onRemove: () => void;
-  fileRef: React.RefObject<HTMLInputElement | null>;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState(false);
-  const [reposition, setReposition] = useState(false);
-  const dragStart = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
-
-  const parsePos = (pos: string) => {
-    const [x, y] = pos.split(" ").map((v) => parseFloat(v));
-    return { x: Number.isNaN(x) ? 50 : x, y: Number.isNaN(y) ? 50 : y };
-  };
-
-  const onMouseDown = (e: React.MouseEvent) => {
-    if (!reposition || !imageUrl) return;
-    e.preventDefault();
-    const { x, y } = parsePos(position);
-    dragStart.current = { x: e.clientX, y: e.clientY, px: x, py: y };
-    setDragging(true);
-  };
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!dragging || !dragStart.current || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const dx = ((e.clientX - dragStart.current.x) / rect.width) * -100;
-    const dy = ((e.clientY - dragStart.current.y) / rect.height) * -100;
-    const newX = Math.min(100, Math.max(0, dragStart.current.px + dx));
-    const newY = Math.min(100, Math.max(0, dragStart.current.py + dy));
-    onPositionChange(`${newX.toFixed(1)}% ${newY.toFixed(1)}%`);
-  };
-  const onMouseUp = () => setDragging(false);
-
-  if (!imageUrl) {
-    return (
-      <button
-        type="button"
-        className="relative h-28 w-full rounded-xl overflow-hidden bg-dark-light border border-dark-lighter"
-        onClick={() => fileRef.current?.click()}
-        disabled={uploading}
-      >
-        <div
-          className="absolute inset-0 opacity-15 pointer-events-none"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 20% 50%, #b3e153 0%, transparent 50%), radial-gradient(circle at 80% 20%, #86efac 0%, transparent 40%)",
-          }}
-        />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-dark/80 rounded-lg px-3 py-2 flex items-center gap-2 font-headline text-[11px] font-bold uppercase tracking-widest text-muted-light border border-dark-lighter">
-            {uploading ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                Uploading…
-              </>
-            ) : (
-              <>
-                <Upload className="w-3.5 h-3.5" /> Upload cover
-              </>
-            )}
-          </div>
-        </div>
-      </button>
-    );
-  }
-
-  return (
-    <div>
-      <div
-        ref={containerRef}
-        className={`relative h-28 rounded-xl overflow-hidden border border-dark-lighter select-none ${
-          reposition ? "cursor-grab active:cursor-grabbing" : "cursor-default"
-        }`}
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onMouseLeave={onMouseUp}
-      >
-        <Image
-          src={imageUrl}
-          alt="Cover"
-          fill
-          className="object-cover pointer-events-none brightness-[.62] saturate-110"
-          style={{ objectPosition: position }}
-          draggable={false}
-          sizes="(max-width: 768px) 100vw, 448px"
-        />
-        {reposition && (
-          <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
-            <div className="flex items-center gap-1.5 bg-black/60 text-white rounded-lg px-3 py-1.5 font-headline text-[11px] font-bold uppercase tracking-wider">
-              <Move className="w-3.5 h-3.5" /> Drag to reposition
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="flex items-center gap-2 mt-2 flex-wrap">
-        {reposition ? (
-          <button
-            type="button"
-            onClick={() => setReposition(false)}
-            className="font-headline text-[11px] font-bold uppercase tracking-widest bg-primary text-dark px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity"
-          >
-            Done
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setReposition(true)}
-            className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted hover:text-light flex items-center gap-1 transition-colors"
-          >
-            <Move className="w-3 h-3" /> Reposition
-          </button>
-        )}
-        <span className="text-white/20 text-xs">·</span>
-        <button
-          type="button"
-          onClick={() => {
-            setReposition(false);
-            fileRef.current?.click();
-          }}
-          disabled={uploading}
-          className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted hover:text-light flex items-center gap-1 transition-colors disabled:opacity-40"
-        >
-          <Upload className="w-3 h-3" /> {uploading ? "Uploading…" : "Change"}
-        </button>
-        <span className="text-white/20 text-xs">·</span>
-        <button
-          type="button"
-          onClick={() => {
-            setReposition(false);
-            onRemove();
-          }}
-          className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted hover:text-red-400 transition-colors"
-        >
-          Remove
-        </button>
-      </div>
     </div>
   );
 }
@@ -270,8 +115,6 @@ export default function UserEditProfileModal({ open, initial, onClose, onSaved }
     city: initial.city,
     state: initial.state,
     profilePicUrl: initial.profilePicUrl,
-    coverImageUrl: initial.coverImageUrl,
-    coverPosition: initial.coverPosition,
     mobile: initial.mobile,
     dateOfBirth: initial.dateOfBirth,
     gender: initial.gender,
@@ -281,11 +124,9 @@ export default function UserEditProfileModal({ open, initial, onClose, onSaved }
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [coverUploading, setCoverUploading] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "valid" | "invalid">("idle");
   const [usernameError, setUsernameError] = useState("");
-  const coverRef = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
   const checkTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -299,8 +140,6 @@ export default function UserEditProfileModal({ open, initial, onClose, onSaved }
       city: initial.city,
       state: initial.state,
       profilePicUrl: initial.profilePicUrl,
-      coverImageUrl: initial.coverImageUrl,
-      coverPosition: initial.coverPosition || "50% 50%",
       mobile: initial.mobile,
       dateOfBirth: initial.dateOfBirth,
       gender: initial.gender,
@@ -374,7 +213,7 @@ export default function UserEditProfileModal({ open, initial, onClose, onSaved }
 
   const patch = (p: Partial<ProfileDraft>) => setForm((f) => ({ ...f, ...p }));
 
-  const uploadImage = async (file: File, type: "cover" | "avatar") => {
+  const uploadImage = async (file: File, type: "avatar") => {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("type", type);
@@ -385,19 +224,6 @@ export default function UserEditProfileModal({ open, initial, onClose, onSaved }
     }
     const { fileUrl } = await res.json();
     return fileUrl as string;
-  };
-
-  const handleCoverUpload = async (file: File) => {
-    setCoverUploading(true);
-    setError("");
-    try {
-      const url = await uploadImage(file, "cover");
-      patch({ coverImageUrl: url, coverPosition: "50% 50%" });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Cover upload failed.");
-    } finally {
-      setCoverUploading(false);
-    }
   };
 
   const handleAvatarUpload = async (file: File) => {
@@ -429,8 +255,6 @@ export default function UserEditProfileModal({ open, initial, onClose, onSaved }
           city: form.city || null,
           state: form.state || null,
           profilePicUrl: form.profilePicUrl || null,
-          coverImageUrl: form.coverImageUrl || null,
-          coverPosition: form.coverPosition || "50% 50%",
           mobile: form.mobile || null,
           dateOfBirth: form.dateOfBirth || null,
           gender: form.gender || null,
@@ -452,8 +276,6 @@ export default function UserEditProfileModal({ open, initial, onClose, onSaved }
         city: data.city ?? form.city,
         state: data.state ?? form.state,
         profilePicUrl: data.profilePicUrl ?? form.profilePicUrl,
-        coverImageUrl: data.coverImageUrl ?? form.coverImageUrl,
-        coverPosition: data.coverPosition ?? form.coverPosition,
         mobile: data.mobile ?? form.mobile,
         dateOfBirth: data.dateOfBirth ?? form.dateOfBirth,
         gender: data.gender ?? form.gender,
@@ -515,29 +337,6 @@ export default function UserEditProfileModal({ open, initial, onClose, onSaved }
               Photos
             </div>
             <div className="space-y-4">
-              <div>
-                <FieldLabel label="Cover photo" hint="Recommended 1200×400" />
-                <CoverEditor
-                  imageUrl={form.coverImageUrl}
-                  position={form.coverPosition}
-                  uploading={coverUploading}
-                  onUpload={handleCoverUpload}
-                  onPositionChange={(pos) => patch({ coverPosition: pos })}
-                  onRemove={() => patch({ coverImageUrl: "", coverPosition: "50% 50%" })}
-                  fileRef={coverRef}
-                />
-                <input
-                  ref={coverRef}
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleCoverUpload(file);
-                    e.target.value = "";
-                  }}
-                />
-              </div>
               <div>
                 <FieldLabel label="Profile photo" />
                 <AvatarEditor

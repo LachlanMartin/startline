@@ -18,8 +18,6 @@ export async function GET(
       username: true,
       bio: true,
       profilePicUrl: true,
-      coverImageUrl: true,
-      coverPosition: true,
       isPublic: true,
       city: true,
       state: true,

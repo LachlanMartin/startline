@@ -37,30 +37,11 @@ export type UserProfileViewProps = {
   username: string;
   bio: string | null;
   profilePicUrl: string | null;
-  coverImageUrl: string | null;
-  coverPosition: string | null;
   history: ProfileRaceHistory | null;
   /** Optional actions rendered beside stats (e.g. Edit Profile). */
   headerActions?: ReactNode;
   loading?: boolean;
 };
-
-function formatCount(n: number) {
-  return n.toLocaleString("en-AU");
-}
-
-function ProfileStats({ completed }: { completed: number }) {
-  return (
-    <div className="text-center">
-      <div className="font-headline text-xl sm:text-2xl font-black tracking-tighter text-light leading-none">
-        {formatCount(completed)}
-      </div>
-      <div className="font-headline text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-light mt-1">
-        Events Completed
-      </div>
-    </div>
-  );
-}
 
 type HistoryRegistration = ProfileRaceHistory["registrations"][number];
 
@@ -225,36 +206,16 @@ export default function UserProfileView({
   username,
   bio,
   profilePicUrl,
-  coverImageUrl,
-  coverPosition,
   history,
   headerActions,
   loading = false,
 }: UserProfileViewProps) {
   const initial = username[0]?.toUpperCase() ?? "A";
-  const completed = history?.completed ?? 0;
 
   return (
     <main className="min-h-screen bg-dark-darker pt-14">
-      <div className="relative w-full h-44 sm:h-60 overflow-hidden">
-        {coverImageUrl ? (
-          <Image
-            src={coverImageUrl}
-            alt=""
-            fill
-            className="object-cover brightness-[0.55]"
-            style={{ objectPosition: coverPosition ?? "50% 50%" }}
-            sizes="100vw"
-            priority
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-dark via-dark-lighter to-dark-darker" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-dark-darker via-dark-darker/40 to-transparent" />
-      </div>
-
       <section className="max-w-[1440px] mx-auto px-4 sm:px-6 pb-12">
-        <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-5 -mt-16 sm:-mt-20 relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-5 mt-4 sm:mt-6 relative z-10">
           {loading ? (
             <>
               <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-2xl bg-dark-lighter animate-pulse shrink-0" />
@@ -286,7 +247,6 @@ export default function UserProfileView({
                   <h1 className="font-headline text-4xl sm:text-5xl font-black tracking-tighter text-light leading-none">
                     {username}
                   </h1>
-                  <ProfileStats completed={completed} />
                   {bio && (
                     <p className="basis-full mt-1 text-lg sm:text-xl font-medium text-light leading-relaxed max-w-3xl sm:hidden">
                       {bio}

@@ -34,7 +34,6 @@ test.describe("public profile", () => {
 
     await expect(page.getByRole("heading", { name: username!, exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: /race history/i })).toBeVisible();
-    await expect(page.getByText("Events Completed")).toBeVisible();
     await expect(page.getByRole("button", { name: /edit profile/i })).toHaveCount(0);
     // Public view must not use the old "Events Attended" list layout
     await expect(page.getByText(/events attended/i)).toHaveCount(0);
@@ -52,7 +51,6 @@ test.describe("user profile: race history", () => {
 
     // Bypass user is organiser@startline.test — seeded with 2 completed events
     await expect(page.getByRole("heading", { name: /race history/i })).toBeVisible();
-    await expect(page.getByText("Events Completed")).toBeVisible();
     await expect(page.getByRole("button", { name: /edit profile/i })).toBeVisible();
     await expect(page.getByText("The Apex Throwdown 2025")).toBeVisible();
     await expect(page.getByText("Apex Bay Run")).toBeVisible();
@@ -65,7 +63,6 @@ test.describe("user profile: race history", () => {
     await page.getByRole("button", { name: /edit profile/i }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText(/cover photo/i)).toBeVisible();
     await expect(dialog.getByText(/profile photo/i)).toBeVisible();
     await expect(dialog.getByText(/public profile/i)).toBeVisible();
     await expect(dialog.getByText(/private details/i)).toBeVisible();

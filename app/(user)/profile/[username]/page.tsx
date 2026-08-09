@@ -16,8 +16,6 @@ async function getProfile(username: string) {
       username: true,
       bio: true,
       profilePicUrl: true,
-      coverImageUrl: true,
-      coverPosition: true,
       isPublic: true,
     },
   });
@@ -54,8 +52,6 @@ async function getProfile(username: string) {
     username: user.username!,
     bio: user.bio,
     profilePicUrl: user.profilePicUrl,
-    coverImageUrl: user.coverImageUrl,
-    coverPosition: user.coverPosition,
     history: {
       completed: registrations.length,
       registrations: registrations.map((r) => ({
@@ -98,8 +94,6 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
       username={profile.username}
       bio={profile.bio}
       profilePicUrl={profile.profilePicUrl}
-      coverImageUrl={profile.coverImageUrl}
-      coverPosition={profile.coverPosition}
       history={profile.history}
     />
   );

@@ -24,8 +24,6 @@ const profileSelect = {
   username: true,
   bio: true,
   profilePicUrl: true,
-  coverImageUrl: true,
-  coverPosition: true,
   isPublic: true,
   city: true,
   state: true,
@@ -156,8 +154,6 @@ export async function PUT(req: Request) {
 
   if ("bio" in body) data.bio = normalizeOptionalString(body.bio);
   if ("profilePicUrl" in body) data.profilePicUrl = body.profilePicUrl || null;
-  if ("coverImageUrl" in body) data.coverImageUrl = body.coverImageUrl || null;
-  if ("coverPosition" in body) data.coverPosition = body.coverPosition || "50% 50%";
   if ("isPublic" in body) data.isPublic = body.isPublic;
   if ("city" in body) data.city = normalizeOptionalString(body.city);
   if ("state" in body) data.state = normalizeOptionalString(body.state);

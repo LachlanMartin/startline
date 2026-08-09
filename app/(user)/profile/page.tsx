@@ -15,8 +15,6 @@ type UserData = {
   username: string | null;
   bio: string | null;
   profilePicUrl: string | null;
-  coverImageUrl: string | null;
-  coverPosition: string | null;
   isPublic: boolean;
   city: string | null;
   state: string | null;
@@ -77,8 +75,6 @@ export default function ProfilePage() {
         username={displayHandle}
         bio={userData?.bio ?? null}
         profilePicUrl={userData?.profilePicUrl ?? null}
-        coverImageUrl={userData?.coverImageUrl ?? null}
-        coverPosition={userData?.coverPosition ?? null}
         history={history}
         loading={profileLoading}
         headerActions={
@@ -104,8 +100,6 @@ export default function ProfilePage() {
             city: userData.city ?? "",
             state: userData.state ?? "",
             profilePicUrl: userData.profilePicUrl ?? "",
-            coverImageUrl: userData.coverImageUrl ?? "",
-            coverPosition: userData.coverPosition ?? "50% 50%",
             mobile: userData.mobile ?? "",
             dateOfBirth: userData.dateOfBirth ?? "",
             gender: userData.gender ?? "",
@@ -126,8 +120,6 @@ export default function ProfilePage() {
                     city: data.city || null,
                     state: data.state || null,
                     profilePicUrl: data.profilePicUrl || null,
-                    coverImageUrl: data.coverImageUrl || null,
-                    coverPosition: data.coverPosition || "50% 50%",
                     mobile: data.mobile || null,
                     dateOfBirth: data.dateOfBirth || null,
                     gender: data.gender || null,
