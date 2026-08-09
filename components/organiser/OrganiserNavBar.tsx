@@ -137,7 +137,11 @@ export default function OrganiserNavBar() {
     } catch {}
     setIsUserOpen(false);
     await fetchOrgInfo();
-    router.push("/organiser/dashboard");
+    // Refresh the current page so it re-fetches for the newly active
+    // organiser, instead of always bouncing to the dashboard. A full reload
+    // guarantees every client page re-runs its data fetch with the new
+    // active-org cookie while keeping the current route.
+    window.location.reload();
   };
 
   const openNotifPanel = () => {
@@ -167,7 +171,7 @@ export default function OrganiserNavBar() {
 
           {/* ── Logo ── */}
           <div className="shrink-0 flex items-center gap-3 min-w-0">
-            <Link href="/organiser/dashboard" className="py-1 flex items-center gap-2">
+            <Link href="/" className="py-1 flex items-center gap-2">
               <Image src="/images/logo-title.svg" alt="Startline" width={110} height={28} className="h-6 w-auto" />
             </Link>
           </div>

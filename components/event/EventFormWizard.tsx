@@ -536,15 +536,7 @@ const STARTLINE_FLAT = 1.45;
 const STRIPE_PCT     = 0.0175;
 const STRIPE_FLAT    = 0.30;
 
-function TicketsStep({
-  form,
-  update,
-  hasAbn,
-}: {
-  form: FormState;
-  update: (p: Partial<FormState>) => void;
-  hasAbn: boolean;
-}) {
+function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<FormState>) => void }) {
   const updateWave = (i: number, patch: Partial<Wave>) => {
     const waves = [...form.waves]; waves[i] = { ...waves[i], ...patch }; update({ waves });
   };
@@ -577,25 +569,15 @@ function TicketsStep({
     <div>
       {/* Registration platform */}
       <Field label="Registration platform" required>
-        {!hasAbn && (
-          <div className="mb-3 rounded-xl border border-orange-500/30 bg-orange-500/5 px-4 py-3 text-[13px] text-orange-300">
-            An ABN is required to host paid events on Startline. Add your ABN in Payments (or during onboarding). You can still list free or external-registration events.
-          </div>
-        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {([
-            { value: "startline", title: "Startline",        sub: "Managed on this platform", disabled: !hasAbn },
-            { value: "external",  title: "External website", sub: "Link to your own registration", disabled: false },
-          ] as const).map(({ value, title, sub, disabled }) => {
+            { value: "startline", title: "Startline",        sub: "Managed on this platform"      },
+            { value: "external",  title: "External website", sub: "Link to your own registration" },
+          ] as const).map(({ value, title, sub }) => {
             const active = form.registrationType === value;
             return (
-              <button
-                key={value}
-                type="button"
-                disabled={disabled}
-                onClick={() => !disabled && update({ registrationType: value })}
+              <button key={value} type="button" onClick={() => update({ registrationType: value })}
                 className={`flex flex-col items-start gap-1 rounded-xl border-2 px-5 py-4 text-left transition-colors
-                  ${disabled ? "opacity-40 cursor-not-allowed border-dark-lighter bg-dark-light" : ""}
                   ${active ? "border-primary bg-primary/10" : "border-dark-lighter bg-dark-light hover:border-primary/40"}`}
               >
                 <div className={`font-headline text-[13px] font-bold uppercase tracking-widest ${active ? "text-primary" : "text-light"}`}>{title}</div>
@@ -1441,27 +1423,9 @@ export default function EventFormWizard({
   const [direction,       setDirection]       = useState<"forward" | "back">("forward");
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [eventId,         setEventId]         = useState<string | null>(null);
-  const [hasAbn,          setHasAbn]          = useState(true);
   const originalFields = useRef<Record<string, unknown>>({});
 
   const update = (patch: Partial<FormState>) => setForm(f => ({ ...f, ...patch }));
-
-  useEffect(() => {
-    if (apiBase !== "/api/organiser") return;
-    fetch("/api/organiser/profile")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { abn?: string | null } | null) => {
-        const digits = (data?.abn ?? "").replace(/\D/g, "");
-        const ok = digits.length >= 9;
-        setHasAbn(ok);
-        if (!ok) {
-          setForm((f) =>
-            f.registrationType === "startline" ? { ...f, registrationType: "external" } : f,
-          );
-        }
-      })
-      .catch(() => {});
-  }, [apiBase]);
 
   useEffect(() => {
     const id = eventIdProp ?? new URLSearchParams(window.location.search).get("id");
@@ -1728,7 +1692,7 @@ export default function EventFormWizard({
 
                 {step === 0 && <BasicsStep  form={form} update={update} />}
                 {step === 1 && <WhenStep    form={form} update={update} />}
-                {step === 2 && <TicketsStep form={form} update={update} hasAbn={hasAbn || apiBase !== "/api/organiser"} />}
+                {step === 2 && <TicketsStep form={form} update={update} />}
                 {step === 3 && <MediaStep   key={loadingEvent ? "loading" : (eventId ?? "new")} form={form} update={update} />}
                 {step === 4 && <ReviewStep  form={form} setStep={goTo} confirmed={confirmed} onConfirm={setConfirmed} />}
 

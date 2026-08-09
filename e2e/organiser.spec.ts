@@ -204,12 +204,12 @@ test.describe("organiser pages", () => {
     ]);
   });
 
-  test("payments page shows ABN field and paid-events note", async ({ page }) => {
+  test("payments page shows ABN field for Stripe connection", async ({ page }) => {
     await organiserLogin(page);
     await page.goto("/organiser/payments");
     await page.waitForLoadState("domcontentloaded");
-    await expect(page.locator("#abn")).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText(/Without an ABN you can still list/i)).toBeVisible();
+    await expect(page.getByText(/ABN or ACN/i).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByPlaceholder("12 345 678 901")).toBeVisible();
   });
 
   test("new listing media step offers event information PDF upload", async ({ page }) => {

@@ -46,6 +46,7 @@ test.describe("user profile: race history", () => {
   });
 
   test("shows KStats and chronological race history from completed registrations", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/profile");
     await page.waitForLoadState("networkidle");
 
@@ -55,16 +56,17 @@ test.describe("user profile: race history", () => {
     await expect(page.getByText("The Apex Throwdown 2025")).toBeVisible();
     await expect(page.getByText("Apex Bay Run")).toBeVisible();
 
-    // Results + times are shown for seeded registrations
-    await expect(page.getByText("5th", { exact: true })).toBeVisible();
-    await expect(page.getByText("02:01:12", { exact: true })).toBeVisible();
+    // Results + times are shown for seeded registrations (result renders in
+    // both the mobile and desktop regions of the card; desktop is visible here)
+    await expect(page.getByText("5th", { exact: true }).last()).toBeVisible();
+    await expect(page.getByText("02:01:12", { exact: true }).last()).toBeVisible();
 
     // Edit opens a modal with photo + public/private fields (no internal User ID)
     await page.getByRole("button", { name: /edit profile/i }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText(/profile photo/i)).toBeVisible();
-    await expect(dialog.getByText(/public profile/i)).toBeVisible();
+    await expect(dialog.getByText(/^Public profile$/).first()).toBeVisible();
     await expect(dialog.getByText(/private details/i)).toBeVisible();
     await expect(dialog.getByText(/prefill your own event registrations/i)).toBeVisible();
     await expect(dialog.getByLabel(/full name/i)).toBeVisible();
@@ -79,7 +81,7 @@ test.describe("user profile: race history", () => {
     await dialog.getByPlaceholder("A short line about you as an athlete").fill("#testing");
     await dialog.getByRole("button", { name: /^save$/i }).click();
     await expect(dialog).toBeHidden({ timeout: 10000 });
-    await expect(page.getByText("#testing")).toBeVisible();
+    await expect(page.getByText("#testing").last()).toBeVisible();
   });
 
   // TODO: flaky — save/activity refetch race under parallel load. See issue #227.

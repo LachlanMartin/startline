@@ -10,7 +10,6 @@ import {
   Skeleton, PageHeaderSkeleton, PageShellSkeleton,
 } from "@/components/ui/skeleton";
 import { isNative, openExternal } from "@/lib/capacitor";
-import AbnField, { isAbnAcceptableForPaid, type AbnLookupState } from "@/components/organiser/AbnField";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +54,6 @@ function PaymentsContent() {
 
   const [legalName,         setLegalName]         = useState("");
   const [abn,               setAbn]               = useState("");
-  const [abnLookup,         setAbnLookup]         = useState<AbnLookupState>({ status: "idle" });
   const [dob,               setDob]               = useState("");
   const [insuranceDeclared, setInsuranceDeclared] = useState(false);
 
@@ -88,11 +86,7 @@ function PaymentsContent() {
       return;
     }
     if (!abn.trim()) {
-      setError("ABN is required before connecting your Stripe account. Without an ABN you cannot host paid events on Startline.");
-      return;
-    }
-    if (!isAbnAcceptableForPaid(abnLookup, abn)) {
-      setError("Enter a valid active ABN before connecting Stripe. Without an ABN you cannot host paid events on Startline.");
+      setError("ABN or ACN is required before connecting your Stripe account (required for ATO reporting under ToS §3.2).");
       return;
     }
     if (!insuranceDeclared) {
@@ -313,14 +307,21 @@ function PaymentsContent() {
                   <p className="text-[11px] text-muted-dark mt-1.5">Your legal first and last name as it appears on your ID. Required for ATO SERR reporting.</p>
                 </div>
 
-                <AbnField
-                  value={abn}
-                  onChange={setAbn}
-                  onLookupChange={setAbnLookup}
-                  inputClassName={inputCls}
-                  required
-                  showPaidNote
-                />
+                <div>
+                  <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted-light block mb-2">
+                    ABN or ACN <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={abn}
+                    onChange={(e) => setAbn(e.target.value)}
+                    placeholder="12 345 678 901"
+                    className={inputCls}
+                  />
+                  <p className="text-[11px] text-muted-dark mt-1.5">
+                    Required under ATO PAYG withholding rules. Without a valid ABN, Startline is legally required to withhold 47% of payouts (ToS §3.2).
+                  </p>
+                </div>
 
                 <div>
                   <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted-light block mb-2">
