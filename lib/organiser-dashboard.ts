@@ -51,21 +51,29 @@ export function computeCapacityFilledPct(
   return Math.min(100, Math.round((filled / capTotal) * 100));
 }
 
+export type TrendDay = {
+  date: string;
+  registrations: number;
+  revenueCents: number;
+  followers: number;
+};
+
 export function buildTrendDays(
   registrations: DashboardRegistrationInput[],
   days = 30,
   now = new Date(),
-): { date: string; registrations: number; revenueCents: number }[] {
+  followCreatedAts: Array<Date | string> = [],
+): TrendDay[] {
   const end = new Date(now);
   end.setHours(0, 0, 0, 0);
   const start = new Date(end);
   start.setDate(start.getDate() - (days - 1));
 
-  const buckets = new Map<string, { registrations: number; revenueCents: number }>();
+  const buckets = new Map<string, { registrations: number; revenueCents: number; followers: number }>();
   for (let i = 0; i < days; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
-    buckets.set(toDayKey(d), { registrations: 0, revenueCents: 0 });
+    buckets.set(toDayKey(d), { registrations: 0, revenueCents: 0, followers: 0 });
   }
 
   for (const r of registrations) {
@@ -78,10 +86,20 @@ export function buildTrendDays(
     bucket.revenueCents += Math.max(0, r.amountCents - r.platformFeeCents);
   }
 
+  for (const raw of followCreatedAts) {
+    const created = typeof raw === "string" ? new Date(raw) : raw;
+    if (Number.isNaN(created.getTime())) continue;
+    const key = toDayKey(created);
+    const bucket = buckets.get(key);
+    if (!bucket) continue;
+    bucket.followers += 1;
+  }
+
   return Array.from(buckets.entries()).map(([date, v]) => ({
     date,
     registrations: v.registrations,
     revenueCents: v.revenueCents,
+    followers: v.followers,
   }));
 }
 

@@ -155,6 +155,12 @@ test.describe("organiser dashboard", () => {
     await expect(page.getByLabel("Time range")).toBeVisible();
     await expect(page.getByLabel("Event")).toBeVisible();
     await expect(page.getByLabel("Metric")).toBeVisible();
+
+    await page.getByLabel("Metric").click();
+    await page.getByRole("option", { name: "Followers" }).click();
+    await expect(page.getByText("New followers")).toBeVisible();
+    await expect(page.getByLabel("Event")).toHaveCount(0);
+
     await expect(page.getByText("Your upcoming events")).toBeVisible();
   });
 

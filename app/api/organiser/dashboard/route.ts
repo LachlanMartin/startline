@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const rangeDays = ALLOWED_DAYS.has(daysParam) ? daysParam : 30;
 
   try {
-    const [events, allConfirmed, followers] = await Promise.all([
+    const [events, allConfirmed, followRows] = await Promise.all([
       prisma.event.findMany({
         where: { organiserId: session.sub },
         orderBy: { createdAt: "desc" },
@@ -50,10 +50,13 @@ export async function GET(req: NextRequest) {
           createdAt: true,
         },
       }),
-      prisma.organiserFollow.count({
+      prisma.organiserFollow.findMany({
         where: { organiserId: session.sub },
+        select: { createdAt: true },
       }),
     ]);
+
+    const followers = followRows.length;
 
     if (eventId && !events.some((e) => e.id === eventId)) {
       return NextResponse.json({ error: "Event not found." }, { status: 404 });
@@ -105,12 +108,18 @@ export async function GET(req: NextRequest) {
     since.setDate(since.getDate() - (rangeDays - 1));
     since.setHours(0, 0, 0, 0);
     const recentRegs = trendSource.filter((r) => r.createdAt >= since);
+    const recentFollows = followRows
+      .map((f) => f.createdAt)
+      .filter((createdAt) => createdAt >= since);
 
     return NextResponse.json({
       current,
       allTime,
       events: eventsOut,
-      trend: { days: buildTrendDays(recentRegs, rangeDays), rangeDays },
+      trend: {
+        days: buildTrendDays(recentRegs, rangeDays, new Date(), recentFollows),
+        rangeDays,
+      },
     });
   } catch (error) {
     console.error("Organiser dashboard error:", error);

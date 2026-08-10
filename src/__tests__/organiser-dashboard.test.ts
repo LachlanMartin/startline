@@ -96,4 +96,22 @@ describe("organiser-dashboard helpers", () => {
     expect(yesterday?.revenueCents).toBe(4800);
     expect(days.reduce((s, d) => s + d.registrations, 0)).toBe(2);
   });
+
+  it("buildTrendDays buckets new followers by day", () => {
+    const days = buildTrendDays(
+      [],
+      7,
+      now,
+      [
+        new Date("2026-08-09T09:00:00"),
+        new Date("2026-08-09T18:00:00"),
+        new Date("2026-08-07T12:00:00"),
+        new Date("2026-07-01T12:00:00"),
+      ],
+    );
+    expect(days).toHaveLength(7);
+    expect(days.find((d) => d.date === "2026-08-09")?.followers).toBe(2);
+    expect(days.find((d) => d.date === "2026-08-07")?.followers).toBe(1);
+    expect(days.reduce((s, d) => s + d.followers, 0)).toBe(3);
+  });
 });

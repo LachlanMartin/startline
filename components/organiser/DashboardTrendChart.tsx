@@ -17,9 +17,10 @@ export type TrendDay = {
   date: string;
   registrations: number;
   revenueCents: number;
+  followers: number;
 };
 
-type Metric = "registrations" | "revenue";
+type Metric = "registrations" | "revenue" | "followers";
 
 const RANGE_OPTIONS = [
   { value: "7", label: "Last 7 days" },
@@ -55,7 +56,12 @@ export default function DashboardTrendChart({
       series.map((d) => ({
         date: d.date,
         label: formatAxisDate(d.date),
-        value: metric === "registrations" ? d.registrations : d.revenueCents / 100,
+        value:
+          metric === "registrations"
+            ? d.registrations
+            : metric === "followers"
+              ? d.followers
+              : d.revenueCents / 100,
       })),
     [series, metric],
   );
@@ -73,11 +79,26 @@ export default function DashboardTrendChart({
   const metricOptions = [
     { value: "registrations", label: "Registrations" },
     { value: "revenue", label: "Revenue (est.)" },
+    { value: "followers", label: "Followers" },
   ];
+
+  const metricLabel =
+    metric === "revenue"
+      ? "Revenue (est.)"
+      : metric === "followers"
+        ? "New followers"
+        : "Registrations";
 
   const rangeLabel = `${formatAxisDate(series[0].date)} — ${formatAxisDate(series[series.length - 1].date)}`;
   const rangeEyebrow =
     RANGE_OPTIONS.find((o) => o.value === String(rangeDays))?.label ?? `Last ${rangeDays} days`;
+
+  const handleMetricChange = (v: string) => {
+    const next = v as Metric;
+    setMetric(next);
+    // Followers are organiser-wide, not per-event.
+    if (next === "followers" && eventId) onEventChange("");
+  };
 
   return (
     <section className="bg-dark border border-dark-lighter rounded-xl p-4 sm:p-6 mb-6 sm:mb-10">
@@ -88,9 +109,9 @@ export default function DashboardTrendChart({
           </p>
           <div className="flex items-baseline gap-3 flex-wrap">
             <span className="font-headline text-2xl sm:text-3xl font-black italic tracking-tighter text-light leading-none">
-              {metric === "registrations"
-                ? total.toLocaleString()
-                : formatAudFromCents(Math.round(total * 100))}
+              {metric === "revenue"
+                ? formatAudFromCents(Math.round(total * 100))
+                : total.toLocaleString()}
             </span>
             <span className="font-headline text-[10px] uppercase tracking-widest text-light">
               {rangeLabel}
@@ -105,17 +126,19 @@ export default function DashboardTrendChart({
             options={RANGE_OPTIONS}
             triggerClassName="min-w-[150px]"
           />
-          <FormSelect
-            aria-label="Event"
-            value={eventId}
-            onChange={onEventChange}
-            options={eventOptions}
-            triggerClassName="min-w-[160px]"
-          />
+          {metric !== "followers" && (
+            <FormSelect
+              aria-label="Event"
+              value={eventId}
+              onChange={onEventChange}
+              options={eventOptions}
+              triggerClassName="min-w-[160px]"
+            />
+          )}
           <FormSelect
             aria-label="Metric"
             value={metric}
-            onChange={(v) => setMetric(v as Metric)}
+            onChange={handleMetricChange}
             options={metricOptions}
             triggerClassName="min-w-[160px]"
           />
@@ -167,7 +190,7 @@ export default function DashboardTrendChart({
                   metric === "revenue"
                     ? formatAudFromCents(Math.round(n * 100))
                     : n.toLocaleString(),
-                  metric === "revenue" ? "Revenue (est.)" : "Registrations",
+                  metricLabel,
                 ];
               }}
             />
@@ -198,7 +221,7 @@ function emptyTrendDays(count: number): TrendDay[] {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
-    return { date: `${y}-${m}-${day}`, registrations: 0, revenueCents: 0 };
+    return { date: `${y}-${m}-${day}`, registrations: 0, revenueCents: 0, followers: 0 };
   });
 }
 
