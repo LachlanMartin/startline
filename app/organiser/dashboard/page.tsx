@@ -181,7 +181,6 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false;
     const initial = data == null;
-    if (initial) setLoading(true);
     load(trendEventId, trendRangeDays)
       .then((payload) => {
         if (!cancelled && payload) setData(payload);
