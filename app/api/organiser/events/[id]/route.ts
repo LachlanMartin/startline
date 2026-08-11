@@ -58,6 +58,20 @@ export async function PATCH(
       }
     }
 
+    if ((data.registrationType ?? "startline") === "startline") {
+      const org = await prisma.organiser.findUnique({
+        where: { id: session.sub },
+        select: { abn: true },
+      });
+      const abnDigits = org?.abn?.replace(/\D/g, "") ?? "";
+      if (abnDigits.length < 9) {
+        return NextResponse.json(
+          { error: "An ABN is required to host paid events on Startline. Add your ABN in Payments or onboarding, or use external registration." },
+          { status: 400 },
+        );
+      }
+    }
+
     const nextStatus = submit
       ? (session.verified ? "APPROVED" : "PENDING")
       : "DRAFT";
@@ -67,7 +81,6 @@ export async function PATCH(
       data: {
         title:             data.title             ?? undefined,
         discipline:        data.discipline        ?? undefined,
-        tagline:           data.tagline           ?? undefined,
         description:       data.description       ?? undefined,
         eventDate:         data.eventDate         ?? undefined,
         endDate:           data.endDate           ?? null,
@@ -94,6 +107,7 @@ export async function PATCH(
         registrationUrl:   data.registrationUrl   ?? undefined,
         accessibilityInfo: data.accessibilityInfo ?? undefined,
         coverImageUrl:     data.coverImageUrl     ?? undefined,
+        informationPdfUrl: data.informationPdfUrl === undefined ? undefined : data.informationPdfUrl,
         photos:            Array.isArray(data.photos) ? data.photos : undefined,
         status:            nextStatus,
       },

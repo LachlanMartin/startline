@@ -29,7 +29,6 @@ export async function POST(
         status: "DRAFT",
         title: source.title,
         discipline: source.discipline,
-        tagline: source.tagline,
         description: source.description,
         eventDate,
         endDate,
@@ -57,6 +56,7 @@ export async function POST(
         accessibilityInfo: source.accessibilityInfo,
         additionalNotes: source.additionalNotes,
         coverImageUrl: source.coverImageUrl,
+        informationPdfUrl: source.informationPdfUrl,
         photos: source.photos ?? [],
       },
     });

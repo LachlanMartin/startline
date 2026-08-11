@@ -262,13 +262,22 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   if (!cognitoSession.groups.includes("admins")) return null;
 
   try {
-    const admin = await prisma.admin.upsert({
+    // Resolve by email first (unique): a dev/bypass identity can share the
+    // seeded admin's email but carry a different cognitoSub, so upserting by
+    // sub alone would try to create a duplicate email row and fail.
+    const admin = await prisma.admin.findUnique({
+      where:  { email: cognitoSession.email ?? "" },
+      select: { id: true, email: true, name: true },
+    });
+    if (admin) return { sub: admin.id, email: admin.email, name: admin.name };
+
+    const created = await prisma.admin.upsert({
       where:  { cognitoSub: cognitoSession.sub },
       update: cognitoSession.email ? { email: cognitoSession.email } : {},
       create: { cognitoSub: cognitoSession.sub, email: cognitoSession.email || cognitoSession.sub },
       select: { id: true, email: true, name: true },
     });
-    return { sub: admin.id, email: admin.email, name: admin.name };
+    return { sub: created.id, email: created.email, name: created.name };
   } catch {
     return null;
   }

@@ -128,7 +128,6 @@ model Event {
   // Step 1 — basics
   title       String
   discipline  String
-  tagline     String?
   description String?
 
   // Step 2 — date & location
@@ -170,13 +169,14 @@ model Event {
   payoutAt          DateTime?
 
   // Step 5 — media & logistics
-  coverImageUrl     String?
-  photos            String[]
-  registrationUrl   String?
-  bagDrop           String?
-  parking           String?
-  accessibilityInfo String?
-  additionalNotes   String?
+  coverImageUrl       String?
+  photos              String[]
+  informationPdfUrl   String?
+  registrationUrl     String?
+  bagDrop             String?
+  parking             String?
+  accessibilityInfo   String?
+  additionalNotes     String?
 
   // Admin review
   adminNotes      String?
@@ -417,7 +417,7 @@ model User {
   id            String   @id @default(uuid())
   cognitoSub    String?  @unique
   email         String   @unique
-  name          String? // full name
+  name          String? // full name — private; used to prefill registrations
   username      String?  @unique // public handle, chosen during profile setup
   bio           String?
   profilePicUrl String?
@@ -425,6 +425,12 @@ model User {
   isBanned      Boolean  @default(false)
   mfaEnabled    Boolean  @default(false)
   recoveryCodes String?
+  // Private registration prefill — never exposed on public profiles
+  mobile                String?
+  dateOfBirth           String? // ISO yyyy-mm-dd
+  gender                String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
   city          String? // for map centering on login
   state         String? // for map centering on login
   createdAt     DateTime @default(now())

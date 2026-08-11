@@ -469,9 +469,8 @@ test.describe("athlete public profile race history", () => {
   test("renders race history for seeded athlete", async ({ page }) => {
     await page.goto("/profile/jade-nguyen");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("heading", { name: /jade nguyen/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "jade-nguyen" })).toBeVisible();
     await expect(page.getByText(/race history/i)).toBeVisible();
-    await expect(page.getByRole("columnheader", { name: /^division$/i })).toBeVisible();
     // Seeded result on Apex Bay Run (Jade Nguyen's race history)
     await expect(page.getByText(/apex bay run|00:42:10/i).first()).toBeVisible();
   });

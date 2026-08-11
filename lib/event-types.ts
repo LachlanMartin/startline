@@ -11,7 +11,6 @@ export interface PublicEvent {
   id: string;
   title: string;
   discipline: string;
-  tagline: string | null;
   description: string | null;
   eventDate: string;
   endDate: string | null;
@@ -33,6 +32,7 @@ export interface PublicEvent {
   refundPolicy: string | null;
   coverImageUrl: string | null;
   photos: string[];
+  informationPdfUrl: string | null;
   registrationType: string;
   registrationUrl: string | null;
   feeStructure: string;
