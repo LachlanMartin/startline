@@ -77,6 +77,17 @@ export async function PUT(req: NextRequest) {
     );
   }
 
+  // Legal identity fields (ABN, legal name, DOB, insurance) are owner-level:
+  // they underpin Stripe payouts and liability. MANAGERs may edit the rest.
+  const hasIdentityFields = abn !== undefined || legalName !== undefined ||
+    dob !== undefined || insuranceDeclared !== undefined;
+  if (hasIdentityFields && session.role !== "OWNER") {
+    return NextResponse.json(
+      { error: "Only an Owner can update legal identity details." },
+      { status: 403 },
+    );
+  }
+
   try {
     await prisma.organiser.update({
       where: { id: session.sub },

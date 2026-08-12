@@ -155,6 +155,7 @@ export async function DELETE(
 ) {
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  if (session.role !== "OWNER") return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const parsedParams = idParams.safeParse(await params);
   if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });

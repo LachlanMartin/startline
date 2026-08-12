@@ -68,8 +68,8 @@ function isAdmin(payload: JWTPayload): boolean {
 }
 
 const noCognito = !process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
-const isBypass = noCognito && (process.env.NODE_ENV === "development" ||
-  process.env.NEXT_PUBLIC_AUTH_BYPASS === "true");
+const isBypass = noCognito && process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_AUTH_BYPASS === "true";
 
 export async function middleware(req: NextRequest) {
   if (isBypass) return NextResponse.next();
