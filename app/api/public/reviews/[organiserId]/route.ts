@@ -2,14 +2,22 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserSession } from "@/lib/amplify-server";
 import { displayNameFromUser, getPublishedOrganiserReviews } from "@/lib/reviews";
+import { organiserIdParams } from "@/lib/schemas";
+import { z } from "zod";
 
 function badRequest(msg: string) {
   return NextResponse.json({ error: msg }, { status: 400 });
 }
 
-function ratingOk(n: unknown): n is number {
-  return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 5;
-}
+const reviewCreateSchema = z.object({
+  overallRating: z.number().int().min(1).max(5),
+  title: z.string().min(1).max(100),
+  body: z.string().min(1).max(800),
+  atmosphereRating: z.number().int().min(1).max(5).nullable().optional(),
+  organisationRating: z.number().int().min(1).max(5).nullable().optional(),
+  experienceRating: z.number().int().min(1).max(5).nullable().optional(),
+  eventId: z.string().max(255).nullable().optional(),
+});
 
 async function assertPublicOrganiser(organiserId: string) {
   return prisma.organiser.findFirst({
@@ -22,7 +30,11 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ organiserId: string }> }
 ) {
-  const { organiserId } = await params;
+  const parsedParams = organiserIdParams.safeParse(await params);
+  if (!parsedParams.success) {
+    return NextResponse.json({ error: "Organiser not found." }, { status: 404 });
+  }
+  const { organiserId } = parsedParams.data;
   const organiser = await assertPublicOrganiser(organiserId);
   if (!organiser) {
     return NextResponse.json({ error: "Organiser not found." }, { status: 404 });
@@ -41,7 +53,11 @@ export async function POST(
     return NextResponse.json({ error: "Sign in to write a review." }, { status: 401 });
   }
 
-  const { organiserId } = await params;
+  const parsedParams = organiserIdParams.safeParse(await params);
+  if (!parsedParams.success) {
+    return NextResponse.json({ error: "Organiser not found." }, { status: 404 });
+  }
+  const { organiserId } = parsedParams.data;
   const organiser = await assertPublicOrganiser(organiserId);
   if (!organiser) {
     return NextResponse.json({ error: "Organiser not found." }, { status: 404 });
@@ -55,42 +71,25 @@ export async function POST(
     return NextResponse.json({ error: "Sign in to write a review." }, { status: 401 });
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return badRequest("Invalid JSON.");
+  const parsed = reviewCreateSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return badRequest(parsed.error.issues[0]?.message ?? "Invalid input.");
   }
-
-  const overallRating = body.overallRating;
-  if (!ratingOk(overallRating)) {
-    return badRequest("Overall rating must be an integer from 1 to 5.");
-  }
-
-  const title = typeof body.title === "string" ? body.title.trim() : "";
-  const reviewBody = typeof body.body === "string" ? body.body.trim() : "";
-
-  if (!title || title.length > 100) return badRequest("Title is required (max 100 characters).");
-  if (!reviewBody || reviewBody.length > 800) return badRequest("Review body is required (max 800 characters).");
-
-  const optionalRating = (v: unknown) => {
-    if (v == null || v === "") return null;
-    if (!ratingOk(v)) return undefined;
-    return v;
-  };
-
-  const atmosphereRating = optionalRating(body.atmosphereRating);
-  const organisationRating = optionalRating(body.organisationRating);
-  const experienceRating = optionalRating(body.experienceRating);
-  if (atmosphereRating === undefined || organisationRating === undefined || experienceRating === undefined) {
-    return badRequest("Sub-ratings must be integers from 1 to 5 when provided.");
-  }
+  const {
+    overallRating,
+    title,
+    body: reviewBody,
+    atmosphereRating,
+    organisationRating,
+    experienceRating,
+    eventId: eventIdInput,
+  } = parsed.data;
 
   let eventId: string | null = null;
   let eventTitle: string | null = null;
-  if (typeof body.eventId === "string" && body.eventId) {
+  if (eventIdInput) {
     const event = await prisma.event.findFirst({
-      where: { id: body.eventId, organiserId, status: "APPROVED" },
+      where: { id: eventIdInput, organiserId, status: "APPROVED" },
       select: { id: true, title: true },
     });
     if (!event) return badRequest("Event not found for this organiser.");

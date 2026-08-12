@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/amplify-server";
 import { getPayoutEligibleEvents, runPayoutForEvent } from "@/lib/payout";
+import { z } from "zod";
+
+const payoutSchema = z.object({ eventId: z.string().min(1).max(255) });
 
 export async function GET() {
   const session = await getAdminSession();
@@ -19,11 +22,11 @@ export async function POST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const body = await req.json().catch(() => null) as { eventId?: string } | null;
-  const eventId = body?.eventId;
-  if (!eventId) {
+  const parsed = payoutSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
     return NextResponse.json({ error: "eventId is required." }, { status: 400 });
   }
+  const eventId = parsed.data.eventId;
 
   try {
     const { netCents } = await runPayoutForEvent(eventId);

@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { z } from "zod";
 
 const ADMIN_EMAIL = "admin@startlineau.com";
+
+const feedbackSchema = z.object({
+  type: z.string().min(1).max(100),
+  title: z.string().min(1).max(200),
+  details: z.string().min(1).max(5000),
+  email: z.string().max(255).optional(),
+  filenames: z.array(z.string().max(255)).optional(),
+});
 
 function escapeHtml(value: string): string {
   return value
@@ -21,19 +30,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json().catch(() => null)) as {
-    type?: string;
-    title?: string;
-    details?: string;
-    email?: string;
-    filenames?: string[];
-  } | null;
+  const parsed = feedbackSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+  }
 
-  const type      = body?.type?.trim()    ?? "";
-  const title     = body?.title?.trim()   ?? "";
-  const details   = body?.details?.trim() ?? "";
-  const email     = body?.email?.trim()   ?? "";
-  const filenames = body?.filenames ?? [];
+  const type      = parsed.data.type.trim();
+  const title     = parsed.data.title.trim();
+  const details   = parsed.data.details.trim();
+  const email     = (parsed.data.email ?? "").trim();
+  const filenames = parsed.data.filenames ?? [];
 
   if (!type || !title || !details) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });

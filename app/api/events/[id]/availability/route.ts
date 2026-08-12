@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { idParams } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,11 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) {
+    return NextResponse.json({ error: "Not available." }, { status: 404 });
+  }
+  const { id } = parsedParams.data;
 
   const event = await prisma.event.findUnique({
     where: { id },

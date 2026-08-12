@@ -3,6 +3,10 @@ import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { sanitizeWaveInput, wavesWithCounts } from "@/lib/start-waves";
+import { idParams } from "@/lib/schemas";
+import { z } from "zod";
+
+const wavePatchSchema = z.object({ startWaves: z.unknown().optional() });
 
 async function assertOwnedEvent(eventId: string, organiserId: string) {
   const event = await prisma.event.findUnique({
@@ -24,7 +28,9 @@ export async function GET(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
   const owned = await assertOwnedEvent(id, session.sub);
   if (owned.error) return owned.error;
 
@@ -43,12 +49,17 @@ export async function PATCH(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
   const owned = await assertOwnedEvent(id, session.sub);
   if (owned.error) return owned.error;
 
-  const body = await req.json().catch(() => null);
-  const sanitized = sanitizeWaveInput(body?.startWaves);
+  const parsedBody = wavePatchSchema.safeParse(await req.json().catch(() => null));
+  if (!parsedBody.success) {
+    return NextResponse.json({ error: "Invalid input." }, { status: 400 });
+  }
+  const sanitized = sanitizeWaveInput(parsedBody.data.startWaves);
   if (!Array.isArray(sanitized)) {
     return NextResponse.json({ error: sanitized.error }, { status: 400 });
   }

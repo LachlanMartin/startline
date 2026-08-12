@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/amplify-server";
 import { validateUsername } from "@/lib/username-validation";
 import { writeAuditLog } from "@/lib/audit";
+import { idParams } from "@/lib/schemas";
+import { z } from "zod";
 import {
   CognitoIdentityProviderClient,
   AdminUpdateUserAttributesCommand,
@@ -16,6 +18,17 @@ function badRequest(msg: string) {
   return NextResponse.json({ error: msg }, { status: 400 });
 }
 
+const adminUserUpdateSchema = z.object({
+  name: z.string().max(200).nullable().optional(),
+  username: z.string().max(50).optional(),
+  email: z.string().max(255).optional(),
+  bio: z.string().max(2000).nullable().optional(),
+  profilePicUrl: z.string().max(3000).nullable().optional(),
+  isPublic: z.boolean().optional(),
+  city: z.string().max(100).nullable().optional(),
+  state: z.string().max(100).nullable().optional(),
+});
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -23,7 +36,9 @@ export async function GET(
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   try {
     const user = await prisma.user.findUnique({
@@ -53,8 +68,17 @@ export async function PUT(
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
-  const body = await req.json();
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
+  const parsedBody = adminUserUpdateSchema.safeParse(await req.json());
+  if (!parsedBody.success) {
+    return NextResponse.json(
+      { error: parsedBody.error.issues[0]?.message ?? "Invalid input." },
+      { status: 400 },
+    );
+  }
+  const body = parsedBody.data;
   const data: Record<string, unknown> = {};
   const changed: string[] = [];
 

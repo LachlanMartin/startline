@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/amplify-server";
+import { z } from "zod";
+
+const reviewsQuery = z.object({
+  filter: z.enum(["all", "published", "hidden"]).catch("all"),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +15,7 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const filter = (searchParams.get("filter") ?? "all").toLowerCase();
+  const { filter } = reviewsQuery.parse(Object.fromEntries(searchParams));
   const where =
     filter === "published" ? { isPublished: true }
     : filter === "hidden"  ? { isPublished: false }

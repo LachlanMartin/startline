@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { CAPACITY_COUNTING_STATUSES } from "@/lib/registration-status";
+import { idParams } from "@/lib/schemas";
+import { z } from "zod";
 
-interface MoveBody {
-  registrationIds?: string[];
+const moveBodySchema = z.object({
+  registrationIds: z.array(z.string().min(1).max(255)).min(1),
   /** Destination wave id, or null to move athletes out of any wave. */
-  destWaveId?: string | null;
-}
+  destWaveId: z.string().max(255).nullable().optional(),
+});
 
 // POST — move a set of athletes into one start wave (or out, with destWaveId null)
 // in a single transaction. Exceeding the destination's capacity warns but never
@@ -19,7 +21,9 @@ export async function POST(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
   const event = await prisma.event.findUnique({
     where: { id },
     select: { id: true, organiserId: true },
@@ -29,12 +33,12 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  const body = (await req.json().catch(() => null)) as MoveBody | null;
-  const ids = Array.isArray(body?.registrationIds) ? body!.registrationIds.filter(Boolean) : [];
-  if (ids.length === 0) {
+  const parsedBody = moveBodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsedBody.success) {
     return NextResponse.json({ error: "registrationIds is required." }, { status: 400 });
   }
-  const destWaveId = body?.destWaveId ?? null;
+  const ids = parsedBody.data.registrationIds.filter(Boolean);
+  const destWaveId = parsedBody.data.destWaveId ?? null;
 
   // Resolve the destination wave (label + capacity), scoped to this event.
   let destLabel: string | null = null;

@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserRatings } from "@/lib/reviews";
+import { usernameParams } from "@/lib/schemas";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ username: string }> }
 ) {
-  const { username } = await params;
+  const parsedParams = usernameParams.safeParse(await params);
+  if (!parsedParams.success) {
+    return NextResponse.json({ error: "Username is required." }, { status: 400 });
+  }
+  const { username } = parsedParams.data;
   if (!username) {
     return NextResponse.json({ error: "Username is required." }, { status: 400 });
   }

@@ -4,6 +4,7 @@ import { getOrganiserSession } from "@/lib/amplify-server";
 import { archivePastEvents } from "@/lib/archive-events";
 import { getEventCoords } from "@/lib/australia-coords";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
+import { eventPayloadSchema } from "@/lib/schemas";
 export async function GET() {
   await archivePastEvents();
   const session = await getOrganiserSession();
@@ -33,11 +34,18 @@ export async function POST(req: NextRequest) {
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const body = await req.json();
+  const parsed = eventPayloadSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input." },
+      { status: 400 },
+    );
+  }
+  const body = parsed.data;
   const { submit } = body;
 
   if (submit) {
-    const required = ["title", "discipline", "eventDate", "startTime", "city", "state", "format", "level"];
+    const required = ["title", "discipline", "eventDate", "startTime", "city", "state", "format", "level"] as const;
     for (const field of required) {
       if (!body[field]) return NextResponse.json({ error: `${field} is required.` }, { status: 400 });
     }
@@ -74,7 +82,7 @@ export async function POST(req: NextRequest) {
       data: {
         organiserId:      session.sub,
         status:           eventStatus,
-        title:            body.title,
+        title:            body.title ?? "",
         discipline:       body.discipline        ?? "",
         description:      body.description       ?? null,
         eventDate:        body.eventDate         ?? "",

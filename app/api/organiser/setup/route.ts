@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserSession } from "@/lib/amplify-server";
+import { z } from "zod";
+
+const setupSchema = z.object({ orgName: z.string().max(200) });
 
 export async function POST(req: Request) {
   const session = await getUserSession();
@@ -8,8 +11,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
   }
 
-  const { orgName } = await req.json();
-  if (!orgName?.trim()) {
+  const parsed = setupSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Organisation name is required." }, { status: 400 });
+  }
+  const { orgName } = parsed.data;
+  if (!orgName.trim()) {
     return NextResponse.json({ error: "Organisation name is required." }, { status: 400 });
   }
 

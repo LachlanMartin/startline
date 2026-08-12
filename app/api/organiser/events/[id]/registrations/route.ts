@@ -3,17 +3,23 @@ import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { wavesWithCounts } from "@/lib/start-waves";
 import type { RegistrationStatus, Prisma } from "@prisma/client";
+import { idParams } from "@/lib/schemas";
+import { z } from "zod";
 
 const STATUSES = new Set(["CONFIRMED", "REFUND_REQUESTED", "REFUNDED", "CANCELLED"]);
 
-type PatchRow = {
-  registrationId: string;
-  startWaveId?: string | null;
-  startWaveLabel?: string | null;
-  bibNumber?: string | null;
-  status?: string;
-  estimatedFinishMinutes?: number | null;
-};
+const registrationPatchRowSchema = z.object({
+  registrationId: z.string().min(1).max(255),
+  startWaveId: z.string().max(255).nullable().optional(),
+  startWaveLabel: z.string().max(255).nullable().optional(),
+  bibNumber: z.string().max(50).nullable().optional(),
+  status: z.enum(["CONFIRMED", "REFUND_REQUESTED", "REFUNDED", "CANCELLED"]).optional(),
+  estimatedFinishMinutes: z.number().int().min(0).nullable().optional(),
+});
+
+const registrationPatchSchema = z.object({
+  registrations: z.array(registrationPatchRowSchema).min(1),
+});
 
 async function assertOwnedEvent(eventId: string, organiserId: string) {
   const event = await prisma.event.findUnique({
@@ -34,7 +40,9 @@ export async function GET(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
   const owned = await assertOwnedEvent(id, session.sub);
   if (owned.error) return owned.error;
 
@@ -110,15 +118,17 @@ export async function PATCH(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
   const owned = await assertOwnedEvent(id, session.sub);
   if (owned.error) return owned.error;
 
-  const body = await req.json().catch(() => null);
-  const rows: PatchRow[] | undefined = body?.registrations;
-  if (!Array.isArray(rows) || rows.length === 0) {
+  const parsedBody = registrationPatchSchema.safeParse(await req.json().catch(() => null));
+  if (!parsedBody.success) {
     return NextResponse.json({ error: "registrations array is required." }, { status: 400 });
   }
+  const rows = parsedBody.data.registrations;
 
   // Resolve wave references against the StartWave table. We accept either an id
   // (preferred) or a label (from older callers) and write both columns in step.
