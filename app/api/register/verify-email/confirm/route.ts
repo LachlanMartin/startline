@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { confirmGuestEmailVerificationCode } from "@/lib/guest-email-verification";
 import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
 
 const verifyEmailConfirmSchema = z.object({
   eventId: z.string().max(255),
@@ -15,6 +16,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing event, email, or code." }, { status: 400 });
     }
     const { eventId, email, code } = parsed.data;
+
+    const blocked = await rateLimit(req, {
+      prefix: "verify-email-confirm",
+      limit: 10,
+      window: "60 s",
+      identifier: email?.toLowerCase(),
+    });
+    if (blocked) return blocked;
 
     const result = await confirmGuestEmailVerificationCode(email, eventId, code);
     if (!result.ok) {
