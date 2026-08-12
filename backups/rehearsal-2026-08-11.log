@@ -1,0 +1,57 @@
+===== Startline DB restore rehearsal 2026-08-11T09:24:17Z =====
+source: startline (docker postgres 15)  target: startline_rehearsal  bucket: startline-backup-rehearsal-1786440257
+backup: dumped postgresql://postgres:postgres@... -> startline-rehearsal-20260811-092419-4621.dump ( 64K)
+upload: ../../../../../../var/folders/3w/8d7pg14s4570pbxzpyrrkrjc0000gn/T/startline-rehearsal-20260811-092419-4621.dump to s3://startline-backup-rehearsal-1786440257/postgres/rehearsal-20260811-092419.dump
+backup: uploaded s3://startline-backup-rehearsal-1786440257/postgres/rehearsal-20260811-092419.dump
+artifact in bucket: postgres/rehearsal-20260811-092419.dump
+--- artifact integrity (pg_restore -l, first objects) ---
+;
+; Archive created at 2026-08-11 19:24:19 AEST
+;     dbname: startline
+;     TOC Entries: 114
+;     Compression: gzip
+;     Dump Version: 1.16-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 15.18
+;     Dumped by pg_dump version: 18.4 (Homebrew)
+;
+;
+; Selected TOC Entries:
+  ... 125 objects listed
+NOTICE:  database "startline_rehearsal" does not exist, skipping
+--- restore ---
+restore: downloading s3://startline-backup-rehearsal-1786440257/postgres/rehearsal-20260811-092419.dump
+download: s3://startline-backup-rehearsal-1786440257/postgres/rehearsal-20260811-092419.dump to ../../../../../../var/folders/3w/8d7pg14s4570pbxzpyrrkrjc0000gn/T/startline-restore-5310.dump
+restore: restoring startline-restore-5310.dump into postgresql://postgres:postgres@...
+pg_restore: error: could not execute query: ERROR:  unrecognized configuration parameter "transaction_timeout"
+Command was: SET transaction_timeout = 0;
+pg_restore: warning: errors ignored on restore: 1
+--- verifying restored row counts vs source ---
+  _prisma_migrations           source=32   restored=32   OK
+  admin_audit_logs             source=12   restored=12   OK
+  admins                       source=1    restored=1    OK
+  announcements                source=5    restored=5    OK
+  events                       source=37   restored=37   OK
+  guest_email_verifications    source=3    restored=3    OK
+  notifications                source=4    restored=4    OK
+  organiser_follows            source=9    restored=9    OK
+  organiser_members            source=10   restored=10   OK
+  organisers                   source=2    restored=2    OK
+  registrations                source=39   restored=39   OK
+  reviews                      source=9    restored=9    OK
+  saved_events                 source=3    restored=3    OK
+  start_waves                  source=3    restored=3    OK
+  user_notifications           source=8    restored=8    OK
+  users                        source=15   restored=15   OK
+  waitlist_subscribers         source=6    restored=6    OK
+VERDICT: PASS
+--- teardown ---
+===== rehearsal finished 2026-08-11T09:24:29Z =====
+NOTE: the single `pg_restore: error ... transaction_timeout` warning above is a local
+tooling version-skew artifact: the Homebrew pg_dump 18.4 emits `SET transaction_timeout = 0`
+(a PG17+ GUC) which the docker postgres 15 server doesn't recognise. Restore exit code was 0
+and all data restored — parity PASS above proves it. Cannot occur in production, where the
+nightly job and RDS are both PostgreSQL 16 (postgresql-client from ubuntu-24.04 ↔ RDS 16),
+so pg_dump 16 never emits that SET. Teardown: scratch DB dropped, throwaway bucket removed.

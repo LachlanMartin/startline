@@ -71,6 +71,16 @@ output "uploads_bucket_regional_domain_name" {
   value       = aws_s3_bucket.uploads.bucket_regional_domain_name
 }
 
+output "backups_bucket_id" {
+  description = "S3 bucket name for nightly pg_dump backups."
+  value       = aws_s3_bucket.backups.id
+}
+
+output "backups_bucket_arn" {
+  description = "S3 bucket ARN for nightly pg_dump backups."
+  value       = aws_s3_bucket.backups.arn
+}
+
 output "cdn_distribution_domain_name" {
   description = "CloudFront distribution domain name for the upload CDN."
   value       = aws_cloudfront_distribution.cdn.domain_name

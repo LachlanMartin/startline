@@ -141,6 +141,26 @@ output "staging_uploads_bucket_arn" {
   value       = try(module.env["staging"].uploads_bucket_arn, null)
 }
 
+output "backups_bucket_id" {
+  description = "S3 backup bucket name (prod)."
+  value       = try(module.env["prod"].backups_bucket_id, null)
+}
+
+output "backups_bucket_arn" {
+  description = "S3 backup bucket ARN (prod)."
+  value       = try(module.env["prod"].backups_bucket_arn, null)
+}
+
+output "staging_backups_bucket_id" {
+  description = "S3 backup bucket name (staging)."
+  value       = try(module.env["staging"].backups_bucket_id, null)
+}
+
+output "staging_backups_bucket_arn" {
+  description = "S3 backup bucket ARN (staging)."
+  value       = try(module.env["staging"].backups_bucket_arn, null)
+}
+
 output "staging_app_secret_arn" {
   description = "Staging Secrets Manager secret containing all app env vars."
   value       = try(module.env["staging"].app_secret_arn, null)
