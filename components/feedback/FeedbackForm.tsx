@@ -3,6 +3,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { Upload, Send, RotateCcw, Check, File, X, ChevronDown } from "lucide-react";
+import TurnstileWidget from "@/components/TurnstileWidget";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,6 +46,7 @@ export default function FeedbackForm() {
   const [title,         setTitle]         = useState("");
   const [details,       setDetails]       = useState("");
   const [email,         setEmail]         = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [confirmRef,    setConfirmRef]    = useState("");
   const [submitted,     setSubmitted]     = useState<{ type: string; title: string; email: string; files: string[] } | null>(null);
   const [submitting,    setSubmitting]    = useState(false);
@@ -88,6 +92,7 @@ export default function FeedbackForm() {
           details:   details.trim(),
           email:     email.trim() || undefined,
           filenames: files.map(f => f.name),
+          turnstileToken: turnstileToken ?? undefined,
         }),
       });
       const data = await res.json();
@@ -274,6 +279,11 @@ export default function FeedbackForm() {
               {/* Error */}
               {submitError && (
                 <p className="text-[13px] text-red-400 leading-relaxed">{submitError}</p>
+              )}
+
+              {/* Bot check */}
+              {TURNSTILE_SITE_KEY && (
+                <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onTokenChange={setTurnstileToken} />
               )}
 
               {/* Submit row */}

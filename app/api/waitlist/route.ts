@@ -5,8 +5,12 @@ import { render } from "@react-email/render";
 import { WaitlistConfirmationEmail } from "@/emails/waitlist-confirmation";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
+import { assertTurnstile } from "@/lib/turnstile";
 
-const waitlistSchema = z.object({ email: z.string().max(255) });
+const waitlistSchema = z.object({
+  email: z.string().max(255),
+  turnstileToken: z.string().max(4000).optional(),
+});
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -20,6 +24,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
   }
   const { email } = parsed.data;
+
+  const botBlocked = await assertTurnstile(req, parsed.data, "waitlist");
+  if (botBlocked) return botBlocked;
 
   const blocked = await rateLimit(req, {
     prefix: "waitlist",

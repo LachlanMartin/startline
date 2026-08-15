@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
+import { assertTurnstile } from "@/lib/turnstile";
 
 const ADMIN_EMAIL = "admin@startlineau.com";
 
@@ -10,6 +11,7 @@ const contactSchema = z.object({
   email: z.string().min(1).max(255),
   subject: z.string().min(1).max(200),
   message: z.string().min(1).max(5000),
+  turnstileToken: z.string().max(4000).optional(),
 });
 
 function escapeHtml(value: string): string {
@@ -39,6 +41,9 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Please fill out all fields." }, { status: 400 });
   }
+
+  const botBlocked = await assertTurnstile(request, parsed.data, "contact");
+  if (botBlocked) return botBlocked;
 
   const name = parsed.data.name.trim();
   const email = parsed.data.email.trim();

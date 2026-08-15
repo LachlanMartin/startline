@@ -18,6 +18,7 @@ import {
   assertGuestEmailsVerifiedForCheckout,
 } from "@/lib/guest-email-verification";
 import { getCapacityError, hasCappedWave } from "@/lib/registration-capacity";
+import { assertTurnstile } from "@/lib/turnstile";
 import { z } from "zod";
 
 type CheckoutParticipant = RegistrationFormData & { waveLabel?: string };
@@ -42,6 +43,7 @@ const checkoutSchema = z.object({
   waveLabel: z.string().max(255).optional(),
   groupRegistration: z.boolean().optional(),
   emergencyContact: z.object({ name: z.string(), phone: z.string() }).optional(),
+  turnstileToken: z.string().max(4000).optional(),
   participants: z.array(participantSchema).optional(),
   // Legacy single-participant payload fields (pre multi-ticket).
   firstName: z.string().optional(),
@@ -113,6 +115,10 @@ export async function POST(req: NextRequest) {
     }
     const body = parsedBody.data;
     const { eventId, waveLabel } = body;
+
+    const botBlocked = await assertTurnstile(req, body, "checkout");
+    if (botBlocked) return botBlocked;
+
     const participants = normalizeParticipants(body);
     const groupRegistration = body.groupRegistration === true;
     const sharedEmergencyContact = groupRegistration

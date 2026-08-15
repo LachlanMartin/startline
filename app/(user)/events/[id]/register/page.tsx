@@ -11,8 +11,11 @@ import GuestEmailVerificationStep from "@/components/registration/GuestEmailVeri
 import StepRail from "@/components/registration/StepRail";
 import OrderSummary from "@/components/registration/OrderSummary";
 import ReviewPayStep, { type ReviewRow } from "./ReviewPayStep";
+import TurnstileWidget from "@/components/TurnstileWidget";
 import { useAuthContext } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 import {
   Skeleton, PageHeaderSkeleton, PageShellSkeleton,
 } from "@/components/ui/skeleton";
@@ -158,6 +161,7 @@ function RegisterContent() {
   const [payPhase, setPayPhase] = useState<"verify" | "pay">("pay");
   const [error, setError] = useState("");
   const [isSignInOpen, setIsSignInOpen] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // Tickets chosen on step 1: wave label → quantity. Locked once the buyer
   // moves on; changing it means going Back to this step.
@@ -399,6 +403,7 @@ function RegisterContent() {
         body: JSON.stringify({
           eventId,
           waveLabel: ticketWaves[0],
+          turnstileToken: turnstileToken ?? undefined,
           participants: participants.map((p, i) => ({ ...p, waveLabel: ticketWaves[i] })),
           ...(sharedContactActive && { groupRegistration: true, emergencyContact: sharedEmergencyContact }),
         }),
@@ -414,7 +419,7 @@ function RegisterContent() {
       setError("Something went wrong. Please try again.");
     }
     setProcessing(false);
-  }, [eventId, ticketWaves, participants, sharedContactActive, sharedEmergencyContact]);
+  }, [eventId, ticketWaves, participants, sharedContactActive, sharedEmergencyContact, turnstileToken]);
 
   // ── Step navigation ──
   const goToTicket = () => {
@@ -625,6 +630,12 @@ function RegisterContent() {
             </div>
 
             <StepRail current={step} />
+
+            {TURNSTILE_SITE_KEY && (
+              <div className="mb-4">
+                <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onTokenChange={setTurnstileToken} />
+              </div>
+            )}
 
             {error && (
               <div className="mb-4 bg-red-900/30 border border-red-500/30 rounded-lg px-4 py-3 text-[13px] text-red-300">

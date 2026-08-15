@@ -33,6 +33,7 @@ const ADMIN_PROTECTED = [
   "/admin/analytics",
   "/admin/audit",
   "/admin/payouts",
+  "/admin/security",
 ];
 
 const USER_DOMAIN = "startlineau.com";

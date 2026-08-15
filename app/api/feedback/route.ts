@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
+import { assertTurnstile } from "@/lib/turnstile";
 
 const ADMIN_EMAIL = "admin@startlineau.com";
 
@@ -11,6 +12,7 @@ const feedbackSchema = z.object({
   details: z.string().min(1).max(5000),
   email: z.string().max(255).optional(),
   filenames: z.array(z.string().max(255)).optional(),
+  turnstileToken: z.string().max(4000).optional(),
 });
 
 function escapeHtml(value: string): string {
@@ -38,6 +40,9 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
   }
+
+  const botBlocked = await assertTurnstile(request, parsed.data, "feedback");
+  if (botBlocked) return botBlocked;
 
   const type      = parsed.data.type.trim();
   const title     = parsed.data.title.trim();
