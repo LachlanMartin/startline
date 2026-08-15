@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/amplify-server";
+import { idParams } from "@/lib/schemas";
+import { z } from "zod";
+
+const reviewModerationSchema = z.object({
+  isPublished: z.boolean().optional(),
+  isVerified: z.boolean().optional(),
+});
 
 // PATCH /api/admin/reviews/[id]  — moderate a review (publish / verify toggles)
 export async function PATCH(
@@ -10,15 +17,20 @@ export async function PATCH(
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
-  const body = await req.json().catch(() => ({})) as {
-    isPublished?: boolean;
-    isVerified?: boolean;
-  };
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
+  const parsedBody = reviewModerationSchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsedBody.success) {
+    return NextResponse.json(
+      { error: parsedBody.error.issues[0]?.message ?? "Invalid input." },
+      { status: 400 },
+    );
+  }
 
   const data: { isPublished?: boolean; isVerified?: boolean } = {};
-  if (typeof body.isPublished === "boolean") data.isPublished = body.isPublished;
-  if (typeof body.isVerified === "boolean")  data.isVerified  = body.isVerified;
+  if (parsedBody.data.isPublished !== undefined) data.isPublished = parsedBody.data.isPublished;
+  if (parsedBody.data.isVerified !== undefined)  data.isVerified  = parsedBody.data.isVerified;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
@@ -45,7 +57,9 @@ export async function DELETE(
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
   try {
     await prisma.review.delete({ where: { id } });
     return NextResponse.json({ ok: true });

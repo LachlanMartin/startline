@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
+import { idParams } from "@/lib/schemas";
 export async function PATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -8,7 +9,9 @@ export async function PATCH(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   try {
     const event = await prisma.event.findUnique({

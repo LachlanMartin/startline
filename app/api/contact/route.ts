@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { z } from "zod";
 
 const ADMIN_EMAIL = "admin@startlineau.com";
+
+const contactSchema = z.object({
+  name: z.string().min(1).max(200),
+  email: z.string().min(1).max(255),
+  subject: z.string().min(1).max(200),
+  message: z.string().min(1).max(5000),
+});
 
 function escapeHtml(value: string): string {
   return value
@@ -23,17 +31,15 @@ export async function POST(request: Request) {
 
   const resend = new Resend(resendApiKey);
 
-  const body = (await request.json().catch(() => null)) as {
-    name?: string;
-    email?: string;
-    subject?: string;
-    message?: string;
-  } | null;
+  const parsed = contactSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Please fill out all fields." }, { status: 400 });
+  }
 
-  const name = body?.name?.trim() ?? "";
-  const email = body?.email?.trim() ?? "";
-  const subject = body?.subject?.trim() ?? "";
-  const message = body?.message?.trim() ?? "";
+  const name = parsed.data.name.trim();
+  const email = parsed.data.email.trim();
+  const subject = parsed.data.subject.trim();
+  const message = parsed.data.message.trim();
 
   if (!name || !email || !subject || !message) {
     return NextResponse.json({ error: "Please fill out all fields." }, { status: 400 });

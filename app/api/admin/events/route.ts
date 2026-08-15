@@ -3,9 +3,17 @@ import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/amplify-server";
 import { getEventCoords } from "@/lib/australia-coords";
 import { writeAuditLog } from "@/lib/audit";
+import { adminEventPayloadSchema, eventPayloadSchema } from "@/lib/schemas";
+import { z } from "zod";
 
 const VALID_STATUSES = ["DRAFT", "PENDING", "APPROVED", "REJECTED", "ARCHIVED"] as const;
 type EventStatus = (typeof VALID_STATUSES)[number];
+
+const eventListQuery = z.object({
+  status: z.enum(VALID_STATUSES).catch("PENDING"),
+  page: z.coerce.number().int().min(1).catch(1),
+  limit: z.coerce.number().int().min(1).max(100).catch(50),
+});
 
 const EVENT_SELECT = {
   id:              true,
@@ -36,13 +44,9 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const statusParam = (searchParams.get("status") ?? "PENDING").toUpperCase();
-  const status: EventStatus = (VALID_STATUSES as readonly string[]).includes(statusParam)
-    ? (statusParam as EventStatus)
-    : "PENDING";
-
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
-  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10)));
+  const { status, page, limit } = eventListQuery.parse(
+    Object.fromEntries(searchParams),
+  );
   const skip = (page - 1) * limit;
 
   try {
@@ -77,7 +81,14 @@ export async function POST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const body = await req.json();
+  const parsed = adminEventPayloadSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input." },
+      { status: 400 },
+    );
+  }
+  const body = parsed.data;
   const { submit, organiserId } = body;
 
   if (!organiserId) {
@@ -94,7 +105,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (submit) {
-    const required = ["title", "discipline", "eventDate", "startTime", "city", "state", "format", "level"];
+    const required = ["title", "discipline", "eventDate", "startTime", "city", "state", "format", "level"] as const;
     for (const field of required) {
       if (!body[field]) return NextResponse.json({ error: `${field} is required.` }, { status: 400 });
     }
@@ -114,7 +125,7 @@ export async function POST(req: NextRequest) {
       data: {
         organiserId:      organiserId,
         status:           eventStatus,
-        title:            body.title,
+        title:            body.title ?? "",
         discipline:       body.discipline        ?? "",
         description:      body.description       ?? null,
         eventDate:        body.eventDate         ?? "",

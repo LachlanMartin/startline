@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { getUserSession } from "@/lib/amplify-server";
+import { z } from "zod";
+
+const savedEventSchema = z.object({ eventId: z.string().min(1).max(255) });
 
 export async function GET() {
   const session = await getUserSession();
@@ -24,11 +27,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
   }
 
-  const body = await req.json();
-  const eventId = typeof body?.eventId === "string" ? body.eventId : null;
-  if (!eventId) {
+  const parsed = savedEventSchema.safeParse(await req.json());
+  if (!parsed.success) {
     return NextResponse.json({ error: "eventId is required." }, { status: 400 });
   }
+  const eventId = parsed.data.eventId;
 
   const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } });
   if (!event) {
@@ -50,11 +53,11 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
   }
 
-  const body = await req.json();
-  const eventId = typeof body?.eventId === "string" ? body.eventId : null;
-  if (!eventId) {
+  const parsed = savedEventSchema.safeParse(await req.json());
+  if (!parsed.success) {
     return NextResponse.json({ error: "eventId is required." }, { status: 400 });
   }
+  const eventId = parsed.data.eventId;
 
   try {
     await prisma.savedEvent.delete({

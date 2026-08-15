@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { archivePastEvents } from "@/lib/archive-events";
 import { PLATFORM_FEE_PERCENT, PLATFORM_FEE_FIXED_CENTS } from "@/lib/platform-fee";
+import { idParams } from "@/lib/schemas";
 
 export async function GET(
   _req: NextRequest,
@@ -11,7 +12,9 @@ export async function GET(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   try {
     await archivePastEvents();

@@ -2,23 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/amplify-server";
 import { writeAuditLog } from "@/lib/audit";
+import { z } from "zod";
+
+const bulkActionSchema = z.object({
+  ids: z.array(z.string().min(1).max(255)).min(1).max(50),
+  action: z.enum(["approve", "reject", "delete"]),
+  reason: z.string().max(1000).optional(),
+});
 
 export async function POST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const body = await req.json() as { ids?: string[]; action?: string; reason?: string };
-  const { ids, action, reason } = body;
+  const parsed = bulkActionSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input." },
+      { status: 400 },
+    );
+  }
+  const { ids, action, reason } = parsed.data;
 
-  if (!Array.isArray(ids) || ids.length === 0) {
-    return NextResponse.json({ error: "ids must be a non-empty array." }, { status: 400 });
-  }
-  if (ids.length > 50) {
-    return NextResponse.json({ error: "Maximum 50 events per bulk action." }, { status: 400 });
-  }
-  if (action !== "approve" && action !== "reject" && action !== "delete") {
-    return NextResponse.json({ error: "action must be approve, reject, or delete." }, { status: 400 });
-  }
   if (action === "reject" && !reason?.trim()) {
     return NextResponse.json({ error: "A rejection reason is required for bulk reject." }, { status: 400 });
   }
