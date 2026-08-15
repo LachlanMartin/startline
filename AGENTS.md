@@ -14,6 +14,7 @@ Next.js 15 (App Router) fitness event discovery platform. Three portals:
 - **Dev:** `pnpm dev` (Turbopack). **Build:** `pnpm build` (standalone `next.config.ts`). `@/*` → root.
 - **Docker:** PostgreSQL 15 on :5432 + Mailpit (SMTP :1025, UI :8026). Start: `docker compose up -d` on main checkout only.
 - **Worktree?** `git worktree list`. If worktree, Docker infra runs on main checkout — just `pnpm dev`, never `docker compose up`.
+- **Per-worktree DB:** run `./scripts/dev-db.sh` on first use of a new worktree (creates an isolated `startline_<branch>` DB, applies migrations, points `.env.local` at it). Then **always run `pnpm prisma:seed`** — skip only if you specifically need an empty DB.
 - **Env vars:** Loaded from `.env.local` (gitignored). See `.env.example` + `terraform/` for setup steps.
 
 ## Environment variables
@@ -117,6 +118,36 @@ Use `gh` CLI — **not** GitHub MCP (fails for this private org repo).
 **`main` and `prod` are protected.** Always PR, never push directly.
 
 PR conventions: scan open issues, link with `Closes #N`. Follow `.github/PULL_REQUEST_TEMPLATE.md`. CI runs are informational, non-blocking.
+
+### Issue fields (Priority / Effort)
+
+Issues use GitHub's Task-type custom fields (`Priority`, `Effort`). They are
+**not** labels and are **not** in `gh issue list/view --json` output (REST).
+Read them via GraphQL `issueFieldValues`:
+
+```bash
+gh api graphql -f query='query { repository(owner:"StartlineAU", name:"startline-web-app") { issues(states:OPEN, first:100){ nodes { number title milestone { title } issueFieldValues(first:20){ nodes { ... on IssueFieldSingleSelectValue { value field { ... on IssueFieldSingleSelect { name } } } } } } } } }'
+```
+
+`issueFieldValues` is a union of `IssueFieldSingleSelectValue` (has `name`/`value`/
+`field`), `IssueFieldTextValue`, `IssueFieldNumberValue`, `IssueFieldDateValue`,
+`IssueFieldMultiSelectValue` (all expose `value` + `field`). `field` is another
+union exposing `name` (e.g. `Priority`, `Effort`).
+
+**When creating a new issue, set `Priority` + `Effort` immediately** (they don't
+default). They're single-select fields; set via `setIssueFieldValue` with the
+field's `singleSelectOptionId`. Field/option IDs:
+
+```
+Priority:  IFSS_kgDOAnp8Qg   Urgent=IFSSO_kgDOBFZBjQ High=IFSSO_kgDOBFZBjg Medium=IFSSO_kgDOBFZBjw Low=IFSSO_kgDOBFZBkA
+Effort:    IFSS_kgDOAnp8RQ   High=IFSSO_kgDOBFZBkQ Medium=IFSSO_kgDOBFZBkg Low=IFSSO_kgDOBFZBkw
+```
+
+```bash
+gh api graphql -f query='mutation { setIssueFieldValue(input: { issueId: "ISSUE_NODE_ID", issueFields: [ { fieldId: "IFSS_kgDOAnp8Qg", singleSelectOptionId: "IFSSO_kgDOBFZBjg" }, { fieldId: "IFSS_kgDOAnp8RQ", singleSelectOptionId: "IFSSO_kgDOBFZBkg" } ] }) { issue { number } } }'
+```
+
+Get `issueId` (node ID) and re-verify all issues via the read query above.
 
 Configured in `opencode.json`: stripe, resend, aws, cloudflare.
 
