@@ -88,12 +88,6 @@ variable "database_allowed_cidr_blocks" {
   default     = ["0.0.0.0/0"]
 }
 
-variable "database_backup_retention_period" {
-  description = "Days of automated backups. 0 disables backups — required while the AWS account is in Free Tier restricted mode."
-  type        = number
-  default     = 0
-}
-
 variable "database_performance_insights_enabled" {
   description = "Enable RDS Performance Insights."
   type        = bool
