@@ -91,7 +91,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
   const event = await prisma.event.findUnique({
     where: { id: eventId },
     select: {
-      id: true, title: true, status: true, feeStructure: true, registrationType: true,
+      title: true, status: true, feeStructure: true, registrationType: true,
       waves: true, cap: true, eventDate: true, startTime: true, venue: true, city: true, state: true,
       organiserId: true,
     },
@@ -145,19 +145,8 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
     pricing: priceOf(participant),
   }));
 
-  // The charged amount must match what the DB pricing implies. Stripe reports
-  // amount_received in the minor currency unit, same as our cents.
-  const expectedTotalCents = priced.reduce((sum, { participant, pricing }) => {
-    if (!pricing) return sum;
-    return sum + (event.feeStructure === "athlete"
-      ? pricing.priceCents + pricing.platformFeeCents
-      : pricing.priceCents);
-  }, 0);
-
-  if (paymentIntent.amount_received !== expectedTotalCents || priced.some(({ pricing }) => !pricing)) {
-    console.error("PaymentIntent amount does not match DB pricing:", paymentIntent.id,
-      { expectedTotalCents, amountReceived: paymentIntent.amount_received });
-    await prisma.registration.createMany({
+  const recordCancelled = () =>
+    prisma.registration.createMany({
       data: participants.map((participant) => ({
         eventId,
         organiserId,
@@ -170,6 +159,20 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
         stripePaymentIntentId: paymentIntent.id,
       })),
     });
+
+  // The charged amount must match what the DB pricing implies. Stripe reports
+  // amount_received in the minor currency unit, same as our cents.
+  const expectedTotalCents = priced.reduce((sum, { participant, pricing }) => {
+    if (!pricing) return sum;
+    return sum + (event.feeStructure === "athlete"
+      ? pricing.priceCents + pricing.platformFeeCents
+      : pricing.priceCents);
+  }, 0);
+
+  if (paymentIntent.amount_received !== expectedTotalCents || priced.some(({ pricing }) => !pricing)) {
+    console.error("PaymentIntent amount does not match DB pricing:", paymentIntent.id,
+      { expectedTotalCents, amountReceived: paymentIntent.amount_received });
+    await recordCancelled();
     return;
   }
 
@@ -258,19 +261,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
 
   if (capacityViolation) {
     console.error("Confirmation refused — over capacity:", paymentIntent.id, capacityViolation);
-    await prisma.registration.createMany({
-      data: participants.map((participant) => ({
-        eventId,
-        organiserId,
-        athleteName: athleteNameFromParticipant(participant),
-        athleteEmail: participant.em,
-        amountCents: 0,
-        platformFeeCents: 0,
-        feeStructure: event.feeStructure,
-        status: "CANCELLED" as const,
-        stripePaymentIntentId: paymentIntent.id,
-      })),
-    });
+    await recordCancelled();
     return;
   }
 
@@ -294,10 +285,8 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
   // price. When the organiser absorbs it, the athlete pays the ticket price
   // only and the service fee shown to them is $0.
   const athletePaysFee = event.feeStructure === "athlete";
-  for (const participant of participants) {
-    if (!participant.em) continue;
-    const pricing = priceOf(participant);
-    if (!pricing) continue;
+  for (const { participant, pricing } of priced) {
+    if (!participant.em || !pricing) continue;
     const ticketCents = pricing.priceCents;
     const feeCents = athletePaysFee ? pricing.platformFeeCents : 0;
     sendRegistrationConfirmationEmail(participant.em, {
