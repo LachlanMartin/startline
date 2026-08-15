@@ -1,20 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const limitMock = vi.fn();
-
-vi.mock("@upstash/redis", () => ({
-  Redis: vi.fn(() => ({})),
+vi.mock("@/lib/prisma", () => ({
+  default: { $queryRaw: vi.fn() },
 }));
 
-vi.mock("@upstash/ratelimit", () => ({
-  Ratelimit: Object.assign(
-    vi.fn().mockImplementation(function (this: { limit: typeof limitMock }) {
-      this.limit = limitMock;
-    }),
-    { fixedWindow: vi.fn(() => ({})) },
-  ),
-}));
+import prisma from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
+
+const queryRaw = prisma.$queryRaw as ReturnType<typeof vi.fn>;
 
 function makeRequest() {
   return new NextRequest("http://localhost:3000/api/contact", {
@@ -24,22 +18,14 @@ function makeRequest() {
 
 describe("rateLimit", () => {
   beforeEach(() => {
-    limitMock.mockReset();
-    vi.resetModules();
+    queryRaw.mockReset();
   });
 
   it("returns 429 with Retry-After and X-RateLimit-* headers when blocked", async () => {
-    vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://example.upstash.io");
-    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "token");
-    limitMock.mockResolvedValue({
-      success: false,
-      limit: 3,
-      remaining: 0,
-      reset: Date.now() + 30_000,
-    });
+    const resetAt = new Date(Date.now() + 30_000);
+    queryRaw.mockResolvedValue([{ count: 4, resetAt }]);
 
-    const { rateLimit } = await import("@/lib/rate-limit");
-    const res = await rateLimit(makeRequest(), { prefix: "contact", limit: 3, window: "60 s" });
+    const res = await rateLimit(makeRequest(), { prefix: "contact", limit: 3, windowSeconds: 60 });
 
     expect(res?.status).toBe(429);
     expect(res?.headers.get("Retry-After")).toBe("30");
@@ -47,12 +33,18 @@ describe("rateLimit", () => {
     expect(res?.headers.get("X-RateLimit-Remaining")).toBe("0");
   });
 
-  it("lets requests through when Upstash is not configured", async () => {
-    vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
-    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+  it("lets requests through under the limit", async () => {
+    queryRaw.mockResolvedValue([{ count: 2, resetAt: new Date() }]);
 
-    const { rateLimit } = await import("@/lib/rate-limit");
-    const res = await rateLimit(makeRequest(), { prefix: "contact", limit: 3, window: "60 s" });
+    const res = await rateLimit(makeRequest(), { prefix: "contact", limit: 3, windowSeconds: 60 });
+
+    expect(res).toBeNull();
+  });
+
+  it("fails open when the database is unreachable", async () => {
+    queryRaw.mockRejectedValue(new Error("db down"));
+
+    const res = await rateLimit(makeRequest(), { prefix: "contact", limit: 3, windowSeconds: 60 });
 
     expect(res).toBeNull();
   });

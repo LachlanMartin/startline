@@ -23,7 +23,7 @@ function escapeHtml(value: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  const blocked = await rateLimit(request, { prefix: "feedback", limit: 3, window: "60 s" });
+  const blocked = await rateLimit(request, { prefix: "feedback", limit: 3, windowSeconds: 60 });
   if (blocked) return blocked;
 
   const resendApiKey = process.env.RESEND_API_KEY;

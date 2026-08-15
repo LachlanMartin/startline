@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const blocked = await rateLimit(req, {
       prefix: "verify-email-send",
       limit: 5,
-      window: "60 s",
+      windowSeconds: 60,
       identifier: email?.toLowerCase(),
     });
     if (blocked) return blocked;

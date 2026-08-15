@@ -36,8 +36,6 @@
     "@react-pdf/renderer": "^4.5.1",
     "@stripe/react-stripe-js": "^6.6.0",
     "@stripe/stripe-js": "^9.8.0",
-    "@upstash/ratelimit": "^2.0.8",
-    "@upstash/redis": "^1.38.2",
     "animejs": "^4.5.0",
     "aws-amplify": "^6.16.4",
     "bad-words": "^4.0.0",

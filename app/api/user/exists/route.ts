@@ -6,7 +6,7 @@ import { rateLimit } from "@/lib/rate-limit";
 const userExistsSchema = z.object({ email: z.string().max(255) });
 
 export async function POST(req: NextRequest) {
-  const blocked = await rateLimit(req, { prefix: "user-exists", limit: 10, window: "60 s" });
+  const blocked = await rateLimit(req, { prefix: "user-exists", limit: 10, windowSeconds: 60 });
   if (blocked) return blocked;
 
   try {

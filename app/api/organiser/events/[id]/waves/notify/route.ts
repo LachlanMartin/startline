@@ -33,7 +33,7 @@ export async function POST(
   const blocked = await rateLimit(_req, {
     prefix: "wave-notify",
     limit: 5,
-    window: "60 s",
+    windowSeconds: 60,
     identifier: session.sub,
   });
   if (blocked) return blocked;
