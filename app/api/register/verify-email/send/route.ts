@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendGuestEmailVerificationCode } from "@/lib/guest-email-verification";
 import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
 
 const verifyEmailSendSchema = z.object({
   eventId: z.string().max(255),
@@ -15,6 +16,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing event or email." }, { status: 400 });
     }
     const { eventId, email } = parsed.data;
+
+    const blocked = await rateLimit(req, {
+      prefix: "verify-email-send",
+      limit: 5,
+      windowSeconds: 60,
+      identifier: email?.toLowerCase(),
+    });
+    if (blocked) return blocked;
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },

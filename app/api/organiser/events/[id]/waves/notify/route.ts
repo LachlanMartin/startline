@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { sendWaveUpdateEmail } from "@/lib/email";
 import { idParams } from "@/lib/schemas";
+import { rateLimit } from "@/lib/rate-limit";
 
 type Wave = { label: string; startTime?: string };
 
@@ -28,6 +29,14 @@ export async function POST(
 ) {
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+
+  const blocked = await rateLimit(_req, {
+    prefix: "wave-notify",
+    limit: 5,
+    windowSeconds: 60,
+    identifier: session.sub,
+  });
+  if (blocked) return blocked;
 
   const parsedParams = idParams.safeParse(await params);
   if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });

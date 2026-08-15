@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
 
 const ADMIN_EMAIL = "admin@startlineau.com";
 
@@ -20,7 +21,10 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const blocked = await rateLimit(request, { prefix: "contact", limit: 3, windowSeconds: 60 });
+  if (blocked) return blocked;
+
   const resendApiKey = process.env.RESEND_API_KEY;
   if (!resendApiKey) {
     return NextResponse.json(
