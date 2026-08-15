@@ -59,8 +59,11 @@ async function verifyToken(token: string) {
 
 export async function getServerSession(): Promise<ServerSession | null> {
   const noCognito = !process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
-  const isBypass = noCognito && (process.env.NODE_ENV === "development" ||
-    process.env.NEXT_PUBLIC_AUTH_BYPASS === "true");
+  // Dev-only bypass: grants an admins session to every caller. Never honour in
+  // production even if the flag is set, or a missing pool ID makes the whole
+  // admin API public.
+  const isBypass = noCognito && process.env.NODE_ENV === "development" &&
+    process.env.NEXT_PUBLIC_AUTH_BYPASS === "true";
   if (isBypass) {
     return {
       sub: "dev-bypass-organiser",

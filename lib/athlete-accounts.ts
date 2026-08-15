@@ -56,7 +56,9 @@ export async function getCognitoUserStatus(email: string): Promise<{ exists: boo
       UserPoolId: userPoolId,
       Username: normalized,
     }));
-    return { exists: true, status: result.UserStatus ?? null };
+    // Coarse status only — never leak the raw lifecycle (e.g.
+    // FORCE_CHANGE_PASSWORD / RESET_REQUIRED) to unauthenticated callers.
+    return { exists: true, status: result.UserStatus === "UNCONFIRMED" ? "UNCONFIRMED" : "CONFIRMED" };
   } catch (err) {
     if ((err as { name?: string }).name === "UserNotFoundException") {
       return { exists: false, status: null };

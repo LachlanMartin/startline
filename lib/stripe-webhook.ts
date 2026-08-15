@@ -33,12 +33,3 @@ export function parseParticipantsFromMetadata(meta: Stripe.Metadata): CompactPar
   return [];
 }
 
-/** Per-tier pricing map written by checkout: { [waveLabel]: { p: priceCents, f: feeCents } }. */
-export function parseWavePricing(meta: Stripe.Metadata): Record<string, { p: number; f: number }> {
-  if (!meta.wavePricing) return {};
-  try {
-    return JSON.parse(meta.wavePricing) as Record<string, { p: number; f: number }>;
-  } catch {
-    return {};
-  }
-}
