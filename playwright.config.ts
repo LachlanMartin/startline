@@ -8,12 +8,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 1,
   workers: process.env.CI ? 2 : undefined,
-  reporter: process.env.CI
-    ? [
-        ["list"],
-        ["@argos-ci/playwright/reporter", {}],
-      ]
-    : [["list"]],
+  reporter: "list",
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",

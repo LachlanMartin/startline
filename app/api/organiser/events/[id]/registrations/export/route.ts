@@ -10,13 +10,13 @@ import {
 } from "@/lib/registration-export";
 import { buildRegistrationsXlsx } from "@/lib/registration-export-xlsx";
 import { buildStartListPdf } from "@/lib/registration-export-pdf";
+import { idParams } from "@/lib/schemas";
+import { z } from "zod";
 
-type ExportFormat = "xlsx" | "pdf" | "csv";
-
-function parseFormat(raw: string | null): ExportFormat {
-  if (raw === "pdf" || raw === "csv" || raw === "xlsx") return raw;
-  return "xlsx";
-}
+const exportQuery = z.object({
+  format: z.enum(["xlsx", "pdf", "csv"]).catch("xlsx"),
+  columns: z.string().max(500).optional(),
+});
 
 export async function GET(
   req: NextRequest,
@@ -25,9 +25,13 @@ export async function GET(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
-  const format = parseFormat(req.nextUrl.searchParams.get("format"));
-  const columns = parseExportColumns(req.nextUrl.searchParams.get("columns"));
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
+  const { format, columns: columnsParam } = exportQuery.parse(
+    Object.fromEntries(req.nextUrl.searchParams),
+  );
+  const columns = parseExportColumns(columnsParam ?? null);
 
   const event = await prisma.event.findUnique({
     where: { id },

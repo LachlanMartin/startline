@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GeoPlacesClient, AutocompleteCommand } from "@aws-sdk/client-geo-places";
+import { z } from "zod";
 
 const client = new GeoPlacesClient({ region: "ap-southeast-2" });
 
+const autocompleteQuery = z.object({ q: z.string().trim().min(2).max(200).catch("") });
+
 export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get("q")?.trim();
-  if (!q || q.length < 2)
+  const { q } = autocompleteQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
+  if (!q)
     return NextResponse.json({ results: [] });
 
   const cmd = new AutocompleteCommand({

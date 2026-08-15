@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { sendWaveUpdateEmail } from "@/lib/email";
+import { idParams } from "@/lib/schemas";
+import { rateLimit } from "@/lib/rate-limit";
 
 type Wave = { label: string; startTime?: string };
 
@@ -28,7 +30,17 @@ export async function POST(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const blocked = await rateLimit(_req, {
+    prefix: "wave-notify",
+    limit: 5,
+    windowSeconds: 60,
+    identifier: session.sub,
+  });
+  if (blocked) return blocked;
+
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
   const owned = await assertOwnedEvent(id, session.sub);
   if (owned.error) return owned.error;
   const event = owned.event!;

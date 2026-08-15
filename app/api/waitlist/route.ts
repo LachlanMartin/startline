@@ -3,6 +3,10 @@ import prisma from "@/lib/prisma";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { WaitlistConfirmationEmail } from "@/emails/waitlist-confirmation";
+import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
+
+const waitlistSchema = z.object({ email: z.string().max(255) });
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -11,7 +15,19 @@ function getResend() {
 }
 
 export async function POST(req: NextRequest) {
-  const { email } = await req.json();
+  const parsed = waitlistSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
+  }
+  const { email } = parsed.data;
+
+  const blocked = await rateLimit(req, {
+    prefix: "waitlist",
+    limit: 3,
+    windowSeconds: 60,
+    identifier: email?.toLowerCase(),
+  });
+  if (blocked) return blocked;
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "Invalid email address." }, { status: 400 });

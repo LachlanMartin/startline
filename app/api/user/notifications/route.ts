@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserSession } from "@/lib/amplify-server";
+import { z } from "zod";
+
+const markReadSchema = z.object({ ids: z.array(z.string().min(1).max(255)).optional() });
 
 // GET /api/user/notifications — the 30 most recent notifications for the athlete.
 export async function GET() {
@@ -29,12 +32,16 @@ export async function PATCH(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
   try {
-    const body = await req.json().catch(() => ({})) as { ids?: string[] };
+    const parsed = markReadSchema.safeParse(await req.json().catch(() => ({})));
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input." }, { status: 400 });
+    }
+    const ids = parsed.data.ids;
 
     await prisma.userNotification.updateMany({
       where: {
         userId: session.sub,
-        ...(body.ids?.length ? { id: { in: body.ids } } : {}),
+        ...(ids?.length ? { id: { in: ids } } : {}),
       },
       data: { read: true },
     });

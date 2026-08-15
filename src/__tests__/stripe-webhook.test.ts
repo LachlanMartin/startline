@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
   constructEvent: vi.fn(),
-  registration: { count: vi.fn(), create: vi.fn(), createMany: vi.fn() },
+  registration: { count: vi.fn(), create: vi.fn(), createMany: vi.fn(), groupBy: vi.fn() },
   user: { upsert: vi.fn() },
   event: { findUnique: vi.fn() },
   notification: { create: vi.fn() },
@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
   ensureCognitoUser: vi.fn(),
 }));
+
+const tx = { registration: mocks.registration };
 
 vi.mock("@/lib/stripe", () => ({
   getStripe: () => ({ webhooks: { constructEvent: mocks.constructEvent } }),
@@ -24,6 +26,7 @@ vi.mock("@/lib/prisma", () => ({
     event: mocks.event,
     notification: mocks.notification,
     organiser: mocks.organiser,
+    $transaction: async (cb: (t: typeof tx) => unknown) => cb(tx),
   },
 }));
 
@@ -36,18 +39,14 @@ vi.mock("@/lib/athlete-accounts", () => ({
 }));
 
 import { POST } from "@/app/api/stripe/webhook/route";
-import { parseParticipantsFromMetadata, parseWavePricing } from "@/lib/stripe-webhook";
+import { parseParticipantsFromMetadata } from "@/lib/stripe-webhook";
 
 const metadata = (overrides: Record<string, string>): Stripe.Metadata => ({
   eventId: "seed-event-001",
   organiserId: "org-1",
   waveLabel: "General",
-  wavePricing: JSON.stringify({ General: { p: 10000, f: 540 } }),
   userName: "Jordan Clarke",
   userEmail: "jordan@example.com",
-  ticketPriceCents: "10000",
-  platformFeeCents: "540",
-  platformFeeCentsPerTicket: "540",
   feeStructure: "athlete",
   ...overrides,
 });
@@ -65,11 +64,34 @@ async function post(payload: Record<string, unknown>): Promise<Response> {
   return POST(req);
 }
 
+// DB truth used by the webhook's server-side pricing/ownership checks. Price
+// $100.00 (10000 cents) + athlete fee (395 + 145 = 540) → charged 10540.
+const approvedEvent = {
+  id: "seed-event-001",
+  title: "Apex Throwdown",
+  status: "APPROVED",
+  registrationType: "startline",
+  feeStructure: "athlete",
+  waves: [{ label: "General", price: "100.00" }],
+  cap: null,
+  eventDate: "2026-08-15",
+  startTime: "07:30",
+  venue: "MSAC",
+  city: "Melbourne",
+  state: "vic",
+  organiserId: "org-1",
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_00000000000000000000000000000000";
   mocks.user.upsert.mockResolvedValue({ id: "user-1" });
   mocks.sendEmail.mockResolvedValue(undefined);
+  mocks.registration.count.mockResolvedValue(0);
+  mocks.registration.groupBy.mockResolvedValue([]);
+  mocks.registration.createMany.mockResolvedValue({ count: 1 });
+  mocks.registration.create.mockResolvedValue({});
+  mocks.event.findUnique.mockResolvedValue(approvedEvent);
 });
 
 describe("parseParticipantsFromMetadata", () => {
@@ -97,22 +119,6 @@ describe("parseParticipantsFromMetadata", () => {
   });
 });
 
-describe("parseWavePricing", () => {
-  it("parses a valid pricing map", () => {
-    expect(parseWavePricing({ wavePricing: JSON.stringify({ General: { p: 100, f: 5 } }) })).toEqual({
-      General: { p: 100, f: 5 },
-    });
-  });
-
-  it("returns an empty object for invalid JSON", () => {
-    expect(parseWavePricing({ wavePricing: "not-json" })).toEqual({});
-  });
-
-  it("returns an empty object when absent", () => {
-    expect(parseWavePricing({})).toEqual({});
-  });
-});
-
 describe("POST /api/stripe/webhook", () => {
   it("returns 400 when the signature is invalid", async () => {
     mocks.constructEvent.mockImplementation(() => {
@@ -134,6 +140,7 @@ describe("POST /api/stripe/webhook", () => {
   it("processes payment_intent.succeeded and creates registrations + notification", async () => {
     signedEvent({
       id: "pi_123",
+      amount_received: 10540,
       metadata: metadata({
         participantCount: "1",
         participant0: JSON.stringify({
@@ -141,12 +148,6 @@ describe("POST /api/stripe/webhook", () => {
           ecn: "Sam", ecp: "0400 000 000", wav: "General",
         }),
       }),
-    });
-    mocks.registration.count.mockResolvedValue(0);
-    mocks.registration.createMany.mockResolvedValue({ count: 1 });
-    mocks.event.findUnique.mockResolvedValue({
-      title: "Apex Throwdown", eventDate: "2026-08-15", startTime: "07:30",
-      venue: "MSAC", city: "Melbourne", state: "vic",
     });
     mocks.notification.create.mockResolvedValue({});
 
@@ -167,6 +168,63 @@ describe("POST /api/stripe/webhook", () => {
     expect(mocks.notification.create).toHaveBeenCalled();
   });
 
+  it("rejects a PaymentIntent whose amount does not match DB pricing", async () => {
+    signedEvent({
+      id: "pi_123",
+      amount_received: 100, // attacker underpaid
+      metadata: metadata({
+        participantCount: "1",
+        participant0: JSON.stringify({ fn: "Jordan", ln: "Clarke", em: "jordan@example.com", wav: "General" }),
+      }),
+    });
+
+    await post({ id: "pi_123" });
+    expect(mocks.registration.createMany).toHaveBeenCalledTimes(1);
+    const created = mocks.registration.createMany.mock.calls[0][0].data[0];
+    expect(created.status).toBe("CANCELLED");
+    expect(mocks.notification.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a PaymentIntent referencing an unknown or mismatched event", async () => {
+    mocks.event.findUnique.mockResolvedValue(null);
+    signedEvent({
+      id: "pi_123",
+      amount_received: 10540,
+      metadata: metadata({
+        participantCount: "1",
+        participant0: JSON.stringify({ fn: "Jordan", ln: "Clarke", em: "jordan@example.com", wav: "General" }),
+      }),
+    });
+
+    await post({ id: "pi_123" });
+    expect(mocks.registration.createMany).not.toHaveBeenCalled();
+    expect(mocks.notification.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses to confirm past the event capacity", async () => {
+    mocks.event.findUnique.mockResolvedValue({
+      ...approvedEvent,
+      cap: 1,
+      waves: [{ label: "General", price: "100.00", qty: 1 }],
+    });
+    mocks.registration.count.mockResolvedValueOnce(0).mockResolvedValue(1); // idempotency=0, capacity=1 already confirmed
+    mocks.registration.groupBy.mockResolvedValue([{ waveLabel: "General", _count: { _all: 1 } }]);
+    signedEvent({
+      id: "pi_123",
+      amount_received: 10540,
+      metadata: metadata({
+        participantCount: "1",
+        participant0: JSON.stringify({ fn: "Jordan", ln: "Clarke", em: "jordan@example.com", wav: "General" }),
+      }),
+    });
+
+    await post({ id: "pi_123" });
+    expect(mocks.registration.createMany).toHaveBeenCalledTimes(1);
+    const created = mocks.registration.createMany.mock.calls[0][0].data[0];
+    expect(created.status).toBe("CANCELLED");
+    expect(mocks.notification.create).not.toHaveBeenCalled();
+  });
+
   it("is idempotent — skips a PaymentIntent that was already processed", async () => {
     signedEvent({ id: "pi_123", metadata: metadata({}) });
     mocks.registration.count.mockResolvedValue(1);
@@ -178,9 +236,7 @@ describe("POST /api/stripe/webhook", () => {
 
   it("creates a CANCELLED registration when participant metadata is missing", async () => {
     // Metadata with no participant data and no legacy fields → parser returns [].
-    signedEvent({ id: "pi_123", metadata: { eventId: "seed-event-001", organiserId: "org-1" } });
-    mocks.registration.count.mockResolvedValue(0);
-    mocks.registration.create.mockResolvedValue({});
+    signedEvent({ id: "pi_123", amount_received: 10540, metadata: { eventId: "seed-event-001", organiserId: "org-1" } });
 
     await post({ id: "pi_123" });
     expect(mocks.registration.create).toHaveBeenCalledTimes(1);

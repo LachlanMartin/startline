@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { canRemoveMember } from "@/lib/organiser-members";
+import { idParams } from "@/lib/schemas";
 
 // DELETE /api/organiser/members/[id]
 // Removes a member. Owner only. The last Owner cannot be removed.
@@ -15,7 +16,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   try {
     const membership = await prisma.organiserMember.findFirst({

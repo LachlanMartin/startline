@@ -492,3 +492,11 @@ model GuestEmailVerification {
   @@index([email, eventId])
   @@map("guest_email_verifications")
 }
+
+model RateLimit {
+  key     String   @id
+  count   Int      @default(1)
+  resetAt DateTime
+
+  @@map("rate_limits")
+}

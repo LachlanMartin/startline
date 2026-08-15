@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { getEventCoords } from "@/lib/australia-coords";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
+import { eventPayloadSchema, idParams } from "@/lib/schemas";
 
 export async function GET(
   _req: NextRequest,
@@ -11,7 +12,9 @@ export async function GET(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   try {
     const event = await prisma.event.findUnique({ where: { id } });
@@ -31,8 +34,17 @@ export async function PATCH(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
-  const body = await req.json();
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
+  const parsedBody = eventPayloadSchema.safeParse(await req.json());
+  if (!parsedBody.success) {
+    return NextResponse.json(
+      { error: parsedBody.error.issues[0]?.message ?? "Invalid input." },
+      { status: 400 },
+    );
+  }
+  const body = parsedBody.data;
   const { submit, ...data } = body;
 
   try {
@@ -49,7 +61,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Only draft events can be updated this way." }, { status: 409 });
 
     if (submit) {
-      const required = ["title", "discipline", "eventDate", "startTime", "city", "state", "format", "level"];
+      const required = ["title", "discipline", "eventDate", "startTime", "city", "state", "format", "level"] as const;
       for (const field of required) {
         if (!data[field]) return NextResponse.json({ error: `${field} is required.` }, { status: 400 });
       }
@@ -143,8 +155,11 @@ export async function DELETE(
 ) {
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  if (session.role !== "OWNER") return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   try {
     const existing = await prisma.event.findUnique({

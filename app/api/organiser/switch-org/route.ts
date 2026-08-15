@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "@/lib/amplify-server";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 const ACTIVE_ORG_COOKIE = "startline_active_org";
+
+const switchOrgSchema = z.object({ organiserId: z.string().min(1).max(255) });
 
 // POST /api/organiser/switch-org
 // Body: { organiserId } — validates the user is a member, sets the active-org cookie.
@@ -14,8 +17,11 @@ export async function POST(req: NextRequest) {
 
   let organiserId = "";
   try {
-    const body = await req.json();
-    organiserId = String(body.organiserId ?? "");
+    const parsed = switchOrgSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+    }
+    organiserId = parsed.data.organiserId;
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession } from "@/lib/amplify-server";
+import { getOrganiserSession, getUserSession } from "@/lib/amplify-server";
 import { canTransferOwnership } from "@/lib/organiser-members";
+import { idParams } from "@/lib/schemas";
 
 // POST /api/organiser/members/[id]/transfer-ownership
 // Atomically promotes the target member to OWNER and demotes the caller
@@ -16,7 +17,12 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  const { id } = await params;
+  const userSession = await getUserSession();
+  if (!userSession) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   try {
     const target = await prisma.organiserMember.findFirst({
@@ -33,8 +39,7 @@ export async function POST(
     }
 
     const caller = await prisma.organiserMember.findFirst({
-      where:  { organiserId: session.sub, role: "OWNER" },
-      orderBy: { createdAt: "asc" },
+      where:  { organiserId: session.sub, userId: userSession.sub },
       select: { id: true },
     });
     if (!caller) {

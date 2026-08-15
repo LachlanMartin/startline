@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession, getUserSession } from "@/lib/amplify-server";
 import { canAddMember, MAX_ORGS_PER_USER } from "@/lib/organiser-members";
+import { z } from "zod";
+
+const addMemberSchema = z.object({ email: z.string().max(255) });
 
 // GET /api/organiser/members
 // Lists all members of the active organiser.
@@ -51,8 +54,11 @@ export async function POST(req: NextRequest) {
 
   let email = "";
   try {
-    const body = await req.json();
-    email = String(body.email ?? "").trim().toLowerCase();
+    const parsed = addMemberSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+    }
+    email = parsed.data.email.trim().toLowerCase();
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }

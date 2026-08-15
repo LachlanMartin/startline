@@ -4,10 +4,26 @@ import { getUserSession } from "@/lib/amplify-server";
 import { validateUsername } from "@/lib/username-validation";
 import { getOrganiserRatings } from "@/lib/reviews";
 import { GENDER_OPTIONS } from "@/lib/registration-form";
+import { z } from "zod";
 
 function badRequest(msg: string) {
   return NextResponse.json({ error: msg }, { status: 400 });
 }
+
+const profileUpdateSchema = z.object({
+  name: z.string().max(200).nullable().optional(),
+  username: z.string().max(50).optional(),
+  bio: z.string().max(2000).nullable().optional(),
+  profilePicUrl: z.string().max(3000).nullable().optional(),
+  isPublic: z.boolean().optional(),
+  city: z.string().max(100).nullable().optional(),
+  state: z.string().max(100).nullable().optional(),
+  mobile: z.string().max(50).nullable().optional(),
+  dateOfBirth: z.string().max(20).nullable().optional(),
+  gender: z.string().max(50).nullable().optional(),
+  emergencyContactName: z.string().max(200).nullable().optional(),
+  emergencyContactPhone: z.string().max(50).nullable().optional(),
+});
 
 const privateSelect = {
   mobile: true,
@@ -125,7 +141,14 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
   }
 
-  const body = await req.json();
+  const parsed = profileUpdateSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input." },
+      { status: 400 },
+    );
+  }
+  const body = parsed.data;
   const data: Record<string, unknown> = {};
 
   if ("name" in body) data.name = normalizeOptionalString(body.name);
