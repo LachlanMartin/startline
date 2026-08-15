@@ -3,6 +3,9 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { Send, Mail } from "lucide-react";
+import TurnstileWidget from "@/components/TurnstileWidget";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 const inputCls =
   "w-full bg-dark-light border border-dark-lighter rounded-[10px] px-[15px] py-3 text-[14.5px] text-light placeholder:text-light/70 outline-none transition-[border-color,box-shadow] duration-180 focus:border-primary focus:shadow-[0_0_0_3px_rgba(179,225,83,0.1)]";
@@ -25,6 +28,7 @@ export default function ContactForm() {
   const [submitted, setSubmitted] = useState<Submitted | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
 
@@ -45,6 +49,7 @@ export default function ContactForm() {
           email: email.trim(),
           subject: subject.trim(),
           message: message.trim(),
+          turnstileToken: turnstileToken ?? undefined,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -154,6 +159,10 @@ export default function ContactForm() {
                 <p className="text-[13px] text-red-400 leading-relaxed" role="alert">
                   {submitError}
                 </p>
+              )}
+
+              {TURNSTILE_SITE_KEY && (
+                <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onTokenChange={setTurnstileToken} />
               )}
 
               <div className="flex items-center justify-end pt-1">

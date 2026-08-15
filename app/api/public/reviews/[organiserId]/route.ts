@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserSession } from "@/lib/amplify-server";
 import { displayNameFromUser, getPublishedOrganiserReviews } from "@/lib/reviews";
 import { organiserIdParams } from "@/lib/schemas";
+import { rateLimit } from "@/lib/rate-limit";
+import { assertTurnstile } from "@/lib/turnstile";
 import { z } from "zod";
 
 function badRequest(msg: string) {
@@ -17,6 +19,7 @@ const reviewCreateSchema = z.object({
   organisationRating: z.number().int().min(1).max(5).nullable().optional(),
   experienceRating: z.number().int().min(1).max(5).nullable().optional(),
   eventId: z.string().max(255).nullable().optional(),
+  turnstileToken: z.string().max(4000).optional(),
 });
 
 async function assertPublicOrganiser(organiserId: string) {
@@ -45,7 +48,7 @@ export async function GET(
 }
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ organiserId: string }> }
 ) {
   const session = await getUserSession();
@@ -71,9 +74,29 @@ export async function POST(
     return NextResponse.json({ error: "Sign in to write a review." }, { status: 401 });
   }
 
+  const blocked = await rateLimit(req, {
+    prefix: "review",
+    limit: 10,
+    windowSeconds: 3600,
+    identifier: user.id,
+  });
+  if (blocked) return blocked;
+
   const parsed = reviewCreateSchema.safeParse(await req.json());
   if (!parsed.success) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid input.");
+  }
+  const botBlocked = await assertTurnstile(req, parsed.data, "review");
+  if (botBlocked) return botBlocked;
+
+  const existing = await prisma.review.findFirst({
+    where: { organiserId, userId: user.id },
+    select: { id: true },
+  });
+  if (existing) {
+    return NextResponse.json({
+      error: "You've already reviewed this organiser. You can edit your existing review instead.",
+    }, { status: 409 });
   }
   const {
     overallRating,

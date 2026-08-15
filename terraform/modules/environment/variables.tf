@@ -146,6 +146,20 @@ variable "mapbox_access_token" {
   default     = null
 }
 
+variable "turnstile_site_key" {
+  description = "Cloudflare Turnstile site key (public)."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "turnstile_secret_key" {
+  description = "Cloudflare Turnstile secret key (server-side verification)."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
 # --- S3 upload bucket ---
 
 variable "bucket_cors_allowed_origins" {

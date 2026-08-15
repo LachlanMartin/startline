@@ -208,6 +208,8 @@ resource "aws_secretsmanager_secret_version" "app" {
     NEXT_PUBLIC_BASE_URL             = var.site_url
     NEXT_PUBLIC_AWS_REGION           = "ap-southeast-2"
     NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN  = var.mapbox_access_token
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY   = var.turnstile_site_key
+    TURNSTILE_SECRET_KEY             = var.turnstile_secret_key
   })
 }
 
@@ -448,6 +450,7 @@ resource "aws_amplify_branch" "this" {
       UPLOADS_BUCKET                  = aws_s3_bucket.uploads.id
       UPLOADS_BUCKET_REGIONAL_DOMAIN  = aws_s3_bucket.uploads.bucket_regional_domain_name
       NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN = var.mapbox_access_token
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY  = var.turnstile_site_key
     },
     var.extra_branch_environment_variables,
   )
