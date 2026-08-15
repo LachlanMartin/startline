@@ -191,6 +191,9 @@ module "env" {
 
   mapbox_access_token = local.bootstrap.mapbox_access_token
 
+  turnstile_site_key   = cloudflare_turnstile_widget.spam_bot_protection.id
+  turnstile_secret_key = cloudflare_turnstile_widget.spam_bot_protection.secret
+
   extra_branch_environment_variables = {
     ENV = each.key == "prod" ? "prod" : "staging"
   }

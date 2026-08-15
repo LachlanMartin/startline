@@ -263,10 +263,14 @@ model Review {
   isVerified  Boolean @default(false)
   isPublished Boolean @default(true)
 
+  reports ReviewReport[]
+
   createdAt DateTime @default(now())
 
   @@index([organiserId])
   @@index([userId])
+  // One review per user per organiser — editing updates the existing row.
+  @@unique([organiserId, userId])
   @@map("reviews")
 }
 
@@ -442,6 +446,7 @@ model User {
   follows           OrganiserFollow[]
   savedEvents       SavedEvent[]
   reviews           Review[]
+  reviewReports     ReviewReport[]
   notifications     UserNotification[]
 
   @@map("users")
@@ -499,4 +504,39 @@ model RateLimit {
   resetAt DateTime
 
   @@map("rate_limits")
+}
+
+// ─── Spam & bot protection ──────────────────────────────────────────────────
+// Admin-visible security incidents: failed bot checks, review reports and
+// other suspicious activity. Kept separate from rate_limits (a fixed-window
+// counter) so the incidents list stays low-volume.
+model SecurityEvent {
+  id        String   @id @default(uuid())
+  type      String // "bot_check_failed" | "review_reported" | ...
+  action    String?
+  key       String?
+  ip        String?
+  userId    String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@map("security_events")
+}
+
+// A user reporting a review for moderation. Unique per (review, user) so a
+// single user can't flood the moderation queue. Reported reviews are not
+// auto-deleted — they surface in the admin moderation view.
+model ReviewReport {
+  id        String   @id @default(uuid())
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([reviewId, userId])
+  @@index([reviewId])
+  @@map("review_reports")
 }

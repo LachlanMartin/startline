@@ -35,6 +35,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { href: "/admin/analytics", label: "Analytics" },
       { href: "/admin/payouts", label: "Payouts" },
       { href: "/admin/audit", label: "Audit log" },
+      { href: "/admin/security", label: "Security" },
     ],
   },
 ];

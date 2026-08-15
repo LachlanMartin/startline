@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { X, CheckCircle, AlertCircle, Star } from "lucide-react";
+import { X, CheckCircle, AlertCircle, Star, Flag, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SignInModal from "@/components/SignInModal";
 import SelectMenu from "@/components/ui/SelectMenu";
+import TurnstileWidget from "@/components/TurnstileWidget";
 import { useAuthContext } from "@/context/AuthContext";
 import { topRatedEventsFromReviews } from "@/lib/review-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -98,8 +101,15 @@ function timeAgo(dateStr: string): string {
 
 // ─── Review card ──────────────────────────────────────────────────────────────
 
-function ReviewCard({ r }: { r: Review }) {
+function ReviewCard({ r, onEdit, organiserId }: {
+  r: Review;
+  onEdit?: () => void;
+  organiserId: string;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reported, setReported] = useState(false);
+  const [reportError, setReportError] = useState("");
   const isLong = r.body.length > 200;
   const body = expanded || !isLong ? r.body : r.body.slice(0, 200) + "…";
 
@@ -110,6 +120,26 @@ function ReviewCard({ r }: { r: Review }) {
   ].filter((m): m is { label: string; value: number } => typeof m.value === "number" && m.value > 0);
 
   const eventLabel = r.eventTitle?.trim();
+
+  const report = async () => {
+    if (!confirm("Report this review to the Startline team for review?")) return;
+    setReporting(true);
+    setReportError("");
+    try {
+      const res = await fetch(`/api/public/review/${r.id}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.status === 401) { setReportError("Sign in to report a review."); return; }
+      if (!res.ok) { setReportError((await res.json()).error ?? "Could not submit report."); return; }
+      setReported(true);
+    } catch {
+      setReportError("Could not submit report. Please try again.");
+    } finally {
+      setReporting(false);
+    }
+  };
 
   return (
     <div className="bg-dark border border-dark-lighter rounded-xl p-5 space-y-4">
@@ -187,6 +217,31 @@ function ReviewCard({ r }: { r: Review }) {
           ))}
         </div>
       )}
+
+      <div className="flex items-center gap-3 pt-2 border-t border-dark-lighter">
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex items-center gap-1.5 text-[11px] font-headline font-bold uppercase tracking-widest text-primary hover:underline"
+          >
+            <Pencil className="w-3 h-3" /> Edit
+          </button>
+        )}
+        {reported ? (
+          <span className="text-[11px] font-headline font-bold uppercase tracking-widest text-primary">Reported</span>
+        ) : (
+          <button
+            type="button"
+            onClick={report}
+            disabled={reporting}
+            className="inline-flex items-center gap-1.5 text-[11px] font-headline font-bold uppercase tracking-widest text-muted hover:text-red-400 transition-colors disabled:opacity-50"
+          >
+            <Flag className="w-3 h-3" /> {reporting ? "Reporting…" : "Report"}
+          </button>
+        )}
+        {reportError && <span className="text-[11px] text-red-400">{reportError}</span>}
+      </div>
     </div>
   );
 }
@@ -198,16 +253,20 @@ interface ModalProps {
   events: ReviewEventOption[];
   onClose: () => void;
   onSuccess: (r: Review) => void;
+  /** When set, the modal edits this existing review (PATCH) instead of creating. */
+  editReview?: Review | null;
 }
 
-function WriteReviewModal({ organiserId, events, onClose, onSuccess }: ModalProps) {
-  const [overall,  setOverall]  = useState(0);
-  const [comms,    setComms]    = useState(0);
-  const [org,      setOrg]      = useState(0);
-  const [exp,      setExp]      = useState(0);
-  const [title,    setTitle]    = useState("");
-  const [body,     setBody]     = useState("");
-  const [eventId,  setEventId]  = useState("");
+function WriteReviewModal({ organiserId, events, onClose, onSuccess, editReview }: ModalProps) {
+  const editing = Boolean(editReview);
+  const [overall,  setOverall]  = useState(editReview?.overallRating ?? 0);
+  const [comms,    setComms]    = useState(editReview?.atmosphereRating ?? 0);
+  const [org,      setOrg]      = useState(editReview?.organisationRating ?? 0);
+  const [exp,      setExp]      = useState(editReview?.experienceRating ?? 0);
+  const [title,    setTitle]    = useState(editReview?.title ?? "");
+  const [body,     setBody]     = useState(editReview?.body ?? "");
+  const [eventId,  setEventId]  = useState(editReview?.eventId ?? "");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState("");
   const [done,     setDone]     = useState(false);
@@ -219,18 +278,23 @@ function WriteReviewModal({ organiserId, events, onClose, onSuccess }: ModalProp
 
     setSaving(true); setError("");
     try {
-      const res = await fetch(`/api/public/reviews/${organiserId}`, {
-        method: "POST",
+      const payload = {
+        overallRating: overall,
+        atmosphereRating: comms || null,
+        organisationRating: org || null,
+        experienceRating: exp || null,
+        title,
+        body,
+        eventId: eventId || null,
+        turnstileToken: turnstileToken ?? undefined,
+      };
+      const url = editing
+        ? `/api/public/review/${editReview!.id}`
+        : `/api/public/reviews/${organiserId}`;
+      const res = await fetch(url, {
+        method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          overallRating: overall,
-          atmosphereRating: comms || null,
-          organisationRating: org || null,
-          experienceRating: exp || null,
-          title,
-          body,
-          eventId: eventId || null,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.status === 401) {
@@ -241,7 +305,7 @@ function WriteReviewModal({ organiserId, events, onClose, onSuccess }: ModalProp
 
       setDone(true);
       const newReview: Review = {
-        id: data.id ?? crypto.randomUUID(),
+        id: data.id ?? editReview?.id ?? crypto.randomUUID(),
         reviewerName: data.reviewerName ?? "Startline user",
         eventId: data.eventId ?? (eventId || null),
         eventTitle: data.eventTitle ?? events.find((e) => e.id === eventId)?.title ?? null,
@@ -252,7 +316,7 @@ function WriteReviewModal({ organiserId, events, onClose, onSuccess }: ModalProp
         title,
         body,
         isVerified: false,
-        createdAt: new Date().toISOString(),
+        createdAt: editReview?.createdAt ?? new Date().toISOString(),
       };
       setTimeout(() => { onSuccess(newReview); onClose(); }, 1800);
     } catch {
@@ -271,7 +335,9 @@ function WriteReviewModal({ organiserId, events, onClose, onSuccess }: ModalProp
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-dark-lighter">
             <div>
-              <h2 className="font-headline text-xl font-black italic tracking-tighter text-light">Write a Review</h2>
+              <h2 className="font-headline text-xl font-black italic tracking-tighter text-light">
+                {editing ? "Edit Review" : "Write a Review"}
+              </h2>
               <p className="text-[12px] text-muted mt-0.5">Share your experience at this organiser&apos;s events.</p>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded hover:bg-dark-lighter text-muted hover:text-primary flex items-center justify-center transition-colors">
@@ -375,6 +441,10 @@ function WriteReviewModal({ organiserId, events, onClose, onSuccess }: ModalProp
                 </div>
               )}
 
+              {TURNSTILE_SITE_KEY && (
+                <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onTokenChange={setTurnstileToken} />
+              )}
+
               <div className="flex items-center gap-3 pt-2">
                 <button onClick={onClose} className="font-headline text-[12px] font-bold uppercase tracking-widest text-muted hover:text-light px-4 py-2.5 transition-colors">
                   Cancel
@@ -384,7 +454,7 @@ function WriteReviewModal({ organiserId, events, onClose, onSuccess }: ModalProp
                   disabled={saving}
                   className="flex-1 bg-machined shadow-machined text-dark font-headline text-[12px] font-bold uppercase tracking-widest px-5 py-2.5 rounded-md flex items-center justify-center gap-2 hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-transform disabled:opacity-50"
                 >
-                  {saving ? "Submitting…" : "Submit review"}
+                  {saving ? "Submitting…" : editing ? "Save changes" : "Submit review"}
                 </button>
               </div>
             </div>
@@ -418,6 +488,22 @@ export default function ReviewsSection({
   const { status } = useAuthContext();
   const [modalOpen, setModalOpen] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
+  const [editReview, setEditReview] = useState<Review | null>(null);
+  const [ownReview, setOwnReview] = useState<Review | null>(null);
+
+  // Fetch the current user's own review so the "Write a review" CTA becomes
+  // "Edit" and their existing review shows an Edit button.
+  useEffect(() => {
+    if (readOnly || status !== "authenticated") return;
+    let cancelled = false;
+    fetch(`/api/public/reviews/${organiserId}/mine`)
+      .then((res) => (res.ok ? res.json() : { review: null }))
+      .then((data) => {
+        if (!cancelled && data.review) setOwnReview(data.review as Review);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [organiserId, status, readOnly]);
 
   function openWriteReview() {
     if (readOnly) return;
@@ -425,8 +511,15 @@ export default function ReviewsSection({
       setSignInOpen(true);
       return;
     }
+    setEditReview(ownReview);
     setModalOpen(true);
   }
+
+  const handleSuccess = useCallback((r: Review) => {
+    setOwnReview(r);
+    setEditReview(null);
+    onNewReview(r);
+  }, [onNewReview]);
 
   const avgRating = reviews.length
     ? reviews.reduce((s, r) => s + r.overallRating, 0) / reviews.length
@@ -476,7 +569,7 @@ export default function ReviewsSection({
             onClick={openWriteReview}
             className="flex items-center gap-2 border border-dark-lighter hover:border-primary/60 text-muted hover:text-light font-headline text-[12px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-md transition-colors"
           >
-            Write a review
+            {ownReview ? "Edit your review" : "Write a review"}
           </button>
         )}
       </div>
@@ -595,7 +688,12 @@ export default function ReviewsSection({
 
           <div className="space-y-4">
             {reviews.map((r) => (
-              <ReviewCard key={r.id} r={r} />
+              <ReviewCard
+                key={r.id}
+                r={r}
+                organiserId={organiserId}
+                onEdit={ownReview?.id === r.id ? () => { setEditReview(r); setModalOpen(true); } : undefined}
+              />
             ))}
           </div>
         </div>
@@ -605,8 +703,9 @@ export default function ReviewsSection({
         <WriteReviewModal
           organiserId={organiserId}
           events={events}
-          onClose={() => setModalOpen(false)}
-          onSuccess={onNewReview}
+          editReview={editReview}
+          onClose={() => { setModalOpen(false); setEditReview(null); }}
+          onSuccess={handleSuccess}
         />
       )}
 
@@ -616,6 +715,12 @@ export default function ReviewsSection({
           onClose={() => setSignInOpen(false)}
           onSuccess={() => {
             setSignInOpen(false);
+            // Re-fetch own review after sign-in (it may not be loaded yet).
+            fetch(`/api/public/reviews/${organiserId}/mine`)
+              .then((res) => (res.ok ? res.json() : { review: null }))
+              .then((data) => { setOwnReview(data.review as Review | null); })
+              .catch(() => {});
+            setEditReview(ownReview);
             setModalOpen(true);
           }}
         />

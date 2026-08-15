@@ -3,10 +3,12 @@ import prisma from "@/lib/prisma";
 import { sendGuestEmailVerificationCode } from "@/lib/guest-email-verification";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
+import { assertTurnstile } from "@/lib/turnstile";
 
 const verifyEmailSendSchema = z.object({
   eventId: z.string().max(255),
   email: z.string().max(255),
+  turnstileToken: z.string().max(4000).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -16,6 +18,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing event or email." }, { status: 400 });
     }
     const { eventId, email } = parsed.data;
+
+    const botBlocked = await assertTurnstile(req, parsed.data, "verify-email-send");
+    if (botBlocked) return botBlocked;
 
     const blocked = await rateLimit(req, {
       prefix: "verify-email-send",

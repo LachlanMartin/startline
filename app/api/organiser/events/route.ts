@@ -5,6 +5,7 @@ import { archivePastEvents } from "@/lib/archive-events";
 import { getEventCoords } from "@/lib/australia-coords";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
 import { eventPayloadSchema } from "@/lib/schemas";
+import { rateLimit } from "@/lib/rate-limit";
 export async function GET() {
   await archivePastEvents();
   const session = await getOrganiserSession();
@@ -33,6 +34,14 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+
+  const blocked = await rateLimit(req, {
+    prefix: "event-create",
+    limit: 50,
+    windowSeconds: 3600,
+    identifier: session.sub,
+  });
+  if (blocked) return blocked;
 
   const parsed = eventPayloadSchema.safeParse(await req.json());
   if (!parsed.success) {
