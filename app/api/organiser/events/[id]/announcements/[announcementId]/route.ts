@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
+import { idAnnouncementIdParams } from "@/lib/schemas";
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; announcementId: string }> },
@@ -8,7 +9,9 @@ export async function DELETE(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { announcementId } = await params;
+  const parsedParams = idAnnouncementIdParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { announcementId } = parsedParams.data;
 
   try {
     const ann = await prisma.announcement.findUnique({

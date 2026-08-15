@@ -18,8 +18,44 @@ import {
   assertGuestEmailsVerifiedForCheckout,
 } from "@/lib/guest-email-verification";
 import { getCapacityError, hasCappedWave } from "@/lib/registration-capacity";
+import { z } from "zod";
 
 type CheckoutParticipant = RegistrationFormData & { waveLabel?: string };
+
+const participantSchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  dateOfBirth: z.string(),
+  gender: z.string(),
+  email: z.string(),
+  mobile: z.string(),
+  emergencyContactName: z.string(),
+  emergencyContactPhone: z.string(),
+  medicalNotes: z.string(),
+  estimatedFinish: z.string(),
+  waiverAccepted: z.boolean(),
+  waveLabel: z.string().max(255).optional(),
+});
+
+const checkoutSchema = z.object({
+  eventId: z.string().max(255).optional(),
+  waveLabel: z.string().max(255).optional(),
+  groupRegistration: z.boolean().optional(),
+  emergencyContact: z.object({ name: z.string(), phone: z.string() }).optional(),
+  participants: z.array(participantSchema).optional(),
+  // Legacy single-participant payload fields (pre multi-ticket).
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  gender: z.string().optional(),
+  email: z.string().optional(),
+  mobile: z.string().optional(),
+  emergencyContactName: z.string().optional(),
+  emergencyContactPhone: z.string().optional(),
+  medicalNotes: z.string().optional(),
+  estimatedFinish: z.string().optional(),
+  waiverAccepted: z.boolean().optional(),
+});
 
 function todayIso(): string {
   const now = new Date();
@@ -68,10 +104,14 @@ function normalizeSharedEmergencyContact(body: Record<string, unknown>): Emergen
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as Record<string, unknown> & {
-      eventId?: string;
-      waveLabel?: string;
-    };
+    const parsedBody = checkoutSchema.safeParse(await req.json());
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: parsedBody.error.issues[0]?.message ?? "Invalid input." },
+        { status: 400 },
+      );
+    }
+    const body = parsedBody.data;
     const { eventId, waveLabel } = body;
     const participants = normalizeParticipants(body);
     const groupRegistration = body.groupRegistration === true;

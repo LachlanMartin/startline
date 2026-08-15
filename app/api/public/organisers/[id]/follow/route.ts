@@ -8,6 +8,7 @@ import {
   isFollowingOrganiser,
   unfollowOrganiser,
 } from "@/lib/organiser-follows";
+import { idParams } from "@/lib/schemas";
 
 async function assertPublicOrganiser(id: string) {
   return prisma.organiser.findFirst({
@@ -20,7 +21,11 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) {
+    return NextResponse.json({ error: "Organiser not found." }, { status: 404 });
+  }
+  const { id } = parsedParams.data;
   const organiser = await assertPublicOrganiser(id);
   if (!organiser) {
     return NextResponse.json({ error: "Organiser not found." }, { status: 404 });
@@ -53,7 +58,11 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
   }
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) {
+    return NextResponse.json({ error: "Organiser not found." }, { status: 404 });
+  }
+  const { id } = parsedParams.data;
   const organiser = await assertPublicOrganiser(id);
   if (!organiser) {
     return NextResponse.json({ error: "Organiser not found." }, { status: 404 });
@@ -91,7 +100,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
   }
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) {
+    return NextResponse.json({ error: "Organiser not found." }, { status: 404 });
+  }
+  const { id } = parsedParams.data;
   const organiser = await assertPublicOrganiser(id);
   if (!organiser) {
     return NextResponse.json({ error: "Organiser not found." }, { status: 404 });

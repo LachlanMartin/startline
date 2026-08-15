@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { shiftIsoDate } from "@/lib/duplicate-event";
+import { idParams } from "@/lib/schemas";
 
 /** POST /api/organiser/events/[id]/duplicate — copy listing fields into a new DRAFT (+7 days). */
 export async function POST(
@@ -11,7 +12,9 @@ export async function POST(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   try {
     const source = await prisma.event.findUnique({ where: { id } });

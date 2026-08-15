@@ -3,6 +3,14 @@ import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { stripHtml } from "@/lib/utils";
+import { idParams } from "@/lib/schemas";
+import { z } from "zod";
+
+const announcementSchema = z.object({
+  title: z.string().min(1).max(200),
+  body: z.string().min(1).max(10000),
+});
+
 // GET /api/organiser/events/[id]/announcements
 export async function GET(
   _req: NextRequest,
@@ -11,7 +19,9 @@ export async function GET(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   try {
     const event = await prisma.event.findUnique({
@@ -41,7 +51,9 @@ export async function POST(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   try {
     const event = await prisma.event.findUnique({
@@ -52,10 +64,13 @@ export async function POST(
     if (event.organiserId !== session.sub) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     if (event.status !== "APPROVED")       return NextResponse.json({ error: "Announcements can only be posted for live events." }, { status: 409 });
 
-    const body = await req.json();
-    const { title, body: text } = body as { title?: string; body?: string };
+    const parsed = announcementSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Title and body are required." }, { status: 400 });
+    }
+    const { title, body: text } = parsed.data;
 
-    if (!title?.trim()) return NextResponse.json({ error: "Title is required." }, { status: 400 });
+    if (!title.trim()) return NextResponse.json({ error: "Title is required." }, { status: 400 });
     if (!text || !stripHtml(text)) {
       return NextResponse.json({ error: "Body is required." }, { status: 400 });
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserSession } from "@/lib/amplify-server";
+import { idParams } from "@/lib/schemas";
 
 // POST — the signed-in athlete asks for a refund on their own registration.
 // This does not move any money: it flags the entry so the organiser sees it in
@@ -13,7 +14,11 @@ export async function POST(
   const session = await getUserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) {
+    return NextResponse.json({ error: "Registration not found." }, { status: 404 });
+  }
+  const { id } = parsedParams.data;
 
   const registration = await prisma.registration.findUnique({
     where: { id },

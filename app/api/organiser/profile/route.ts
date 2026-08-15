@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
+import { z } from "zod";
+
+const organiserProfileSchema = z.object({
+  orgName: z.string().max(200),
+  contactName: z.string().max(200),
+  contactEmail: z.string().max(255),
+  phone: z.string().max(50),
+  abn: z.string().max(20).nullable().optional(),
+  website: z.string().max(500).nullable().optional(),
+  instagram: z.string().max(500).nullable().optional(),
+  facebook: z.string().max(500).nullable().optional(),
+  bio: z.string().max(5000).nullable().optional(),
+  logoUrl: z.string().max(3000).nullable().optional(),
+  logoPosition: z.string().max(100).nullable().optional(),
+  coverImageUrl: z.string().max(3000).nullable().optional(),
+  coverPosition: z.string().max(100).nullable().optional(),
+  photos: z.array(z.string().max(3000)).optional(),
+  legalName: z.string().max(300).nullable().optional(),
+  insuranceDeclared: z.boolean().optional(),
+  dob: z.string().max(20).nullable().optional(),
+});
 
 export async function GET() {
   const session = await getOrganiserSession();
@@ -35,13 +56,19 @@ export async function PUT(req: NextRequest) {
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const body = await req.json();
+  const parsed = organiserProfileSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input." },
+      { status: 400 },
+    );
+  }
   const {
     orgName, contactName, contactEmail, phone,
     abn, website, instagram, facebook, bio,
     logoUrl, logoPosition, coverImageUrl, coverPosition, photos,
     legalName, insuranceDeclared, dob,
-  } = body;
+  } = parsed.data;
 
   if (!orgName || !contactName || !phone || !contactEmail) {
     return NextResponse.json(

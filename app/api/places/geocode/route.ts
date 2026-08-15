@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GeoPlacesClient, GeocodeCommand } from "@aws-sdk/client-geo-places";
+import { z } from "zod";
 
 const client = new GeoPlacesClient({ region: "ap-southeast-2" });
 
+const geocodeQuery = z.object({ q: z.string().trim().max(300).catch("") });
+
 export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get("q")?.trim();
+  const { q } = geocodeQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
   if (!q)
     return NextResponse.json({ result: null });
 

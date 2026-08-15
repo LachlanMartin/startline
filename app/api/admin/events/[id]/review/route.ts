@@ -4,6 +4,14 @@ import { getAdminSession } from "@/lib/amplify-server";
 import { sendEventApprovedEmail, sendEventRejectedEmail } from "@/lib/email";
 import { writeAuditLog } from "@/lib/audit";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
+import { idParams } from "@/lib/schemas";
+import { z } from "zod";
+
+const reviewActionSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  reason: z.string().max(1000).optional(),
+});
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -11,13 +19,17 @@ export async function POST(
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
-  const body = await req.json() as { action?: string; reason?: string };
-  const { action, reason } = body;
-
-  if (action !== "approve" && action !== "reject") {
-    return NextResponse.json({ error: "action must be 'approve' or 'reject'." }, { status: 400 });
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
+  const parsedBody = reviewActionSchema.safeParse(await req.json());
+  if (!parsedBody.success) {
+    return NextResponse.json(
+      { error: parsedBody.error.issues[0]?.message ?? "Invalid input." },
+      { status: 400 },
+    );
   }
+  const { action, reason } = parsedBody.data;
 
   if (action === "reject" && !reason?.trim()) {
     return NextResponse.json({ error: "A rejection reason is required." }, { status: 400 });

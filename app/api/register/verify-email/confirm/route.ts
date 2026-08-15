@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { confirmGuestEmailVerificationCode } from "@/lib/guest-email-verification";
+import { z } from "zod";
+
+const verifyEmailConfirmSchema = z.object({
+  eventId: z.string().max(255),
+  email: z.string().max(255),
+  code: z.string().max(10),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { eventId?: string; email?: string; code?: string };
-    const { eventId, email, code } = body;
-
-    if (!eventId || !email || !code) {
+    const parsed = verifyEmailConfirmSchema.safeParse(await req.json());
+    if (!parsed.success) {
       return NextResponse.json({ error: "Missing event, email, or code." }, { status: 400 });
     }
+    const { eventId, email, code } = parsed.data;
 
     const result = await confirmGuestEmailVerificationCode(email, eventId, code);
     if (!result.ok) {

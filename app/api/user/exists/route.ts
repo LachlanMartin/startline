@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCognitoUserStatus } from "@/lib/athlete-accounts";
+import { z } from "zod";
+
+const userExistsSchema = z.object({ email: z.string().max(255) });
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json() as { email?: string };
-    if (!email || !email.includes("@")) {
+    const parsed = userExistsSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid email." }, { status: 400 });
+    }
+    const { email } = parsed.data;
+    if (!email.includes("@")) {
       return NextResponse.json({ error: "Invalid email." }, { status: 400 });
     }
 

@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/amplify-server";
+import { z } from "zod";
+
+const auditQuery = z.object({
+  action: z.string().max(100).catch(""),
+  page: z.coerce.number().int().min(1).catch(1),
+  limit: z.coerce.number().int().min(1).max(100).catch(50),
+});
 
 export async function GET(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const action = searchParams.get("action") ?? "";
-  const page   = Math.max(1, parseInt(searchParams.get("page")  ?? "1",  10));
-  const limit  = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10)));
-  const skip   = (page - 1) * limit;
+  const { action, page, limit } = auditQuery.parse(Object.fromEntries(searchParams));
+  const skip = (page - 1) * limit;
 
   const where = action
     ? { action: { contains: action, mode: "insensitive" as const } }

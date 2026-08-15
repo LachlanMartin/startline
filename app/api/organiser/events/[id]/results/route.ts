@@ -3,16 +3,22 @@ import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { isValidRaceTime, normaliseRaceTime } from "@/lib/race-results";
 import type { Prisma } from "@prisma/client";
+import { idParams } from "@/lib/schemas";
+import { z } from "zod";
 
-interface ResultInput {
-  registrationId?: string;
-  athleteEmail?: string;
-  resultDistance?: string | null;
-  resultTime?: string | null;
-  resultPlacement?: string | null;
-  isPersonalBest?: boolean;
-  isTopResult?: boolean;
-}
+const resultRowSchema = z.object({
+  registrationId: z.string().max(255).optional(),
+  athleteEmail: z.string().max(255).optional(),
+  resultDistance: z.string().max(100).nullable().optional(),
+  resultTime: z.string().max(50).nullable().optional(),
+  resultPlacement: z.string().max(100).nullable().optional(),
+  isPersonalBest: z.boolean().optional(),
+  isTopResult: z.boolean().optional(),
+});
+
+const resultsPatchSchema = z.object({
+  results: z.array(resultRowSchema).min(1),
+});
 
 /** PATCH — bulk-set race results. Match by registrationId, else athleteEmail (case-insensitive). */
 export async function PATCH(
@@ -22,7 +28,9 @@ export async function PATCH(
   const session = await getOrganiserSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   const event = await prisma.event.findUnique({
     where: { id },
@@ -33,11 +41,11 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => null);
-  const results: ResultInput[] | undefined = body?.results;
-  if (!Array.isArray(results) || results.length === 0) {
+  const parsedBody = resultsPatchSchema.safeParse(await req.json().catch(() => null));
+  if (!parsedBody.success) {
     return NextResponse.json({ error: "results array is required." }, { status: 400 });
   }
+  const results = parsedBody.data.results;
 
   const registrations = await prisma.registration.findMany({
     where: { eventId: id },
@@ -49,7 +57,7 @@ export async function PATCH(
   );
 
   const updates: { id: string; data: Prisma.RegistrationUpdateInput }[] = [];
-  const unmatched: ResultInput[] = [];
+  const unmatched: typeof results = [];
   // Rows that found an athlete but carry a finish time nobody could read. They
   // are skipped rather than failing the whole batch, so one typo in a 500-row
   // CSV doesn't cost the organiser every other result.

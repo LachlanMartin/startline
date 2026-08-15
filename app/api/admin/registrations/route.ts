@@ -1,25 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/amplify-server";
+import { z } from "zod";
 
 const VALID_STATUSES = ["CONFIRMED", "REFUND_REQUESTED", "CANCELLED", "REFUNDED"] as const;
 type RegStatus = (typeof VALID_STATUSES)[number];
+
+const registrationsQuery = z.object({
+  status: z.enum(VALID_STATUSES).optional().catch(undefined),
+  eventId: z.string().max(255).optional().catch(undefined),
+  search: z.string().max(200).catch(""),
+  page: z.coerce.number().int().min(1).catch(1),
+  limit: z.coerce.number().int().min(1).max(100).catch(50),
+});
 
 export async function GET(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const statusParam = searchParams.get("status")?.toUpperCase();
-  const status: RegStatus | undefined =
-    (VALID_STATUSES as readonly string[]).includes(statusParam ?? "")
-      ? (statusParam as RegStatus)
-      : undefined;
-
-  const eventId = searchParams.get("eventId") ?? undefined;
-  const search  = searchParams.get("search") ?? "";
-  const page    = Math.max(1, parseInt(searchParams.get("page")  ?? "1",  10));
-  const limit   = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10)));
+  const query = registrationsQuery.parse(Object.fromEntries(searchParams));
+  const status  = query.status;
+  const eventId = query.eventId;
+  const search  = query.search;
+  const page    = query.page;
+  const limit   = query.limit;
   const skip    = (page - 1) * limit;
 
   const where = {

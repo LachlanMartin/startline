@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/amplify-server";
 import { getStripe } from "@/lib/stripe";
 import { writeAuditLog } from "@/lib/audit";
+import { idParams } from "@/lib/schemas";
 
 export async function POST(
   _req: NextRequest,
@@ -11,7 +12,9 @@ export async function POST(
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
 
-  const { id } = await params;
+  const parsedParams = idParams.safeParse(await params);
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
+  const { id } = parsedParams.data;
 
   try {
     const registration = await prisma.registration.findUnique({
