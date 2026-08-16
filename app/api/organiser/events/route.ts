@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession } from "@/lib/amplify-server";
+import { getOrganiserSession, getServerSession } from "@/lib/amplify-server";
 import { archivePastEvents } from "@/lib/archive-events";
 import { getEventCoords } from "@/lib/australia-coords";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
-import { eventPayloadSchema } from "@/lib/schemas";
+import { organiserEventPayloadSchema } from "@/lib/schemas";
 import { rateLimit } from "@/lib/rate-limit";
 export async function GET() {
   await archivePastEvents();
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   });
   if (blocked) return blocked;
 
-  const parsed = eventPayloadSchema.safeParse(await req.json());
+  const parsed = organiserEventPayloadSchema.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Invalid input." },
@@ -51,7 +51,32 @@ export async function POST(req: NextRequest) {
     );
   }
   const body = parsed.data;
-  const { submit } = body;
+  const { submit, organiserId: requestedOrganiserId } = body;
+
+  // Multi-org scoping: the organiser portal sends the active organiserId (the
+  // same one the listing pages resolve) so create/list always agree. Verify
+  // membership when it differs from the resolved active organiser, then use it
+  // for the ABN gate and APPROVED/PENDING decision too.
+  let organiserId = session.sub;
+  let verified    = session.verified;
+  if (requestedOrganiserId && requestedOrganiserId !== session.sub) {
+    const cognitoSession = await getServerSession();
+    if (!cognitoSession) {
+      return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+    }
+    const membership = await prisma.organiserMember.findFirst({
+      where: {
+        organiserId: requestedOrganiserId,
+        user: { cognitoSub: cognitoSession.sub },
+      },
+      select: { organiser: { select: { id: true, verified: true } } },
+    });
+    if (!membership) {
+      return NextResponse.json({ error: "Not a member of that organiser." }, { status: 403 });
+    }
+    organiserId = membership.organiser.id;
+    verified    = membership.organiser.verified;
+  }
 
   if (submit) {
     const required = ["title", "discipline", "eventDate", "startTime", "city", "state", "format", "level"] as const;
@@ -70,7 +95,7 @@ export async function POST(req: NextRequest) {
   const registrationType = body.registrationType ?? "startline";
   if (registrationType === "startline") {
     const org = await prisma.organiser.findUnique({
-      where: { id: session.sub },
+      where: { id: organiserId },
       select: { abn: true },
     });
     const abnDigits = org?.abn?.replace(/\D/g, "") ?? "";
@@ -83,13 +108,13 @@ export async function POST(req: NextRequest) {
   }
 
   const eventStatus = submit
-    ? (session.verified ? "APPROVED" : "PENDING")
+    ? (verified ? "APPROVED" : "PENDING")
     : "DRAFT";
 
   try {
     const event = await prisma.event.create({
       data: {
-        organiserId:      session.sub,
+        organiserId,
         status:           eventStatus,
         title:            body.title ?? "",
         discipline:       body.discipline        ?? "",

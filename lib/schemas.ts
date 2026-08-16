@@ -50,3 +50,9 @@ export const eventPayloadSchema = z.object({
 export const adminEventPayloadSchema = eventPayloadSchema.extend({
   organiserId: z.string().min(1).max(255),
 });
+
+// Organiser portal create — an explicit organiserId scopes the event to the
+// active organiser (multi-org users), falling back to the resolved active one.
+export const organiserEventPayloadSchema = eventPayloadSchema.extend({
+  organiserId: z.string().min(1).max(255).optional(),
+});
