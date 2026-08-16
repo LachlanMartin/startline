@@ -127,6 +127,14 @@ jobs:
           aws-role-arn: ${{ vars.AWS_ROLE_ARN_READONLY }}
           environment: staging
           bootstrap-export-keys: "STRIPE_SECRET_KEY"
+      - name: Disable Turnstile for E2E
+        shell: bash
+        run: |
+          # load-env exports all staging app secrets, which now include Turnstile
+          # keys. The E2E specs are written against a fail-open server (no
+          # TURNSTILE_SECRET_KEY), so blank the keys to keep the suite hermetic.
+          echo "TURNSTILE_SECRET_KEY=" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_TURNSTILE_SITE_KEY=" >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
