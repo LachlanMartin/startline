@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-08-01T05:16:52.414Z",
+  "updatedAt": "2026-08-16T00:00:00.000Z",
   "command": "update",
-  "gitHead": "37fbd76817f776108bae5cf4e98b0fd33622cff7",
-  "model": "deepseek-v4-pro"
+  "gitHead": "11739b63511e9725628759f97320e2c2c0f0cb5d",
+  "model": "deepseek-v4-flash"
 }

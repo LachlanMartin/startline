@@ -35,9 +35,9 @@ The central entity. Each event belongs to one Organiser and passes through a lif
 2. **Date & Location**: eventDate, endDate, startTime, endTime, venue, address, city, state, latitude, longitude
 3. **Format & Categories**: format (individual/team/both), level (open/beginner/elite), categories (JSON), cap, minAge
 4. **Tickets**: waves (JSON array of ticket tiers), inclusions, extras, refund policy, registration type, fee structure (athlete/organiser absorbs platform fee)
-5. **Media & Logistics**: cover image, photos, registration URL, bag drop, parking, accessibility info
+5. **Media & Logistics**: cover image, photos, information PDFs (`informationPdfs` JSON), registration URL, bag drop, parking, accessibility info
 
-Events can be **pinned** by admins for featured placement.
+Events can be **pinned** by admins for featured placement. A unique `slug` (derived from the title, e.g. `sydney-harbour-10k`) provides human-readable URLs via `lib/slugs.ts`.
 
 ### Registration (`registrations`)
 One row per athlete entry into an event. OrganiserId is denormalised from the event for efficient queries. Key fields:
@@ -60,6 +60,8 @@ Junction table linking a User to an Organiser they follow, with a `@@unique([use
 - **AdminAuditLog**: Admin action audit trail (action, target type/ID, JSON metadata)
 - **GuestEmailVerification**: Email verification codes for guest (non-logged-in) registrations
 - **WaitlistSubscriber**: Pre-launch email signups
+- **RateLimit**: Fixed-window rate-limit counters (key, count, resetAt), used to throttle email senders and auth probes — see `lib/rate-limit.ts`
+- **SecurityEvent**: Admin-visible security incidents (failed bot checks, reported reviews, suspicious activity), separate from rate counters — see `/app/admin/security/`
 
 ## Event Lifecycle
 

@@ -24,13 +24,13 @@ The organiser landing page (`/organiser-landing/`) is served at the root of the 
 
 Routing between portals is handled by [middleware.ts](/middleware.ts). In **production**, the middleware inspects the `Host` header and routes requests accordingly:
 
-- `startlineau.com` → athlete site (default)
+- `startlineau.com` → athlete site (default). Pre-launch, all paths are rewritten to the `/waitlist` landing page (except `/api/waitlist` and static assets).
 - `organiser.startlineau.com` → organiser portal, with `/` rewritten to `/organiser-landing`
 - `admin.startlineau.com` → admin portal, with unauthenticated access redirected to `/admin/login`
 
 Protected paths (defined in `ORGANISER_PROTECTED` and `ADMIN_PROTECTED` arrays) require valid Cognito JWT tokens. Admin routes additionally verify the user belongs to the `admins` Cognito group.
 
-In **development mode** (`NODE_ENV=development`), all domain checks are skipped and everything runs on `localhost:3000`. Local dev and E2E tests use the `__e2e_bypass` cookie to authenticate without Cognito — this is disabled outside development.
+In **development mode** (`NODE_ENV=development`), all domain checks are skipped and everything runs on `localhost:3000`. Local dev and E2E tests use the `__e2e_bypass` cookie to authenticate without Cognito — this is disabled outside development. With no Cognito pool configured, `NEXT_PUBLIC_AUTH_BYPASS=true` additionally unlocks a legacy bypass for PR previews on Amplify.
 
 ## Hosting & Build
 
