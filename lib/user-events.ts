@@ -38,6 +38,7 @@ export function toUserEvent(event: PublicEvent): UserEvent {
 
   return {
     id: event.id,
+    slug: event.slug ?? undefined,
     title: event.title,
     description: event.description ?? "",
     date: event.eventDate,

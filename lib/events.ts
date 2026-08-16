@@ -11,6 +11,7 @@ export async function getAllEvents() {
       orderBy: { eventDate: "asc" },
       select: {
         id: true,
+        slug: true,
         title: true,
         discipline: true,
         description: true,
@@ -65,6 +66,7 @@ export async function getAllEvents() {
 
 const publicEventSelect = {
   id: true,
+  slug: true,
   title: true,
   discipline: true,
   description: true,
@@ -101,12 +103,12 @@ const publicEventSelect = {
   },
 } as const;
 
-/** Single public event by id — live or archived (past) listings. */
+/** Single public event by id or slug — live or archived (past) listings. */
 export async function getPublicEventById(id: string): Promise<PublicEvent | null> {
   try {
     const event = await prisma.event.findFirst({
       where: {
-        id,
+        OR: [{ id }, { slug: id }],
         status: { in: ["APPROVED", "ARCHIVED"] },
       },
       select: publicEventSelect,

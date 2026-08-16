@@ -37,6 +37,7 @@ export interface TicketDrop {
 
 export interface UserEvent {
   id: string;
+  slug?: string;
   title: string;
   description: string;
   date: string;

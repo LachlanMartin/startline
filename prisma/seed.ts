@@ -19,6 +19,7 @@ import {
   UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { getEventCoords } from "../lib/australia-coords";
+import { uniqueSlug } from "../lib/slugs";
 
 function seedCoords(city: string, state: string, coords?: [number, number]) {
   const [latitude, longitude] = coords ?? getEventCoords(city, state);
@@ -523,7 +524,7 @@ async function main() {
   const event1 = await prisma.event.upsert({
     where:  { id: "seed-event-001" },
     update: apexThrowdown,
-    create: { id: "seed-event-001", organiserId: org.id, ...apexThrowdown },
+    create: { id: "seed-event-001", slug: await uniqueSlug(apexThrowdown.title), organiserId: org.id, ...apexThrowdown },
   });
 
   // Mirror the event's JSON start waves into the StartWave table — the new source
@@ -553,7 +554,7 @@ async function main() {
   const event2 = await prisma.event.upsert({
     where: { id: "seed-event-002" }, update: {},
     create: {
-      id: "seed-event-002", organiserId: org.id, status: "PENDING", photos: DISCIPLINE_PHOTOS.hybrid,
+      id: "seed-event-002", slug: await uniqueSlug("Hybrid Hustle Series — Round 3"), organiserId: org.id, status: "PENDING", photos: DISCIPLINE_PHOTOS.hybrid,
       title: "Hybrid Hustle Series — Round 3", discipline: "hybrid",
       description: "Trail running, loaded carries, obstacle crawls, and a surprise finale.",
       eventDate: "2026-09-06", startTime: "08:00", endTime: "14:00",
@@ -569,7 +570,7 @@ async function main() {
   const event3 = await prisma.event.upsert({
     where: { id: "seed-event-003" }, update: {},
     create: {
-      id: "seed-event-003", organiserId: org.id, status: "DRAFT", photos: DISCIPLINE_PHOTOS.functional_fitness,
+      id: "seed-event-003", slug: await uniqueSlug("Team Throwdown Summer Series"), organiserId: org.id, status: "DRAFT", photos: DISCIPLINE_PHOTOS.functional_fitness,
       title: "Team Throwdown Summer Series", discipline: "functional_fitness", description: "Draft — details TBC",
       eventDate: "2026-12-05", startTime: "09:00", endTime: "15:00",
       venue: "TBC", city: "Sydney", state: "nsw", ...seedCoords("Sydney", "nsw"), format: "team", level: "open",
@@ -581,7 +582,7 @@ async function main() {
   const event4 = await prisma.event.upsert({
     where: { id: "seed-event-004" }, update: {},
     create: {
-      id: "seed-event-004", organiserId: org.id, status: "REJECTED", photos: DISCIPLINE_PHOTOS.running,
+      id: "seed-event-004", slug: await uniqueSlug("Autumn Run Festival"), organiserId: org.id, status: "REJECTED", photos: DISCIPLINE_PHOTOS.running,
       title: "Autumn Run Festival", discipline: "running",
       description: "A scenic trail run through the Yarra Valley vineyards.",
       eventDate: "2026-04-11", startTime: "07:30", endTime: "13:00",
@@ -630,7 +631,7 @@ async function main() {
     const ownerId = e.org === "coastal" ? (coastalOrg?.id ?? org.id) : org.id;
     await prisma.event.upsert({
       where: { id: e.id }, update: {},
-      create: { id: e.id, organiserId: ownerId, status: e.status, title: e.title, discipline: e.discipline,
+      create: { id: e.id, slug: await uniqueSlug(e.title), organiserId: ownerId, status: e.status, title: e.title, discipline: e.discipline,
         photos: DISCIPLINE_PHOTOS[e.discipline] ?? [], description: e.description, eventDate: e.eventDate, startTime: e.startTime, endTime: e.endTime,
         venue: e.venue, city: e.city, state: e.state, ...seedCoords(e.city, e.state, "coords" in e ? e.coords : undefined), format: e.format, level: e.level, categories: e.categories,
         cap: e.cap, waves: e.waves, registrationType: "startline", feeStructure: "athlete",

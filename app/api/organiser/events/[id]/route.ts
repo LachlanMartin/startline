@@ -4,6 +4,7 @@ import { getOrganiserSession } from "@/lib/amplify-server";
 import { getEventCoords } from "@/lib/australia-coords";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
 import { eventPayloadSchema, idParams } from "@/lib/schemas";
+import { uniqueSlug } from "@/lib/slugs";
 
 export async function GET(
   _req: NextRequest,
@@ -50,7 +51,7 @@ export async function PATCH(
   try {
     const existing = await prisma.event.findUnique({
       where:  { id },
-      select: { organiserId: true, status: true },
+      select: { organiserId: true, status: true, title: true },
     });
 
     if (!existing)
@@ -88,9 +89,14 @@ export async function PATCH(
       ? (session.verified ? "APPROVED" : "PENDING")
       : "DRAFT";
 
+    const slug = data.title !== undefined && data.title !== existing.title
+      ? await uniqueSlug(data.title, id)
+      : undefined;
+
     const updated = await prisma.event.update({
       where: { id },
       data: {
+        slug:              slug,
         title:             data.title             ?? undefined,
         discipline:        data.discipline        ?? undefined,
         description:       data.description       ?? undefined,
