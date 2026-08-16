@@ -11,7 +11,6 @@ import SignInModal from "@/components/SignInModal";
 import { useAuthContext } from "@/context/AuthContext";
 
 interface CheckinEvent {
-  id: string;
   title: string;
   eventDate: string;
   startTime: string;
@@ -22,7 +21,6 @@ interface CheckinEvent {
 
 interface CheckinRegistration {
   athleteName: string;
-  category: string | null;
   waveLabel: string | null;
   bibNumber: string | null;
   checkedInAt: string | null;
@@ -127,18 +125,16 @@ export default function CheckinPage({
         )}
 
         {loadState === "unauth" && (
-          <>
-            <StateCard
-              icon={<LogIn className="w-8 h-8 text-primary" />}
-              title="Sign in to check in"
-              body="Check-in is tied to your Startline account, so you can only confirm your own attendance."
-              action={
-                <Button variant="default" className="w-full" onClick={() => setIsSignInOpen(true)}>
-                  <LogIn className="w-4 h-4" /> Sign in
-                </Button>
-              }
-            />
-          </>
+          <StateCard
+            icon={<LogIn className="w-8 h-8 text-primary" />}
+            title="Sign in to check in"
+            body="Check-in is tied to your Startline account, so you can only confirm your own attendance."
+            action={
+              <Button variant="default" className="w-full" onClick={() => setIsSignInOpen(true)}>
+                <LogIn className="w-4 h-4" /> Sign in
+              </Button>
+            }
+          />
         )}
 
         {loadState === "ready" && data && (

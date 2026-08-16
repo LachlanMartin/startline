@@ -100,7 +100,6 @@ export async function GET(
         cap:               event.cap,
         registrationCount: count,
         checkedInCount,
-        checkInCode:       event.checkInCode,
         coverImageUrl:     event.coverImageUrl,
         waves: wavesWithSold,
         feeStructure:      event.feeStructure,

@@ -30,7 +30,7 @@ interface DashboardData {
     startTime: string; endTime: string;
     venue: string; city: string; state: string;
     cap?: number | null; registrationCount: number;
-    checkedInCount: number; checkInCode: string | null;
+    checkedInCount: number;
     coverImageUrl?: string | null; waves: Wave[];
     feeStructure: string; categories: string[];
   };

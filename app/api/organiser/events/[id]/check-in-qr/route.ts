@@ -6,7 +6,7 @@ import { getOrganiserSession } from "@/lib/amplify-server";
 import { idParams } from "@/lib/schemas";
 
 export async function POST(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getOrganiserSession();
@@ -18,7 +18,7 @@ export async function POST(
 
   const event = await prisma.event.findUnique({
     where: { id },
-    select: { id: true, title: true, checkInCode: true, organiserId: true },
+    select: { id: true, checkInCode: true, organiserId: true },
   });
   if (!event)                            return NextResponse.json({ error: "Not found." },  { status: 404 });
   if (event.organiserId !== session.sub) return NextResponse.json({ error: "Forbidden." }, { status: 403 });

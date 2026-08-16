@@ -16,7 +16,7 @@ export async function GET(
   const event = await prisma.event.findFirst({
     where: { id: eventId, checkInCode: shortCode, status: "APPROVED" },
     select: {
-      id: true, title: true, eventDate: true, startTime: true,
+      title: true, eventDate: true, startTime: true,
       venue: true, city: true, state: true,
     },
   });
@@ -38,7 +38,7 @@ export async function GET(
       ],
     },
     select: {
-      athleteName: true, category: true, waveLabel: true, bibNumber: true,
+      athleteName: true, waveLabel: true, bibNumber: true,
       checkedInAt: true,
     },
   });
