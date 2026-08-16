@@ -125,6 +125,10 @@ model Event {
   organiserId String
   status      EventStatus @default(DRAFT)
 
+  // Human-readable URL slug derived from the title (e.g. "sydney-harbour-10k").
+  // Nullable so existing rows backfill via migration; unique once populated.
+  slug String? @unique
+
   // Step 1 — basics
   title       String
   discipline  String
@@ -171,7 +175,8 @@ model Event {
   // Step 5 — media & logistics
   coverImageUrl       String?
   photos              String[]
-  informationPdfUrl   String?
+  // Ordered list of { url, label, name } info PDFs — same JSON-array pattern as photos.
+  informationPdfs     Json    @default("[]")
   registrationUrl     String?
   bagDrop             String?
   parking             String?

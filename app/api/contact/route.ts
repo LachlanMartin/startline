@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { assertTurnstile } from "@/lib/turnstile";
 
 const ADMIN_EMAIL = "admin@startlineau.com";
+const DEFAULT_FROM = "Startline <events@startlineau.com>";
 
 const contactSchema = z.object({
   name: z.string().min(1).max(200),
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
   }
 
   const resend = new Resend(resendApiKey);
+  const from = process.env.RESEND_FROM?.trim() || DEFAULT_FROM;
 
   const parsed = contactSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
@@ -59,8 +61,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await resend.emails.send({
-      from: "Startline Contact <events@startlineau.com>",
+    const { data, error } = await resend.emails.send({
+      from,
       to: ADMIN_EMAIL,
       replyTo: email,
       subject: `[Contact] ${subject}`,
@@ -88,7 +90,15 @@ export async function POST(request: NextRequest) {
       `,
     });
 
-    return NextResponse.json({ success: true });
+    if (error) {
+      console.error("Contact email Resend error:", error);
+      return NextResponse.json(
+        { error: "Could not send your message right now. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, id: data?.id ?? null });
   } catch (error) {
     console.error("Contact email send error:", error);
     return NextResponse.json(

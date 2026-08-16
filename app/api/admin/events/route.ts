@@ -4,6 +4,7 @@ import { getAdminSession } from "@/lib/amplify-server";
 import { getEventCoords } from "@/lib/australia-coords";
 import { writeAuditLog } from "@/lib/audit";
 import { adminEventPayloadSchema, eventPayloadSchema } from "@/lib/schemas";
+import { uniqueSlug } from "@/lib/slugs";
 import { z } from "zod";
 
 const VALID_STATUSES = ["DRAFT", "PENDING", "APPROVED", "REJECTED", "ARCHIVED"] as const;
@@ -125,6 +126,7 @@ export async function POST(req: NextRequest) {
       data: {
         organiserId:      organiserId,
         status:           eventStatus,
+        slug:             await uniqueSlug(body.title ?? ""),
         title:            body.title ?? "",
         discipline:       body.discipline        ?? "",
         description:      body.description       ?? null,
@@ -153,7 +155,7 @@ export async function POST(req: NextRequest) {
         registrationUrl:  body.registrationUrl   ?? null,
         accessibilityInfo: body.accessibilityInfo ?? null,
         coverImageUrl:    body.coverImageUrl      ?? null,
-        informationPdfUrl: body.informationPdfUrl ?? null,
+        informationPdfs:  Array.isArray(body.informationPdfs) ? body.informationPdfs : [],
         photos:           Array.isArray(body.photos) ? body.photos : [],
       },
     });

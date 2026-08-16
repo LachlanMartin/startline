@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { archivePastEvents } from "@/lib/archive-events";
 import { getOrganiserRatings } from "@/lib/reviews";
-import { lowestPrice, type PublicEvent, type PublicWave } from "./event-types";
+import { lowestPrice, normaliseInformationPdfs, type PublicEvent, type PublicWave } from "./event-types";
 
 export async function getAllEvents() {
   try {
@@ -11,6 +11,7 @@ export async function getAllEvents() {
       orderBy: { eventDate: "asc" },
       select: {
         id: true,
+        slug: true,
         title: true,
         discipline: true,
         description: true,
@@ -65,6 +66,7 @@ export async function getAllEvents() {
 
 const publicEventSelect = {
   id: true,
+  slug: true,
   title: true,
   discipline: true,
   description: true,
@@ -88,7 +90,7 @@ const publicEventSelect = {
   refundPolicy: true,
   coverImageUrl: true,
   photos: true,
-  informationPdfUrl: true,
+  informationPdfs: true,
   registrationType: true,
   registrationUrl: true,
   feeStructure: true,
@@ -101,12 +103,12 @@ const publicEventSelect = {
   },
 } as const;
 
-/** Single public event by id — live or archived (past) listings. */
+/** Single public event by id or slug — live or archived (past) listings. */
 export async function getPublicEventById(id: string): Promise<PublicEvent | null> {
   try {
     const event = await prisma.event.findFirst({
       where: {
-        id,
+        OR: [{ id }, { slug: id }],
         status: { in: ["APPROVED", "ARCHIVED"] },
       },
       select: publicEventSelect,
@@ -116,6 +118,7 @@ export async function getPublicEventById(id: string): Promise<PublicEvent | null
     const ratings = await getOrganiserRatings([event.organiserId]);
     return {
       ...event,
+      informationPdfs: normaliseInformationPdfs(event.informationPdfs),
       fromPrice: lowestPrice(event.waves),
       registrationCount: event._count.registrations,
       organiser: event.organiser

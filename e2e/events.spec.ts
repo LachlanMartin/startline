@@ -60,6 +60,14 @@ test.describe("event detail page", () => {
     await argosScreenshot(page, "event-detail");
   });
 
+  test("renders all event information PDFs as labelled downloads", async ({ page }) => {
+    await page.goto("/events/seed-event-044");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: /^Event information$/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /course map/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /athlete guide/i })).toBeVisible();
+  });
+
   test("shows organiser reviews section when reviews exist", async ({ page }) => {
     await page.goto("/events/seed-event-001");
     await page.waitForLoadState("networkidle");
@@ -68,7 +76,7 @@ test.describe("event detail page", () => {
     await expect(page.getByRole("link", { name: /view all on organiser profile/i })).toBeVisible();
   });
 
-  test("share control copies a clean event URL", async ({ page, context }) => {
+  test("share control copies a clean slug URL", async ({ page, context }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.goto("/events/seed-event-001");
@@ -78,8 +86,18 @@ test.describe("event detail page", () => {
     await page.getByRole("button", { name: /copy link/i }).click();
     await expect(page.getByRole("button", { name: /link copied/i })).toBeVisible();
     const text = await page.evaluate(() => navigator.clipboard.readText());
-    expect(text).toMatch(/\/events\/seed-event-001$/);
+    expect(text).toMatch(/\/events\/the-apex-throwdown-2026$/);
     expect(text).not.toContain("?");
+  });
+
+  test("event slug URL resolves to the event", async ({ page }) => {
+    await page.goto("/events/sydney-harbour-10k");
+    await expect(page.getByRole("heading", { level: 1, name: "Sydney Harbour 10K" })).toBeVisible({ timeout: 20000 });
+  });
+
+  test("legacy id URL still resolves to the same event", async ({ page }) => {
+    await page.goto("/events/seed-event-005");
+    await expect(page.getByRole("heading", { level: 1, name: "Sydney Harbour 10K" })).toBeVisible({ timeout: 20000 });
   });
 
   test("event card shows organiser name and rating", async ({ page }) => {

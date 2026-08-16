@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getOrganiserSession } from "@/lib/amplify-server";
 import { shiftIsoDate } from "@/lib/duplicate-event";
 import { idParams } from "@/lib/schemas";
+import { uniqueSlug } from "@/lib/slugs";
 
 /** POST /api/organiser/events/[id]/duplicate — copy listing fields into a new DRAFT (+7 days). */
 export async function POST(
@@ -30,6 +31,7 @@ export async function POST(
       data: {
         organiserId: source.organiserId,
         status: "DRAFT",
+        slug: await uniqueSlug(source.title),
         title: source.title,
         discipline: source.discipline,
         description: source.description,
@@ -59,7 +61,7 @@ export async function POST(
         accessibilityInfo: source.accessibilityInfo,
         additionalNotes: source.additionalNotes,
         coverImageUrl: source.coverImageUrl,
-        informationPdfUrl: source.informationPdfUrl,
+        informationPdfs: source.informationPdfs ?? [],
         photos: source.photos ?? [],
       },
     });

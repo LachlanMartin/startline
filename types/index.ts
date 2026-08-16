@@ -37,6 +37,7 @@ export interface TicketDrop {
 
 export interface UserEvent {
   id: string;
+  slug?: string;
   title: string;
   description: string;
   date: string;
@@ -70,7 +71,7 @@ export interface UserEvent {
   fromPrice: number | null;
   coverImageUrl?: string | null;
   photos?: string[];
-  informationPdfUrl?: string | null;
+  informationPdfs?: { url: string; label: string | null; name: string | null }[];
   registrationCount: number;
   organiser?: {
     id: string;

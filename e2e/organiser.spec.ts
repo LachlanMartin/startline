@@ -62,31 +62,33 @@ test.describe("new listing wizard", () => {
     await argosScreenshot(page, "new-listing-step3");
   });
 
-  // TODO: flaky — wizard timing under parallel load. See issue #227.
-  // test("new listing step 4 visual snapshot", async ({ page }) => {
-  //
-  //   await organiserLogin(page);
-  //   await page.goto("/organiser/new-listing");
-  //   await page.waitForLoadState("networkidle");
-  //   await page.getByPlaceholder(/Apex Throwdown/i).fill("E2E Visual Test Event");
-  //   await page.getByRole("button", { name: /continue/i }).click();
-  //   await page.waitForTimeout(500);
-  //   await page.getByText("Pick start date").click();
-  //   await page.getByRole("button", { name: /today/i }).click();
-  //   const timeInputs4 = page.locator('input[type="time"]');
-  //   await timeInputs4.first().fill("09:00");
-  //   const addrInput4 = page.getByPlaceholder(/start typing an address/i);
-  //   await addrInput4.fill("1 Test St, Sydney NSW 2000");
-  //   await page.getByRole("button", { name: /continue/i }).click();
-  //   await page.waitForTimeout(500);
-  //   await page.getByRole("button", { name: /startline/i }).first().click();
-  //   const price4 = page.locator('input[placeholder="129"]');
-  //   if (await price4.isVisible()) await price4.fill("50");
-  //   await page.getByRole("button", { name: /no refunds/i }).click();
-  //   await page.getByRole("button", { name: /continue/i }).click();
-  //   await page.waitForTimeout(500);
-  //   await argosScreenshot(page, "new-listing-step4");
-  // });
+  test("new listing step 4 visual snapshot", async ({ page }) => {
+
+    await organiserLogin(page);
+    await page.goto("/organiser/new-listing");
+    await page.waitForLoadState("networkidle");
+    await page.getByPlaceholder(/Apex Throwdown/i).fill("E2E Visual Test Event");
+    await page.getByRole("button", { name: /continue/i }).click();
+    await page.waitForTimeout(500);
+    await page.getByText("Pick start date").click();
+    await page.getByRole("button", { name: /today/i }).click();
+    const timeInputs4 = page.locator('input[type="time"]');
+    await timeInputs4.first().fill("09:00");
+    const addrInput4 = page.getByPlaceholder(/start typing an address/i);
+    await addrInput4.fill("1 Test St, Sydney NSW 2000");
+    await page.getByRole("button", { name: /continue/i }).click();
+    await page.waitForTimeout(500);
+    await page.getByRole("button", { name: /startline/i }).first().click();
+    const price4 = page.locator('input[placeholder="129"]');
+    if (await price4.isVisible()) await price4.fill("50");
+    await page.getByRole("button", { name: /no refunds/i }).click();
+    await page.getByRole("button", { name: /continue/i }).click();
+    // Step 4 only renders after the tickets step settles — wait on the UI
+    // state instead of a fixed timeout so the screenshot is never of a
+    // half-transitioned wizard.
+    await expect(page.getByText(/cover image/i).first()).toBeVisible({ timeout: 15000 });
+    await argosScreenshot(page, "new-listing-step4");
+  });
 
   test("new listing final review visual snapshot", async ({ page }) => {
 
@@ -148,9 +150,19 @@ test.describe("organiser dashboard", () => {
     await organiserLogin(page);
 
     await expect(page.locator("h1")).toContainText("Hi there");
-    await expect(page.getByText("Live now")).toBeVisible();
-    await expect(page.getByText("Registrations")).toBeVisible();
-    await expect(page.getByText("Total events")).toBeVisible();
+    await expect(page.getByText("All time", { exact: true })).toBeVisible();
+    await expect(page.getByText("Followers")).toBeVisible();
+    await expect(page.getByText("Revenue (est.)")).toBeVisible();
+    await expect(page.getByText(/Trend/i).first()).toBeVisible();
+    await expect(page.getByLabel("Time range")).toBeVisible();
+    await expect(page.getByLabel("Event")).toBeVisible();
+    await expect(page.getByLabel("Metric")).toBeVisible();
+
+    await page.getByLabel("Metric").click();
+    await page.getByRole("option", { name: "Followers" }).click();
+    await expect(page.getByText("New followers")).toBeVisible();
+    await expect(page.getByLabel("Event")).toHaveCount(0);
+
     await expect(page.getByText("Your upcoming events")).toBeVisible();
   });
 
@@ -212,14 +224,32 @@ test.describe("organiser pages", () => {
     await expect(page.getByPlaceholder("12 345 678 901")).toBeVisible();
   });
 
-  test("new listing media step offers event information PDF upload", async ({ page }) => {
+  test("new listing media step supports multiple info PDFs with labels, reorder and remove", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await organiserLogin(page);
     await page.goto("/organiser/new-listing");
     await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: /Media & Description/i }).click();
-    await expect(page.getByText(/event information pdf/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/upload pdf/i)).toBeVisible();
+    await expect(page.getByText(/event information pdfs/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/add pdfs/i)).toBeVisible();
+
+    const pdfInput = page.locator('input[type="file"][accept="application/pdf"]');
+    await pdfInput.setInputFiles([
+      { name: "course-map.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 course map") },
+      { name: "rules.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 rules") },
+    ]);
+
+    await expect(page.getByText(/course-map\.pdf/i)).toBeVisible();
+    await expect(page.getByText(/rules\.pdf/i)).toBeVisible();
+
+    await page.getByPlaceholder(/label \(e\.g\. course map\)/i).nth(0).fill("Course Map");
+    await expect(page.getByRole("button", { name: "Remove PDF" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Move up" }).first()).toBeDisabled();
+    await page.getByRole("button", { name: "Move down" }).first().click();
+
+    await page.getByRole("button", { name: "Remove PDF" }).nth(1).click();
+    await expect(page.getByText(/course-map\.pdf/i)).not.toBeVisible();
+    await expect(page.getByText(/rules\.pdf/i)).toBeVisible();
   });
 
   test("organiser how it works page visual snapshot", async ({ page }) => {

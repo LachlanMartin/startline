@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "@/lib/amplify-server";
+import { pickActiveMembership } from "@/lib/active-organiser";
 
 export const dynamic = "force-dynamic";
 
@@ -38,10 +39,8 @@ export async function GET() {
       logoUrl:       m.organiser.logoUrl,
     }));
 
-    const activeOrganiserId = memberships.find((m) => m.organiserId === activeId)?.organiserId
-      ?? memberships.find((m) => m.role === "OWNER")?.organiserId
-      ?? memberships[0]?.organiserId
-      ?? null;
+    const activeOrganiserId =
+      pickActiveMembership(memberships, activeId)?.organiserId ?? null;
 
     return NextResponse.json({ memberships, activeOrganiserId });
   } catch {

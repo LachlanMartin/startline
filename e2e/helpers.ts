@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 export async function goToHomepage(page: Page): Promise<void> {
   await page.goto("/");
@@ -38,10 +38,40 @@ export async function organiserMemberLogin(page: Page): Promise<void> {
   await page.waitForURL("**/organiser/dashboard**", { timeout: 15000 });
 }
 
+// Avery Quinn — MANAGER of both Apex Endurance Events and Coastal Fitness
+// Collective (no OWNER role). The only seeded user whose active organiser is
+// decided purely by the startline_active_org cookie (issue #231).
+export async function multiOrganiserLogin(page: Page): Promise<void> {
+  await page.context().addCookies([
+    { name: "__e2e_bypass", value: "avery", domain: "localhost", path: "/", sameSite: "Lax" },
+  ]);
+  await page.goto("/organiser/dashboard");
+  await page.waitForURL("**/organiser/dashboard**", { timeout: 15000 });
+}
+
 export async function adminLogin(page: Page, _email = "marcus.stirling@startline.test"): Promise<void> {
   await page.context().addCookies([
     { name: "__e2e_bypass", value: "admin", domain: "localhost", path: "/", sameSite: "Lax" },
   ]);
   await page.goto("/admin/dashboard");
   await page.waitForURL("**/admin/dashboard**", { timeout: 15000 });
+}
+
+// Resets a seeded registration on seed-event-001 back to a known state so
+// tests that mutate shared seed rows stay idempotent across runs/retries.
+// Uses the organiser API so the bypass cookie covers auth.
+export async function resetRegistration(
+  page: Page,
+  athleteName: string,
+  patch: Record<string, string | null>,
+): Promise<void> {
+  const res = await page.request.get("/api/organiser/events/seed-event-001/registrations");
+  expect(res.ok()).toBeTruthy();
+  const { registrations } = await res.json();
+  const reg = registrations.find((r: { name: string }) => r.name === athleteName);
+  expect(reg, `expected a seeded registration for ${athleteName}`).toBeTruthy();
+  const patchRes = await page.request.patch("/api/organiser/events/seed-event-001/registrations", {
+    data: { registrations: [{ registrationId: reg.id, ...patch }] },
+  });
+  expect(patchRes.ok()).toBeTruthy();
 }

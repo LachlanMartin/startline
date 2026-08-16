@@ -32,7 +32,9 @@ export const revalidate = 60;
 export async function generateStaticParams() {
   try {
     const events = await getAllEvents();
-    return events.map((e: { id: string }) => ({ id: e.id }));
+    return events.flatMap((e: { id: string; slug: string | null }) =>
+      e.slug ? [{ id: e.id }, { id: e.slug }] : [{ id: e.id }],
+    );
   } catch {
     return [];
   }
@@ -52,7 +54,7 @@ export async function generateMetadata({
     found.description?.replace(/<[^>]+>/g, "").slice(0, 160) ||
     `${found.title} — ${found.city}, ${found.state.toUpperCase()}`;
   const image = found.coverImageUrl || undefined;
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://startlineau.com"}/events/${id}`;
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://startlineau.com"}/events/${found.slug ?? id}`;
 
   return {
     title,
@@ -262,7 +264,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 </div>
                 <div className="w-px h-5 bg-dark-lighter" />
                 <div className="flex items-center gap-2">
-                  <ShareEventButton eventId={event.id} title={event.title} />
+                  <ShareEventButton eventId={event.id} slug={event.slug} title={event.title} />
                   <span className="font-headline text-xs font-bold uppercase tracking-widest text-muted">Share</span>
                 </div>
               </div>
@@ -347,19 +349,25 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               </div>
             </div>
 
-            {event.informationPdfUrl && (
+            {event.informationPdfs && event.informationPdfs.length > 0 && (
               <div className="bg-dark rounded-xl p-5 sm:p-6">
                 <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-muted mb-3">Event information</h3>
-                <a
-                  href={event.informationPdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 font-headline text-[12px] font-bold uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
-                >
-                  <FileText className="w-4 h-4" />
-                  Download PDF
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+                <ul className="space-y-3">
+                  {event.informationPdfs.map((pdf, i) => (
+                    <li key={`${pdf.url}-${i}`}>
+                      <a
+                        href={pdf.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 font-headline text-[12px] font-bold uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
+                      >
+                        <FileText className="w-4 h-4" />
+                        {pdf.label || pdf.name || "Download PDF"}
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

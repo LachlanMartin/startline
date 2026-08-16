@@ -38,6 +38,7 @@ export function toUserEvent(event: PublicEvent): UserEvent {
 
   return {
     id: event.id,
+    slug: event.slug ?? undefined,
     title: event.title,
     description: event.description ?? "",
     date: event.eventDate,
@@ -74,7 +75,7 @@ export function toUserEvent(event: PublicEvent): UserEvent {
     fromPrice: lowestPrice(waves),
     coverImageUrl: event.coverImageUrl,
     photos: Array.isArray(event.photos) ? event.photos : [],
-    informationPdfUrl: event.informationPdfUrl,
+    informationPdfs: Array.isArray(event.informationPdfs) ? event.informationPdfs : [],
     registrationCount: event.registrationCount,
     organiser: event.organiser
       ? {
