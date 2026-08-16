@@ -32,9 +32,9 @@ export async function POST(
       return NextResponse.json({ error: "Registration not found." }, { status: 404 });
     }
 
-    if (registration.status !== "CONFIRMED") {
+    if (registration.status !== "CONFIRMED" && registration.status !== "REFUND_REQUESTED") {
       return NextResponse.json(
-        { error: "Only confirmed registrations can be refunded." },
+        { error: "Only confirmed or refund-requested registrations can be refunded." },
         { status: 409 },
       );
     }

@@ -126,7 +126,7 @@ jobs:
         with:
           aws-role-arn: ${{ vars.AWS_ROLE_ARN_READONLY }}
           environment: staging
-          bootstrap-export-keys: "STRIPE_SECRET_KEY"
+          bootstrap-export-keys: "STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET"
       - name: Disable Turnstile for E2E
         shell: bash
         run: |
