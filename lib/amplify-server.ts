@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { jwtVerify, createRemoteJWKSet } from "jose";
 import type { OrganiserRole } from "@prisma/client";
 import prisma from "./prisma";
+import { pickActiveMembership } from "./active-organiser";
 
 export type ServerSession = {
   sub:          string;
@@ -82,6 +83,7 @@ export async function getServerSession(): Promise<ServerSession | null> {
         "member":   { sub: "dev-bypass-member",    email: "tom.whitfield@startline.test",   groups: [] },
         "admin":    { sub: "dev-bypass-admin",     email: "marcus.stirling@startline.test", groups: ["admins"] },
         "user":     { sub: "dev-bypass-user",      email: "jade.nguyen@startline.test",      groups: [] },
+        "avery":    { sub: "dev-bypass-avery-quinn", email: "avery.quinn@startline.test",    groups: [] },
       };
       const identity = identities[bypass];
       if (identity) return identity;
@@ -190,14 +192,14 @@ export async function getOrganiserSession(): Promise<OrganiserSession | null> {
     });
     if (!user || user.memberships.length === 0) return null;
 
-    let membership = user.memberships[0];
-    if (user.memberships.length > 1) {
-      const cookieStore = await cookies().catch(() => null);
-      const activeId   = cookieStore?.get(ACTIVE_ORG_COOKIE)?.value;
-      const fromCookie = user.memberships.find((m) => m.organiser.id === activeId);
-      const superAdmin = user.memberships.find((m) => m.role === "OWNER");
-      membership = fromCookie ?? superAdmin ?? user.memberships[0];
-    }
+    const activeId = (await cookies()).get(ACTIVE_ORG_COOKIE)?.value;
+    const picked = pickActiveMembership(
+      user.memberships.map((m) => ({ organiserId: m.organiser.id, role: m.role })),
+      activeId,
+    );
+    const membership =
+      user.memberships.find((m) => m.organiser.id === picked?.organiserId) ??
+      user.memberships[0];
 
     const organiser = membership.organiser;
     return {

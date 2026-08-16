@@ -38,6 +38,17 @@ export async function organiserMemberLogin(page: Page): Promise<void> {
   await page.waitForURL("**/organiser/dashboard**", { timeout: 15000 });
 }
 
+// Avery Quinn — MANAGER of both Apex Endurance Events and Coastal Fitness
+// Collective (no OWNER role). The only seeded user whose active organiser is
+// decided purely by the startline_active_org cookie (issue #231).
+export async function multiOrganiserLogin(page: Page): Promise<void> {
+  await page.context().addCookies([
+    { name: "__e2e_bypass", value: "avery", domain: "localhost", path: "/", sameSite: "Lax" },
+  ]);
+  await page.goto("/organiser/dashboard");
+  await page.waitForURL("**/organiser/dashboard**", { timeout: 15000 });
+}
+
 export async function adminLogin(page: Page, _email = "marcus.stirling@startline.test"): Promise<void> {
   await page.context().addCookies([
     { name: "__e2e_bypass", value: "admin", domain: "localhost", path: "/", sameSite: "Lax" },
