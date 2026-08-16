@@ -123,13 +123,17 @@ test.describe("user profile: race history", () => {
     await page.waitForLoadState("networkidle");
 
     await page.getByRole("button", { name: /following/i }).click();
-    await expect(page.getByText(COASTAL_ORG)).toBeVisible();
 
-    // Unfollow Coastal — the row disappears
+    // The Following tab also lists a "posted a new event" feed item that
+    // mentions the organiser's name, so scope to the followed-organiser card
+    // rather than matching the org name anywhere on the tab.
     const coastalCard = page.locator(".bg-dark.border.border-dark-lighter.rounded-2xl", {
       hasText: COASTAL_ORG,
     });
+    await expect(coastalCard).toBeVisible();
+
+    // Unfollow Coastal — the row disappears
     await coastalCard.getByRole("button", { name: /unfollow/i }).click();
-    await expect(page.getByText(COASTAL_ORG)).not.toBeVisible();
+    await expect(coastalCard).not.toBeVisible();
   });
 });
