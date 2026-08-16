@@ -32,17 +32,18 @@ export async function GET(
       : 0;
 
     // Prefer real registration data when it exists, fall back to the estimate.
-    const [registrations, registrationCount] = await Promise.all([
+    const [registrations, registrationCount, checkedInCount] = await Promise.all([
       prisma.registration.findMany({
         where:   { eventId: id, status: "CONFIRMED" },
         orderBy: { createdAt: "desc" },
         select: {
           id: true, athleteName: true, athleteEmail: true, category: true,
-          waveLabel: true, gender: true, medicalNotes: true,
+          waveLabel: true, gender: true, medicalNotes: true, checkedInAt: true,
           amountCents: true, platformFeeCents: true, createdAt: true,
         },
       }),
       prisma.registration.count({ where: { eventId: id, status: "CONFIRMED" } }),
+      prisma.registration.count({ where: { eventId: id, status: "CONFIRMED", checkedInAt: { not: null } } }),
     ]);
 
     const soldByWave: Record<string, number> = {};
@@ -65,7 +66,7 @@ export async function GET(
     }
     const netPayout = Math.max(0, gross - fees);
 
-    const recentRegistrations = registrations.slice(0, 20).map((r: { id: string; athleteName: string | null; athleteEmail: string | null; category: string | null; waveLabel: string | null; gender: string | null; medicalNotes: string | null; amountCents: number; platformFeeCents: number; createdAt: Date }) => ({
+    const recentRegistrations = registrations.slice(0, 20).map((r: { id: string; athleteName: string | null; athleteEmail: string | null; category: string | null; waveLabel: string | null; gender: string | null; medicalNotes: string | null; checkedInAt: Date | null; amountCents: number; platformFeeCents: number; createdAt: Date }) => ({
       id:           r.id,
       name:         r.athleteName,
       email:        r.athleteEmail,
@@ -73,6 +74,7 @@ export async function GET(
       wave:         r.waveLabel,
       gender:       r.gender,
       medicalNotes: r.medicalNotes,
+      checkedInAt:  r.checkedInAt,
       amount:       r.amountCents / 100,
       createdAt:    r.createdAt,
     }));
@@ -97,6 +99,8 @@ export async function GET(
         state:             event.state,
         cap:               event.cap,
         registrationCount: count,
+        checkedInCount,
+        checkInCode:       event.checkInCode,
         coverImageUrl:     event.coverImageUrl,
         waves: wavesWithSold,
         feeStructure:      event.feeStructure,

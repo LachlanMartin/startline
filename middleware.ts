@@ -116,6 +116,8 @@ export async function middleware(req: NextRequest) {
   if (host === USER_DOMAIN || host === `www.${USER_DOMAIN}`) {
     if (pathname === "/waitlist"
         || pathname.startsWith("/api/waitlist")
+        || pathname.startsWith("/checkin")
+        || pathname.startsWith("/api/checkin")
         || pathname.startsWith("/_next")
         || pathname.startsWith("/images")
         || pathname.startsWith("/favicon")) {

@@ -2,6 +2,10 @@ import { z } from "zod";
 
 // Path params — untrusted input, whitelisted before it reaches Prisma.
 export const idParams = z.object({ id: z.string().min(1).max(255) });
+export const checkinParams = z.object({
+  eventId: z.string().min(1).max(255),
+  shortCode: z.string().min(1).max(255),
+});
 export const organiserIdParams = z.object({ organiserId: z.string().min(1).max(255) });
 export const usernameParams = z.object({ username: z.string().min(1).max(100) });
 export const idAnnouncementIdParams = z.object({

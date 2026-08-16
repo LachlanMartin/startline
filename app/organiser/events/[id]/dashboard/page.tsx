@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowLeft, Megaphone, Plus, Pencil,
-  MapPin, Calendar, ChevronRight, ChevronDown, AlertCircle, Trash2, Users
+  MapPin, Calendar, ChevronRight, ChevronDown, AlertCircle, Trash2, Users, QrCode, CheckCheck, Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ interface DashboardData {
     startTime: string; endTime: string;
     venue: string; city: string; state: string;
     cap?: number | null; registrationCount: number;
+    checkedInCount: number; checkInCode: string | null;
     coverImageUrl?: string | null; waves: Wave[];
     feeStructure: string; categories: string[];
   };
@@ -51,6 +52,7 @@ interface Registration {
   wave: string | null;
   gender: string | null;
   medicalNotes: string | null;
+  checkedInAt: string | null;
   amount: number;
   createdAt: string;
 }
@@ -139,6 +141,38 @@ function EventDashboardInner({
   const [tiersOpen, setTiersOpen] = useState(true);
   const [regsOpen, setRegsOpen] = useState(true);
   const [announcementsOpen, setAnnouncementsOpen] = useState(true);
+
+  const [qrOpen,    setQrOpen]    = useState(false);
+  const [qr,        setQr]        = useState<{ url: string; qrDataUrl: string } | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError,   setQrError]   = useState("");
+  const [copied,    setCopied]    = useState(false);
+
+  const openCheckInQr = async () => {
+    setQrOpen(true);
+    setQrLoading(true);
+    setQrError("");
+    setQr(null);
+    try {
+      const res = await fetch(`/api/organiser/events/${id}/check-in-qr`, { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) { setQrError(d.error ?? "Failed to generate the QR code."); return; }
+      setQr(d);
+    } catch {
+      setQrError("Failed to generate the QR code.");
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const copyLink = async () => {
+    if (!qr) return;
+    try {
+      await navigator.clipboard.writeText(qr.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard unavailable */ }
+  };
 
   useEffect(() => {
     fetch(`/api/organiser/events/${id}/dashboard`)
@@ -295,6 +329,14 @@ function EventDashboardInner({
                 </div>
               </div>
               <div className="text-center">
+                <div className="font-headline text-xl sm:text-2xl font-black tracking-tighter text-primary leading-none">
+                  {event.checkedInCount.toLocaleString()}
+                </div>
+                <div className="font-headline text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted mt-1">
+                  Checked in
+                </div>
+              </div>
+              <div className="text-center">
                 <div className="font-headline text-xl sm:text-2xl font-black tracking-tighter text-light leading-none">
                   {fmt(payout.estimatedPayout)}
                 </div>
@@ -308,7 +350,7 @@ function EventDashboardInner({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-8">
             {panelActive ? (
               <Button
                 variant="outline"
@@ -361,6 +403,14 @@ function EventDashboardInner({
                   <Plus className="w-4 h-4" /> New announcement
                 </>
               )}
+            </Button>
+            <Button
+              variant="outline"
+              type="button"
+              className="w-full"
+              onClick={openCheckInQr}
+            >
+              <QrCode className="w-4 h-4" /> Check-in QR
             </Button>
           </div>
 
@@ -581,7 +631,7 @@ function EventDashboardInner({
                       <table className="w-full min-w-[560px] border-collapse">
                         <thead>
                           <tr className="border-b border-white/5">
-                            {["Athlete", "Wave", "Registered", "Paid"].map((h) => (
+                            {["Athlete", "Wave", "Registered", "Paid", "Check-in"].map((h) => (
                               <th key={h} className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted-dark text-left px-2 py-2 last:text-right">
                                 {h}
                               </th>
@@ -612,6 +662,15 @@ function EventDashboardInner({
                               </td>
                               <td className="px-2 py-3 text-[12px] text-muted-light whitespace-nowrap">{timeAgo(r.createdAt)}</td>
                               <td className="px-2 py-3 font-headline text-[13px] font-black italic text-white text-right whitespace-nowrap">{fmt(r.amount)}</td>
+                              <td className="px-2 py-3 text-right">
+                                {r.checkedInAt ? (
+                                  <span className="inline-flex items-center gap-1 font-headline text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 border border-primary/30 rounded px-1.5 py-0.5 whitespace-nowrap">
+                                    <CheckCheck className="w-3 h-3" /> {timeAgo(r.checkedInAt)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[12px] text-muted-dark">—</span>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -645,6 +704,55 @@ function EventDashboardInner({
 
         </div>
       </main>
+
+      {/* Check-in QR */}
+      <Dialog open={qrOpen} onOpenChange={open => { if (!open) setQrOpen(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <QrCode className="w-5 h-5 text-primary" />
+              </div>
+              <DialogTitle>Check-in QR</DialogTitle>
+            </div>
+            <DialogDescription>
+              Display this QR on a screen or print it at the gate. Athletes scan it with their phone camera to check themselves in.
+            </DialogDescription>
+          </DialogHeader>
+
+          {qrLoading ? (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <Loader2 className="w-7 h-7 text-primary animate-spin" />
+              <p className="text-[13px] text-muted">Generating QR code…</p>
+            </div>
+          ) : qrError ? (
+            <div className="px-3 py-3 bg-red-400/10 border border-red-400/20 rounded-lg text-[13px] text-red-300">{qrError}</div>
+          ) : qr ? (
+            <div className="flex flex-col items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qr.qrDataUrl}
+                alt={`Check-in QR code for ${event.title}`}
+                className="w-56 h-56 rounded-lg border border-dark-lighter"
+              />
+              <div className="mt-4 w-full flex items-center gap-2">
+                <input
+                  readOnly
+                  value={qr.url}
+                  onFocus={(e) => e.target.select()}
+                  className="flex-1 min-w-0 bg-dark border border-dark-lighter rounded-lg px-3 py-2 text-[12px] text-muted-light focus:border-primary focus:outline-none"
+                />
+                <Button variant="outline" type="button" className="shrink-0" onClick={copyLink}>
+                  {copied ? <CheckCheck className="w-4 h-4" /> : "Copy"}
+                </Button>
+              </div>
+              <div className="mt-4 w-full text-center font-headline text-[11px] uppercase tracking-widest text-muted">
+                {event.checkedInCount} of {event.registrationCount} checked in
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete announcement confirm */}
       <Dialog open={!!delAnn} onOpenChange={open => { if (!open) setDelAnn(null); }}>
