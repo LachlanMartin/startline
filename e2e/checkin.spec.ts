@@ -39,7 +39,9 @@ async function getCheckinUrl(page: Page): Promise<string> {
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   const input = dialog.locator("input[readonly]");
-  await expect(input).toHaveValue(/\/checkin\//);
+  // The first call in CI cold-compiles the check-in-qr route and the qrcode
+  // module, so give the URL a generous window before failing.
+  await expect(input).toHaveValue(/\/checkin\//, { timeout: 30000 });
   return (await input.inputValue()).trim();
 }
 
