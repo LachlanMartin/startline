@@ -62,31 +62,33 @@ test.describe("new listing wizard", () => {
     await argosScreenshot(page, "new-listing-step3");
   });
 
-  // TODO: flaky — wizard timing under parallel load. See issue #227.
-  // test("new listing step 4 visual snapshot", async ({ page }) => {
-  //
-  //   await organiserLogin(page);
-  //   await page.goto("/organiser/new-listing");
-  //   await page.waitForLoadState("networkidle");
-  //   await page.getByPlaceholder(/Apex Throwdown/i).fill("E2E Visual Test Event");
-  //   await page.getByRole("button", { name: /continue/i }).click();
-  //   await page.waitForTimeout(500);
-  //   await page.getByText("Pick start date").click();
-  //   await page.getByRole("button", { name: /today/i }).click();
-  //   const timeInputs4 = page.locator('input[type="time"]');
-  //   await timeInputs4.first().fill("09:00");
-  //   const addrInput4 = page.getByPlaceholder(/start typing an address/i);
-  //   await addrInput4.fill("1 Test St, Sydney NSW 2000");
-  //   await page.getByRole("button", { name: /continue/i }).click();
-  //   await page.waitForTimeout(500);
-  //   await page.getByRole("button", { name: /startline/i }).first().click();
-  //   const price4 = page.locator('input[placeholder="129"]');
-  //   if (await price4.isVisible()) await price4.fill("50");
-  //   await page.getByRole("button", { name: /no refunds/i }).click();
-  //   await page.getByRole("button", { name: /continue/i }).click();
-  //   await page.waitForTimeout(500);
-  //   await argosScreenshot(page, "new-listing-step4");
-  // });
+  test("new listing step 4 visual snapshot", async ({ page }) => {
+
+    await organiserLogin(page);
+    await page.goto("/organiser/new-listing");
+    await page.waitForLoadState("networkidle");
+    await page.getByPlaceholder(/Apex Throwdown/i).fill("E2E Visual Test Event");
+    await page.getByRole("button", { name: /continue/i }).click();
+    await page.waitForTimeout(500);
+    await page.getByText("Pick start date").click();
+    await page.getByRole("button", { name: /today/i }).click();
+    const timeInputs4 = page.locator('input[type="time"]');
+    await timeInputs4.first().fill("09:00");
+    const addrInput4 = page.getByPlaceholder(/start typing an address/i);
+    await addrInput4.fill("1 Test St, Sydney NSW 2000");
+    await page.getByRole("button", { name: /continue/i }).click();
+    await page.waitForTimeout(500);
+    await page.getByRole("button", { name: /startline/i }).first().click();
+    const price4 = page.locator('input[placeholder="129"]');
+    if (await price4.isVisible()) await price4.fill("50");
+    await page.getByRole("button", { name: /no refunds/i }).click();
+    await page.getByRole("button", { name: /continue/i }).click();
+    // Step 4 only renders after the tickets step settles — wait on the UI
+    // state instead of a fixed timeout so the screenshot is never of a
+    // half-transitioned wizard.
+    await expect(page.getByText(/cover image/i).first()).toBeVisible({ timeout: 15000 });
+    await argosScreenshot(page, "new-listing-step4");
+  });
 
   test("new listing final review visual snapshot", async ({ page }) => {
 

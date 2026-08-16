@@ -84,24 +84,34 @@ test.describe("user profile: race history", () => {
     await expect(page.getByText("#testing").last()).toBeVisible();
   });
 
-  // TODO: flaky — save/activity refetch race under parallel load. See issue #227.
-  // test("saving an event from the listing appears on the activity Saved tab", async ({ page }) => {
-  //   await page.goto("/events");
-  //   await page.waitForLoadState("networkidle");
-  //
-  //   // The first matching save button may live in a hidden list container —
-  //   // target a visible one instead.
-  //   const saveButtons = page.locator('[aria-label="Save event"]:visible');
-  //   await expect(saveButtons.first()).toBeVisible();
-  //   await saveButtons.first().click();
-  //   await expect(page.getByRole("button", { name: /unsave event/i }).first()).toBeVisible();
-  //
-  //   await page.goto("/activity");
-  //   await page.waitForLoadState("networkidle");
-  //
-  //   await page.getByRole("button", { name: /saved/i }).click();
-  //   await expect(page.getByText("Saved", { exact: false }).first()).toBeVisible();
-  // });
+  test("saving an event from the listing appears on the activity Saved tab", async ({ page }) => {
+    // Take the event from the rendered listing itself (not /api/events, which
+    // can include dates the listing filters out) so the card is guaranteed to
+    // exist before we click its save button.
+    await page.goto("/events?view=list");
+    const card = page.locator('a[href^="/events/"]').first();
+    await expect(card).toBeVisible({ timeout: 15000 });
+    const eventId = (await card.getAttribute("href"))!.split("/").pop()!;
+    const title = await card.locator("h3").innerText();
+
+    // Idempotent across runs: start with this event unsaved, then reload so
+    // the heart reflects the fresh saved-state.
+    await page.request.delete("/api/user/saved-events", { data: { eventId } });
+    await page.reload();
+    await expect(card).toBeVisible({ timeout: 15000 });
+
+    await card.locator('[aria-label="Save event"]').click();
+    await expect(card.locator('[aria-label="Unsave event"]')).toBeVisible();
+
+    await page.goto("/activity");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByRole("button", { name: /saved/i }).click();
+    await expect(page.getByText(title, { exact: false }).first()).toBeVisible({ timeout: 15000 });
+
+    // Cleanup — leave the DB saved-free for the next run.
+    await page.request.delete("/api/user/saved-events", { data: { eventId } });
+  });
 
   test("Following tab lists followed organisers and can unfollow", async ({ page }) => {
     // Re-follow Coastal so the test is deterministic even if a prior run

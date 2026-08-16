@@ -236,14 +236,15 @@ test.describe("admin registrations page", () => {
 });
 
 test.describe("admin reviews page", () => {
-  // TODO: flaky — argos snapshot under parallel load. See issue #227.
-  // test("reviews page visual snapshot", async ({ page }) => {
-  //
-  //   await adminLogin(page);
-  //   await page.goto("/admin/reviews");
-  //   await page.waitForLoadState("networkidle");
-  //   await argosScreenshot(page, "admin-reviews");
-  // });
+  test("reviews page visual snapshot", async ({ page }) => {
+
+    await adminLogin(page);
+    await page.goto("/admin/reviews");
+    await page.waitForLoadState("networkidle");
+    // Wait for the client-side reviews fetch to settle (skeleton → rows/empty).
+    await expect(page.getByRole("status", { name: "Loading" })).toHaveCount(0, { timeout: 15000 });
+    await argosScreenshot(page, "admin-reviews");
+  });
 });
 
 test.describe("admin users page", () => {
