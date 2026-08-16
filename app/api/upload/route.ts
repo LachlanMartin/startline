@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { getOrganiserSession, getAdminSession, getUserSession } from "@/lib/amplify-server";
+import { matchesMagicBytes } from "@/lib/upload-magic-bytes";
 
 // Prefer local disk in development — staging/prod S3 buckets often aren't
 // reachable from a laptop, and .env may still contain AWS keys.
@@ -65,6 +66,13 @@ export async function POST(req: NextRequest) {
   const ext = mimeExt[file.type] ?? "bin";
   const filename = `${randomUUID()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Never trust the client-declared Content-Type alone: verify the file's
+  // magic bytes match it so a text/html payload can't be stored under a
+  // benign extension and served from our own origin.
+  if (!matchesMagicBytes(buffer, file.type)) {
+    return NextResponse.json({ error: "File content does not match its type." }, { status: 400 });
+  }
 
   try {
     if (useS3) {
