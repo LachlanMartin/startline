@@ -12,11 +12,9 @@
  * Usage: node scripts/validate-stripe-connect.mjs
  * Requires STRIPE_SECRET_KEY (sk_test_...) in .env.local
  */
-import Stripe from "stripe";
-import { PrismaClient } from "@prisma/client";
-import { loadEnv } from "./lib/env.mjs";
+import { loadStripeEnv, getStripe, getPrisma } from "./lib/stripe-test.mjs";
 
-loadEnv();
+loadStripeEnv();
 
 const ORGANISER_EMAIL = "organiser@startline.test";
 const TEST_PRICE_CENTS = 13500; // seed-event-001 Late Entry
@@ -30,18 +28,8 @@ function expectFee(expected, actual, label) {
 }
 
 async function main() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) {
-    console.error("Set STRIPE_SECRET_KEY in .env.local to a Stripe test key (sk_test_...).");
-    process.exit(1);
-  }
-  if (key.startsWith("sk_live_")) {
-    console.error("Refusing to run against a LIVE Stripe key. Use a test key (sk_test_...).");
-    process.exit(1);
-  }
-
-  const stripe = new Stripe(key, { apiVersion: "2026-05-27.dahlia" });
-  const prisma = new PrismaClient();
+  const stripe = getStripe();
+  const prisma = getPrisma();
 
   try {
     const organiser = await prisma.organiser.findUnique({

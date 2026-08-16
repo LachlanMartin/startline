@@ -17,6 +17,8 @@
     "prisma:seed": "npx tsx prisma/seed.ts",
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook",
     "stripe:setup": "node scripts/setup-stripe-local.mjs",
+    "stripe:validate": "node scripts/validate-stripe-connect.mjs",
+    "stripe:lifecycle": "node scripts/validate-stripe-lifecycle.mjs",
     "test:registration": "node scripts/test-registration-payment.mjs",
     "staging:db:start": "aws rds start-db-instance --db-instance-identifier startline-staging-postgres"
   },

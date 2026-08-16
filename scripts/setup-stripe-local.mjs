@@ -4,24 +4,16 @@
  *
  * Usage: node scripts/setup-stripe-local.mjs
  */
-import Stripe from "stripe";
-import { PrismaClient } from "@prisma/client";
-import { loadEnv } from "./lib/env.mjs";
+import { loadStripeEnv, assertTestKey, getStripe, getPrisma } from "./lib/stripe-test.mjs";
 
-loadEnv();
+loadStripeEnv();
 
 const ORGANISER_EMAIL = "organiser@startline.test";
 
 async function main() {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey || secretKey.includes("xxxxxxxx")) {
-    console.error("Set STRIPE_SECRET_KEY in .env.local to your Stripe test secret key (sk_test_...).");
-    console.error("Get keys from https://dashboard.stripe.com/test/apikeys");
-    process.exit(1);
-  }
-
-  const stripe = new Stripe(secretKey, { apiVersion: "2026-05-27.dahlia" });
-  const prisma = new PrismaClient();
+  assertTestKey();
+  const stripe = getStripe();
+  const prisma = getPrisma();
 
   try {
     const organiser = await prisma.organiser.findUnique({
@@ -68,7 +60,7 @@ async function main() {
     }
 
     await prisma.organiser.update({
-      where: { id: ORGANISER_ID },
+      where: { id: organiser.id },
       data: {
         stripeAccountId: accountId,
         stripeOnboardingComplete: chargesEnabled && payoutsEnabled,
