@@ -48,14 +48,14 @@ Startline's infrastructure is fully defined in **Terraform** with a unified stat
 
 | Workflow | Trigger | Scope |
 |---|---|---|
-| `ci.yml` | PR to `main` | Lint, typecheck, build, test, e2e (all non-blocking/informational) |
+| `ci.yml` | PR to `main` | Gitleaks secret scan, lint, typecheck, build, test, e2e (all blocking) |
 | `deploy.yml` | Push to `main` or `prod` | Amplify build + deploy, GitHub Deployments API |
 
 ### OpenWiki Workflow
 
 | Workflow | Trigger | Scope |
 |---|---|---|
-| `openwiki-update.yml` | Scheduled (daily 08:00 UTC) or manual | Regenerates `openwiki/` docs, opens PR |
+| (external) | Scheduled or manual | Regenerates `openwiki/` docs from this repo and refreshes the wiki. Docs are also hand-maintained in `openwiki/`.
 
 ## Environments
 

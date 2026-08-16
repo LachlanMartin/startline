@@ -33,7 +33,7 @@ tags: [startline, quickstart, overview, fitness-events, australia]
 
 ## Three Portals
 
-- **Athlete Site** (`startlineau.com`) — Public event browsing, search, registration, reviews
+- **Athlete Site** (`startlineau.com`) — Public event browsing, search, registration, reviews. **Pre-launch, the user domain is rewritten to the `/waitlist` landing page.**
 - **Organiser Portal** (`organiser.startlineau.com`) — Event management, onboarding, payments, registrations
 - **Admin Portal** (`admin.startlineau.com`) — Approval workflows, organiser management, analytics, audit
 
@@ -58,3 +58,4 @@ Domain routing is handled by `middleware.ts` in production. In development mode,
 - **Guest registration flow** — `/lib/guest-email-verification.ts` and related API routes are fully implemented but the documentation cross-references are light; see `/app/api/register/verify-email/`.
 - **Analytics module** — `/app/admin/analytics/` exists but is not yet documented in depth; see `/app/api/admin/analytics/route.ts`.
 - **Waitlist flow** — `/app/waitlist/` and `/app/api/waitlist/` exist for pre-launch signups but are not documented separately.
+- **Security hardening** — server-side Zod validation, Postgres rate limiting (`lib/rate-limit.ts`), Cloudflare Turnstile bot protection (`lib/turnstile.ts`), and the admin security console (`/app/admin/security/`) are implemented but not documented in depth; see `app/api/**` and the `RateLimit`/`SecurityEvent` Prisma models.

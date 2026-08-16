@@ -28,14 +28,14 @@ Startline uses **AWS Cognito** for authentication with **JWT verification** via 
 
 Protected path lists defined in `middleware.ts`:
 
-- **`ORGANISER_PROTECTED`**: `/organiser/dashboard`, `/organiser/listings`, `/organiser/profile`, `/organiser/new-listing`, `/organiser/onboarding`, `/organiser/payments`, `/organiser/events`
-- **`ADMIN_PROTECTED`**: `/admin/dashboard`, `/admin/events`, `/admin/organisers`, `/admin/reviews`
+- **`ORGANISER_PROTECTED`**: `/organiser/dashboard`, `/organiser/listings`, `/organiser/profile`, `/organiser/members`, `/organiser/new-listing`, `/organiser/onboarding`, `/organiser/payments`, `/organiser/events`
+- **`ADMIN_PROTECTED`**: `/admin/dashboard`, `/admin/events`, `/admin/organisers`, `/admin/reviews`, `/admin/users`, `/admin/registrations`, `/admin/analytics`, `/admin/audit`, `/admin/payouts`, `/admin/security`
 
 Unauthenticated access to these paths redirects to `startlineau.com`.
 
 ## Multi-Factor Authentication + Passkeys
 
-MFA is **optional** for all users and **required for admins** (seed sets admin MFA preference). Only TOTP authenticator app is supported (no SMS).
+MFA is **optional** for all users (seed sets the admin's MFA preference). Only TOTP authenticator app is supported (no SMS).
 
 ### Auth Flow Types
 
@@ -58,11 +58,20 @@ Environment module sets:
 Two independent bypass mechanisms:
 
 ### Legacy Bypass (no Cognito pool)
-When `NEXT_PUBLIC_COGNITO_USER_POOL_ID` is unset and `NODE_ENV=development`, bypass activates automatically. Hard-codes session as:
+When `NEXT_PUBLIC_COGNITO_USER_POOL_ID` is unset, `NODE_ENV=development`, **and** `NEXT_PUBLIC_AUTH_BYPASS=true`, bypass activates automatically. Hard-codes session as:
 - sub: `dev-bypass-organiser`, email: `sarah.mitchell@startline.test`, groups: `["admins"]`
 
 ### E2E Cookie Bypass
-For Playwright tests, a `__e2e_bypass=1` cookie provides auth-free access to protected routes. Set via `page.context().addCookies()`. Works in middleware, `getServerSession()`, and `AuthContext`. Only works in `NODE_ENV=development`. Used by `adminLogin()` and `organiserLogin()` helpers in `e2e/helpers.ts` to avoid Cognito dependency and TOTP challenges.
+For Playwright tests, a `__e2e_bypass` cookie (value selects the identity — see Seed Users) provides auth-free access to protected routes. Set via `page.context().addCookies()`. Works in middleware, `getServerSession()`, and `AuthContext`. Only works in `NODE_ENV=development`. Used by `adminLogin()` and `organiserLogin()` helpers in `e2e/helpers.ts` to avoid Cognito dependency and TOTP challenges.
+
+## Rate Limiting & Abuse Protection
+
+Beyond JWT auth, the platform hardens public write paths:
+
+- **Server-side Zod validation** on all API routes (`app/api/**`) rejects malformed payloads before any logic runs
+- **Postgres rate limiting** (`lib/rate-limit.ts` + `RateLimit` model) throttles email senders and auth probes using fixed-window counters
+- **Cloudflare Turnstile** (`lib/turnstile.ts` + `components/TurnstileWidget.tsx`) bot-checks public forms, reviews, and checkout. Fail-open when `TURNSTILE_SECRET_KEY` is unset (local dev and E2E)
+- **SecurityEvent model** records failed bot checks and reported reviews, surfaced in the admin security console (`/app/admin/security/`)
 
 ## Session Types
 

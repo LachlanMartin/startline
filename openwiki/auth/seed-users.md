@@ -55,6 +55,7 @@ For local testing without Cognito, set a `__e2e_bypass` cookie (dev mode only) t
 
 | Cookie value | Identity | Portal role |
 |---|---|---|
+| `1` | Sarah Mitchell | Apex Owner (+ admins) |
 | `organiser` | Sarah Mitchell | Apex Owner |
 | `member` | Tom Whitfield | Apex Manager |
 | `user` | Jade Nguyen | Coastal Owner |
