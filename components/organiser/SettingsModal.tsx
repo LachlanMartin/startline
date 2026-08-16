@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   X, ChevronRight, Upload, Move, Mail, Phone,
   CheckCircle, User, Lock, Bell, CreditCard, Cookie,
@@ -28,12 +29,13 @@ function FieldLabel({ label, hint, required }: { label: string; hint?: string; r
 // ── CoverEditor ─────────────────────────────────────────────────────────────
 
 function CoverEditor({
-  imageUrl, position, uploading, onUpload, onPositionChange, onRemove, fileRef,
+  imageUrl, position, uploading, onUpload, onPositionChange, onRemove, fileRef, onDone,
 }: {
   imageUrl: string; position: string; uploading: boolean;
   onUpload: (f: File) => void; onPositionChange: (p: string) => void;
   onRemove: () => void;
   fileRef: React.RefObject<HTMLInputElement | null>;
+  onDone?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragging,   setDragging]   = useState(false);
@@ -99,7 +101,7 @@ function CoverEditor({
       </div>
       <div className="flex items-center gap-2 mt-2">
         {reposition ? (
-          <button onClick={() => setReposition(false)}
+          <button onClick={() => { setReposition(false); onDone?.(); }}
             className="font-headline text-[11px] font-bold uppercase tracking-widest bg-primary text-dark px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity">
             Done
           </button>
@@ -122,11 +124,12 @@ function CoverEditor({
 // ── LogoEditor ──────────────────────────────────────────────────────────────
 
 function LogoEditor({
-  imageUrl, position, initial, uploading, onUpload, onPositionChange, fileRef,
+  imageUrl, position, initial, uploading, onUpload, onPositionChange, fileRef, onDone,
 }: {
   imageUrl: string; position: string; initial: string; uploading: boolean;
   onUpload: (f: File) => void; onPositionChange: (p: string) => void;
   fileRef: React.RefObject<HTMLInputElement | null>;
+  onDone?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [reposition, setReposition] = useState(false);
@@ -192,7 +195,7 @@ function LogoEditor({
             <>
               <span className="text-white/20 text-xs">·</span>
               {reposition ? (
-                <button onClick={() => setReposition(false)}
+                <button onClick={() => { setReposition(false); onDone?.(); }}
                   className="font-headline text-[12px] font-bold uppercase tracking-widest bg-primary text-dark px-2.5 py-1 rounded-md hover:opacity-90 transition-opacity">
                   Done
                 </button>
@@ -226,6 +229,7 @@ const EMPTY_FORM: ProfileForm = {
 
 function PersonalInfoForm() {
   const { notifyProfileSaved } = useSettings();
+  const router = useRouter();
   const [form,           setForm]           = useState<ProfileForm>(EMPTY_FORM);
   const [loadingForm,    setLoadingForm]     = useState(true);
   const [saving,         setSaving]         = useState(false);
@@ -276,6 +280,7 @@ function PersonalInfoForm() {
       const updated = { ...form, logoUrl: url };
       await fetch("/api/organiser/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
       patch({ logoUrl: url });
+      router.refresh();
     } catch { setError("Logo upload failed."); }
     finally { setLogoUploading(false); }
   };
@@ -284,7 +289,10 @@ function PersonalInfoForm() {
     setCoverUploading(true);
     try {
       const url = await uploadImage(file, "cover");
+      const updated = { ...form, coverImageUrl: url };
+      await fetch("/api/organiser/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
       patch({ coverImageUrl: url });
+      router.refresh();
     } catch { setError("Cover upload failed."); }
     finally { setCoverUploading(false); }
   };
@@ -300,6 +308,7 @@ function PersonalInfoForm() {
       if (!res.ok) { setError(data.error ?? "Save failed."); return; }
       setSaved(true);
       notifyProfileSaved();
+      router.refresh();
       setTimeout(() => setSaved(false), 2500);
     } catch { setError("Something went wrong."); }
     finally { setSaving(false); }
@@ -338,6 +347,7 @@ function PersonalInfoForm() {
             uploading={coverUploading} onUpload={handleCoverUpload}
             onPositionChange={pos => patch({ coverPosition: pos })}
             onRemove={() => patch({ coverImageUrl: "" })}
+            onDone={handleSave}
             fileRef={coverRef}
           />
           <input ref={coverRef} type="file" accept="image/*" className="sr-only"
@@ -348,7 +358,7 @@ function PersonalInfoForm() {
           <LogoEditor
             imageUrl={form.logoUrl} position={form.logoPosition} initial={initial}
             uploading={logoUploading} onUpload={handleLogoUpload}
-            onPositionChange={pos => patch({ logoPosition: pos })} fileRef={logoRef}
+            onPositionChange={pos => patch({ logoPosition: pos })} onDone={handleSave} fileRef={logoRef}
           />
           <input ref={logoRef} type="file" accept="image/*" className="sr-only"
             onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); }} />

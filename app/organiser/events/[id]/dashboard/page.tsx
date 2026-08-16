@@ -17,10 +17,11 @@ import {
 } from "@/components/ui/skeleton";
 import RaceManagementPanel from "@/components/organiser/RaceManagementPanel";
 import RichTextEditor from "@/components/ui/RichTextEditor";
+import CapacityBar from "@/components/ui/CapacityBar";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { stripHtml } from "@/lib/utils";
 
-interface Wave { label: string; price: string; qty?: number }
+interface Wave { label: string; price: string; qty?: number; sold?: number }
 
 interface DashboardData {
   event: {
@@ -36,6 +37,7 @@ interface DashboardData {
     registrationCount: number; lowestTicketPrice: number;
     grossRevenue: number; platformFees: number;
     estimatedPayout: number; feeStructure: string; note: string;
+    isEstimate: boolean;
   };
   recentRegistrations: Registration[];
   announcements: Announcement[];
@@ -296,8 +298,11 @@ function EventDashboardInner({
                 <div className="font-headline text-xl sm:text-2xl font-black tracking-tighter text-light leading-none">
                   {fmt(payout.estimatedPayout)}
                 </div>
-                <div className="font-headline text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted mt-1">
-                  Estimated payout
+                <div
+                  className="font-headline text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted mt-1"
+                  title={payout.note}
+                >
+                  {payout.isEstimate ? "Est. payout (after fees)" : "Payout (after fees)"}
                 </div>
               </div>
             </div>
@@ -507,23 +512,40 @@ function EventDashboardInner({
                 {tiersOpen && (
                   <>
                     <div className="divide-y divide-white/5 mt-5">
-                      {event.waves.map((w, i) => (
-                        <div key={i} className="flex items-center justify-between py-3 gap-4">
-                          <div className="font-headline text-[14px] font-bold text-white/90 min-w-0 truncate">{w.label}</div>
-                          <div className="flex items-center gap-4 sm:gap-6 shrink-0">
-                            <div className="font-headline text-[14px] font-black italic text-white">A${w.price}</div>
-                            <div className="text-right">
-                              <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">Cap</div>
-                              <div className="font-headline text-[13px] text-muted-light">{w.qty ? w.qty.toLocaleString() : "—"}</div>
+                      {event.waves.map((w, i) => {
+                        const sold = w.sold ?? 0;
+                        const capped = w.qty != null;
+                        return (
+                          <div key={i} className="py-3 gap-4">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="font-headline text-[14px] font-bold text-white/90 min-w-0 truncate">{w.label}</div>
+                              <div className="flex items-center gap-4 sm:gap-6 shrink-0">
+                                <div className="font-headline text-[14px] font-black italic text-white">A${w.price}</div>
+                                <div className="text-right">
+                                  <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">Sold / Cap</div>
+                                  <div className="font-headline text-[13px] text-muted-light">
+                                    {sold.toLocaleString()}
+                                    {capped ? ` / ${w.qty!.toLocaleString()}` : ""}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
+                            {capped && (
+                              <CapacityBar
+                                count={sold}
+                                cap={w.qty}
+                                className="mt-2.5 w-full max-w-[360px]"
+                                label={`${w.label}: ${sold} of ${w.qty} sold`}
+                              />
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-white/5">
                       <p className="text-[11px] text-muted-dark">
-                        A per-tier breakdown of sales is coming soon. See the Registrations list below for each athlete&apos;s wave.
+                        Tiers without a cap show sold count only. Athletes register per tier; see the Registrations list below for each athlete&apos;s wave.
                       </p>
                     </div>
                   </>
