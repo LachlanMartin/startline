@@ -59,8 +59,8 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
     orderBy: { event: { eventDate: "asc" } },
     select: {
       id: true,
-      finishTime: true,
-      result: true,
+      resultTime: true,
+      resultPlacement: true,
       event: {
         select: {
           id: true,

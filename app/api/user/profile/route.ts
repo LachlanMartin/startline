@@ -83,8 +83,6 @@ export async function GET() {
     orderBy: { event: { eventDate: "asc" } },
     select: {
       id: true,
-      finishTime: true,
-      result: true,
       resultDistance: true,
       resultTime: true,
       resultPlacement: true,
