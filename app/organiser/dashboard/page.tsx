@@ -12,6 +12,7 @@ import { TableSkeleton } from "@/components/ui/skeleton";
 import DashboardTrendChart, {
   type TrendDay,
 } from "@/components/organiser/DashboardTrendChart";
+import CapacityBar from "@/components/ui/CapacityBar";
 import { formatAudFromCents } from "@/lib/organiser-dashboard";
 
 export const dynamic = "force-dynamic";
@@ -126,39 +127,6 @@ function MetricStrip({
 
 function formatCount(n: number): string {
   return n.toLocaleString("en-AU");
-}
-
-/** Design.md capacity gauge: &lt;70% green · 70–89% amber · ≥90% red. */
-function capacityBarColor(pct: number): string {
-  if (pct >= 90) return "bg-red-400";
-  if (pct >= 70) return "bg-amber-400";
-  return "bg-primary";
-}
-
-function CapacityBar({
-  count,
-  cap,
-}: {
-  count: number;
-  cap: number | null | undefined;
-}) {
-  if (cap == null || cap <= 0) return null;
-  const pct = Math.min(100, Math.round((count / cap) * 100));
-  return (
-    <div
-      className="mt-1.5 h-1.5 w-full min-w-[96px] max-w-[112px] ml-auto sm:min-w-0 sm:max-w-[88px] sm:ml-0 rounded-full bg-dark-lighter overflow-hidden"
-      role="progressbar"
-      aria-valuenow={pct}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-label={`${pct}% full`}
-    >
-      <div
-        className={`h-full rounded-full transition-[width] duration-300 ${capacityBarColor(pct)}`}
-        style={{ width: `${pct}%` }}
-      />
-    </div>
-  );
 }
 
 export default function DashboardPage() {
@@ -378,6 +346,7 @@ export default function DashboardPage() {
                               <CapacityBar
                                 count={e.registrationCount ?? 0}
                                 cap={e.cap}
+                                className="mt-1.5 w-full min-w-[96px] max-w-[112px] ml-auto sm:min-w-0 sm:max-w-[88px] sm:ml-0"
                               />
                             </div>
                           </div>
@@ -444,6 +413,7 @@ export default function DashboardPage() {
                           <CapacityBar
                             count={e.registrationCount ?? 0}
                             cap={e.cap}
+                            className="mt-1.5 w-full min-w-[96px] max-w-[112px] ml-auto sm:min-w-0 sm:max-w-[88px] sm:ml-0"
                           />
                           {price && (
                             <div className="font-headline text-[10px] uppercase tracking-widest text-light mt-0.5">
