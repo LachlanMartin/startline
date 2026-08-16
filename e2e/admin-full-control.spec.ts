@@ -188,34 +188,39 @@ test.describe("admin event editing", () => {
 });
 
 test.describe("admin user editing", () => {
-  // TODO: flaky — refetch can return stale list after save. See issue #227.
-  // test("can edit a user's name and see the update in the list", async ({ page }) => {
-  //   await adminLogin(page);
-  //   const newName = `E2E Updated User ${ts()}`;
-  //
-  //   await page.goto("/admin/users");
-  //   await page.waitForLoadState("networkidle");
-  //
-  //   await page.getByPlaceholder(/search by name, email, or username/i).fill("harper.jones@startline.test");
-  //   await page.getByRole("button", { name: /search/i }).click();
-  //
-  //   await page.getByRole("button", { name: /edit/i }).first().click();
-  //   await expect(page.getByText("Edit user")).toBeVisible();
-  //
-  //   await page.getByPlaceholder("Full name").fill(newName);
-  //
-  //   await page.getByRole("button", { name: /save changes/i }).click();
-  //
-  //   await expect(page.getByText("Edit user")).not.toBeVisible({ timeout: 10000 });
-  //   await expect(page.getByText(newName, { exact: false })).toBeVisible({ timeout: 15000 });
-  //
-  //   // Audit log records the edit.
-  //   const auditRes = await page.request.get("/api/admin/audit?action=EDIT_USER&limit=50");
-  //   const audit = await auditRes.json();
-  //   const logs = Array.isArray(audit.logs) ? audit.logs : [];
-  //   expect(
-  //     logs.some((l: { meta: { fields?: string[] } | null }) =>
-  //       Array.isArray(l.meta?.fields) && l.meta!.fields!.includes("name")),
-  //   ).toBeTruthy();
-  // });
+  test("can edit a user's name and see the update in the list", async ({ page }) => {
+    await adminLogin(page);
+    const newName = `E2E Updated User ${ts()}`;
+
+    await page.goto("/admin/users");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByPlaceholder(/search by name, email, or username/i).fill("harper.jones@startline.test");
+    await page.getByRole("button", { name: /search/i }).click();
+
+    // The list refetches on search — wait until it collapses to the single
+    // match before grabbing an Edit button, or the click can hit a stale row.
+    await expect(page.getByRole("button", { name: /edit/i })).toHaveCount(1, { timeout: 15000 });
+
+    await page.getByRole("button", { name: /edit/i }).first().click();
+    await expect(page.getByText("Edit user")).toBeVisible();
+
+    await page.getByPlaceholder("Full name").fill(newName);
+
+    await page.getByRole("button", { name: /save changes/i }).click();
+
+    // Await the dialog closing, then assert on the refetched list with a
+    // retrying expectation rather than racing a waitForResponse.
+    await expect(page.getByText("Edit user")).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(newName, { exact: false })).toBeVisible({ timeout: 15000 });
+
+    // Audit log records the edit.
+    const auditRes = await page.request.get("/api/admin/audit?action=EDIT_USER&limit=50");
+    const audit = await auditRes.json();
+    const logs = Array.isArray(audit.logs) ? audit.logs : [];
+    expect(
+      logs.some((l: { meta: { fields?: string[] } | null }) =>
+        Array.isArray(l.meta?.fields) && l.meta!.fields!.includes("name")),
+    ).toBeTruthy();
+  });
 });
