@@ -129,6 +129,11 @@ model Event {
   // Nullable so existing rows backfill via migration; unique once populated.
   slug String? @unique
 
+  // Unguessable crypto-random code for the shared athlete check-in QR
+  // (/checkin/[eventId]/[checkInCode]). Generated lazily on first "Generate
+  // Check-in QR"; null until then.
+  checkInCode String? @unique
+
   // Step 1 — basics
   title       String
   discipline  String
@@ -362,6 +367,9 @@ model Registration {
 
   status                RegistrationStatus @default(CONFIRMED)
   stripePaymentIntentId String?
+
+  // Set when the athlete confirms attendance via the check-in QR.
+  checkedInAt DateTime?
 
   // Race results — organiser-entered (race management) + legacy profile fields
   resultDistance  String?
