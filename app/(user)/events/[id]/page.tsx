@@ -32,7 +32,9 @@ export const revalidate = 60;
 export async function generateStaticParams() {
   try {
     const events = await getAllEvents();
-    return events.map((e: { id: string }) => ({ id: e.id }));
+    return events.flatMap((e: { id: string; slug: string | null }) =>
+      e.slug ? [{ id: e.id }, { id: e.slug }] : [{ id: e.id }],
+    );
   } catch {
     return [];
   }
@@ -52,7 +54,7 @@ export async function generateMetadata({
     found.description?.replace(/<[^>]+>/g, "").slice(0, 160) ||
     `${found.title} — ${found.city}, ${found.state.toUpperCase()}`;
   const image = found.coverImageUrl || undefined;
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://startlineau.com"}/events/${id}`;
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://startlineau.com"}/events/${found.slug ?? id}`;
 
   return {
     title,
@@ -262,7 +264,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 </div>
                 <div className="w-px h-5 bg-dark-lighter" />
                 <div className="flex items-center gap-2">
-                  <ShareEventButton eventId={event.id} title={event.title} />
+                  <ShareEventButton eventId={event.id} slug={event.slug} title={event.title} />
                   <span className="font-headline text-xs font-bold uppercase tracking-widest text-muted">Share</span>
                 </div>
               </div>

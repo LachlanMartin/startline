@@ -7,21 +7,23 @@ import { cn } from "@/lib/utils";
 
 interface ShareEventButtonProps {
   eventId: string;
+  slug?: string;
   title: string;
   className?: string;
 }
 
-function eventUrl(eventId: string) {
-  if (typeof window === "undefined") return `/events/${eventId}`;
-  return `${window.location.origin}/events/${eventId}`;
+function eventUrl(eventId: string, slug?: string) {
+  const path = `/events/${slug ?? eventId}`;
+  if (typeof window === "undefined") return path;
+  return `${window.location.origin}${path}`;
 }
 
-export default function ShareEventButton({ eventId, title, className = "" }: ShareEventButtonProps) {
+export default function ShareEventButton({ eventId, slug, title, className = "" }: ShareEventButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   async function copyLink() {
-    const url = eventUrl(eventId);
+    const url = eventUrl(eventId, slug);
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -44,7 +46,7 @@ export default function ShareEventButton({ eventId, title, className = "" }: Sha
   }
 
   async function nativeShare() {
-    const url = eventUrl(eventId);
+    const url = eventUrl(eventId, slug);
     // Prefer the explicit menu in desktop browsers so Copy link is always available.
     if (navigator.share && /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)) {
       try {
@@ -58,7 +60,7 @@ export default function ShareEventButton({ eventId, title, className = "" }: Sha
     toggleMenu();
   }
 
-  const url = typeof window !== "undefined" ? eventUrl(eventId) : `/events/${eventId}`;
+  const url = typeof window !== "undefined" ? eventUrl(eventId, slug) : `/events/${slug ?? eventId}`;
   const encodedUrl = encodeURIComponent(url);
   const encodedTitle = encodeURIComponent(title);
 

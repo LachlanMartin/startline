@@ -6,6 +6,7 @@ import { getEventCoords } from "@/lib/australia-coords";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
 import { eventPayloadSchema } from "@/lib/schemas";
 import { rateLimit } from "@/lib/rate-limit";
+import { uniqueSlug } from "@/lib/slugs";
 export async function GET() {
   await archivePastEvents();
   const session = await getOrganiserSession();
@@ -91,6 +92,7 @@ export async function POST(req: NextRequest) {
       data: {
         organiserId:      session.sub,
         status:           eventStatus,
+        slug:             await uniqueSlug(body.title ?? ""),
         title:            body.title ?? "",
         discipline:       body.discipline        ?? "",
         description:      body.description       ?? null,

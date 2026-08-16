@@ -28,6 +28,7 @@ export function normaliseInformationPdfs(value: unknown): InformationPdf[] {
 
 export interface PublicEvent {
   id: string;
+  slug: string | null;
   title: string;
   discipline: string;
   description: string | null;
