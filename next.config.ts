@@ -24,6 +24,13 @@ const nextConfig: NextConfig = {
   },
 
   async headers() {
+    // Dev needs 'unsafe-eval' for React Fast Refresh. Production drops it so
+    // script-src can actually block injected code. (ponytail: strict nonce CSP
+    // is tracked as a post-MVP issue.)
+    const scriptSrc =
+      process.env.NODE_ENV === "production"
+        ? "'self' 'unsafe-inline' https://js.stripe.com https://api.mapbox.com"
+        : "'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://api.mapbox.com";
     return [
       {
         source: "/(.*)",
@@ -32,7 +39,7 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://api.mapbox.com",
+              `script-src ${scriptSrc}`,
               "connect-src 'self' https://js.stripe.com https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com https://cognito-idp.ap-southeast-2.amazonaws.com capacitor:// http://localhost",
               "img-src 'self' data: blob: https://*.tiles.mapbox.com https://api.mapbox.com https:",
               "worker-src blob: 'self'",

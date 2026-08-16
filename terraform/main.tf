@@ -67,7 +67,6 @@ locals {
               --secret-id startline/$ENV/app
               --query SecretString --output text
               | node -e "const s=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8').trim());for(const[k,v]of Object.entries(s))console.log(k+'='+v)" >> .env.production
-              && ( [ -n "$AWS_PULL_REQUEST_ID" ] && echo "NEXT_PUBLIC_AUTH_BYPASS=true" >> .env.production ; true )
               && ( [ -z "$AWS_PULL_REQUEST_ID" ] && ( npx prisma migrate deploy || npx prisma migrate reset --force ) && ( [ "$ENV" != "prod" ] && npx prisma db seed ; true ) ; true )
         build:
           commands:

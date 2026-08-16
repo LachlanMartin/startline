@@ -19,7 +19,7 @@ jobs:
       run:
         working-directory: terraform
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - uses: ./.github/actions/load-env
         with:
@@ -43,7 +43,7 @@ jobs:
           infracost configure set api_key $INFRACOST_API_KEY
 
       # --- Baseline on base branch ---
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
 
@@ -58,7 +58,7 @@ jobs:
           fi
 
       # --- PR branch ---
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Terraform plan
         shell: bash
