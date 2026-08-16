@@ -46,6 +46,14 @@ async function getCheckinUrl(page: Page): Promise<string> {
 }
 
 test.beforeAll(async () => {
+  // Warm the check-in QR route (cold-compiles the qrcode module in CI) so the
+  // first test's clock isn't spent on compilation. Idempotent — reuses the
+  // event's existing checkInCode.
+  await fetch(`http://localhost:3000/api/organiser/events/${EVENT_ID}/check-in-qr`, {
+    method: "POST",
+    headers: { Cookie: "__e2e_bypass=organiser" },
+  }).catch(() => {});
+
   const event = await prisma.event.findUnique({
     where: { id: EVENT_ID },
     select: { organiserId: true },
