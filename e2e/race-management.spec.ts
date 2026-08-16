@@ -482,4 +482,39 @@ test.describe("athlete public profile race history", () => {
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(/profile not found/i)).toBeVisible();
   });
+
+  test("an organiser-entered result renders on the athlete public profile", async ({ page }) => {
+    await organiserLogin(page);
+    // Idempotent across retries: clear any result left by a previous run. The
+    // first request may race the dev server on a cold route, so retry once.
+    const clear = async () =>
+      page.request.patch(`/api/organiser/events/${EVENT_ID}/results`, {
+        data: { results: [{ athleteEmail: "jade.nguyen@startline.test", resultTime: null, resultPlacement: null }] },
+      });
+    const clearRes = await clear().catch(() => null) ?? await clear();
+    expect(clearRes.ok()).toBeTruthy();
+
+    await page.goto(MANAGE);
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: /after race/i }).click();
+    // The results tab's own CTA proves the tab actually switched.
+    await expect(page.getByRole("button", { name: /upload results csv/i })).toBeVisible();
+
+    // Jade is seeded onto this event's results board (profile-linked athlete).
+    await page.getByPlaceholder(/search any wave by name, email, or bib/i).fill("jade.nguyen");
+    await page.getByRole("button", { name: /add result|edit result/i }).first().click();
+
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel(/^time$/i).fill("57:30");
+    await dialog.getByLabel(/placement/i).fill("22nd / 100");
+    await dialog.getByRole("button", { name: /save result/i }).click();
+    await expect(dialog).toHaveCount(0);
+
+    await page.goto("/profile/jade-nguyen");
+    await page.waitForLoadState("networkidle");
+    // The card renders the time in both the mobile and desktop result blocks;
+    // filter to the visible one rather than assuming a breakpoint.
+    await expect(page.getByText("57:30").locator("visible=true")).toBeVisible();
+    await expect(page.getByText("22nd / 100").locator("visible=true")).toBeVisible();
+  });
 });

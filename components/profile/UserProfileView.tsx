@@ -13,8 +13,8 @@ export type ProfileRaceHistory = {
   completed: number;
   registrations: {
     id: string;
-    finishTime: string | null;
-    result: string | null;
+    resultTime: string | null;
+    resultPlacement: string | null;
     event: {
       id: string;
       title: string;
@@ -65,7 +65,7 @@ function groupHistoryByYear(registrations: HistoryRegistration[]) {
 function RaceHistoryCard({ reg }: { reg: HistoryRegistration }) {
   const [day, month] = formatShortDate(reg.event.eventDate).split(" ");
   const location = `${reg.event.city}, ${STATE_LABELS[reg.event.state as AustralianState]}`;
-  const hasResult = Boolean(reg.result || reg.finishTime);
+  const hasResult = Boolean(reg.resultPlacement || reg.resultTime);
 
   return (
     <Link
@@ -130,24 +130,24 @@ function RaceHistoryCard({ reg }: { reg: HistoryRegistration }) {
 
         {hasResult && (
           <div className="xl:hidden flex items-center gap-8 pt-1 border-t border-dark-lighter">
-            {reg.finishTime && (
+            {reg.resultTime && (
               <div>
                 <p className="font-headline text-[11px] font-bold uppercase tracking-widest text-light">
                   Finish
                 </p>
                 <p className="flex items-center gap-1.5 font-headline text-xl font-black tracking-tighter text-light leading-none mt-0.5">
                   <Timer className="w-3.5 h-3.5 text-muted" />
-                  {reg.finishTime}
+                  {reg.resultTime}
                 </p>
               </div>
             )}
-            {reg.result && (
+            {reg.resultPlacement && (
               <div>
                 <p className="font-headline text-[11px] font-bold uppercase tracking-widest text-light">
                   Result
                 </p>
                 <p className="font-headline text-xl font-black tracking-tighter text-light leading-none mt-0.5">
-                  {reg.result}
+                  {reg.resultPlacement}
                 </p>
               </div>
             )}
@@ -164,24 +164,24 @@ function RaceHistoryCard({ reg }: { reg: HistoryRegistration }) {
       >
         {hasResult ? (
           <div className="grid grid-cols-2 gap-x-10 gap-y-2 w-full pr-5">
-            {reg.finishTime && (
+            {reg.resultTime && (
               <div>
                 <p className="font-headline text-[11px] font-bold uppercase tracking-[0.18em] text-light">
                   Finish time
                 </p>
                 <p className="flex items-center gap-1.5 font-headline text-2xl font-black tracking-tighter text-light leading-none mt-1">
                   <Timer className="w-4 h-4 text-muted shrink-0" />
-                  {reg.finishTime}
+                  {reg.resultTime}
                 </p>
               </div>
             )}
-            {reg.result && (
+            {reg.resultPlacement && (
               <div>
                 <p className="font-headline text-[11px] font-bold uppercase tracking-[0.18em] text-light">
                   Result
                 </p>
                 <p className="font-headline text-2xl font-black tracking-tighter text-light leading-none mt-1">
-                  {reg.result}
+                  {reg.resultPlacement}
                 </p>
               </div>
             )}

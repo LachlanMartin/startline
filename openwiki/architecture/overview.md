@@ -30,7 +30,7 @@ Routing between portals is handled by [middleware.ts](/middleware.ts). In **prod
 
 Protected paths (defined in `ORGANISER_PROTECTED` and `ADMIN_PROTECTED` arrays) require valid Cognito JWT tokens. Admin routes additionally verify the user belongs to the `admins` Cognito group.
 
-In **development mode** (`NODE_ENV=development`), all domain checks are skipped and everything runs on `localhost:3000`. This also enables auth bypass for PR previews on Amplify (`NEXT_PUBLIC_AUTH_BYPASS=true` when no Cognito pool is configured).
+In **development mode** (`NODE_ENV=development`), all domain checks are skipped and everything runs on `localhost:3000`. Local dev and E2E tests use the `__e2e_bypass` cookie to authenticate without Cognito — this is disabled outside development. With no Cognito pool configured, `NEXT_PUBLIC_AUTH_BYPASS=true` additionally unlocks a legacy bypass for PR previews on Amplify.
 
 ## Hosting & Build
 

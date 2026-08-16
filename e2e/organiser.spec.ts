@@ -197,6 +197,50 @@ test.describe("organiser pages", () => {
     await argosScreenshot(page, "organiser-event-dashboard");
   });
 
+  test("ticket tiers show fill progress per tier", async ({ page }) => {
+    await organiserLogin(page);
+    await page.goto("/organiser/events/seed-event-001/dashboard");
+
+    await expect(page.getByText("Ticket tiers")).toBeVisible();
+    await expect(page.getByText("Sold / Cap").first()).toBeVisible();
+
+    // All three seeded tiers have caps, so each renders a fill gauge.
+    const bars = page.getByRole("progressbar");
+    await expect(bars).toHaveCount(3);
+    // Sold count is bound to the right tier cap, without pinning the exact count.
+    await expect(page.getByRole("progressbar", { name: /^Early Bird: \d+ of 80 sold$/ })).toBeVisible();
+    await expect(page.getByRole("progressbar", { name: /^General: \d+ of 150 sold$/ })).toBeVisible();
+    await expect(page.getByRole("progressbar", { name: /^Late Entry: \d+ of 90 sold$/ })).toBeVisible();
+  });
+
+  test("announcement editor applies bold formatting to new text", async ({ page }) => {
+    await organiserLogin(page);
+    await page.goto("/organiser/events/seed-event-001/dashboard?panel=announce");
+
+    const editor = page.locator('[contenteditable="true"]');
+    await expect(editor).toBeVisible();
+    await editor.click();
+    await page.getByRole("button", { name: /bold/i }).click();
+    await editor.pressSequentially("Hello bold");
+
+    expect(await editor.innerHTML()).toMatch(/<(b|strong)[\s>]/i);
+  });
+
+  test("profile settings reposition Done saves and confirms", async ({ page }) => {
+    await organiserLogin(page);
+    await page.goto("/organiser/profile");
+
+    await page.getByRole("button", { name: "Edit Profile" }).click();
+    await expect(page.getByText("Cover photo")).toBeVisible();
+
+    // The cover has an image in seed data, so Reposition is available.
+    await page.getByRole("button", { name: "Reposition" }).first().click();
+    await page.getByRole("button", { name: "Done" }).first().click();
+
+    // Done now commits the change rather than silently dropping it.
+    await expect(page.getByText("Saved")).toBeVisible();
+  });
+
   test("organiser payments page visual snapshot", async ({ page }) => {
 
     await organiserLogin(page);

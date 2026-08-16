@@ -45,6 +45,12 @@ export async function GET(
       prisma.registration.count({ where: { eventId: id, status: "CONFIRMED" } }),
     ]);
 
+    const soldByWave: Record<string, number> = {};
+    for (const r of registrations) {
+      if (r.waveLabel) soldByWave[r.waveLabel] = (soldByWave[r.waveLabel] ?? 0) + 1;
+    }
+    const wavesWithSold = waves.map(w => ({ ...w, sold: soldByWave[w.label] ?? 0 }));
+
     const count = registrationCount;
     const hasRealData = count > 0;
 
@@ -92,7 +98,7 @@ export async function GET(
         cap:               event.cap,
         registrationCount: count,
         coverImageUrl:     event.coverImageUrl,
-        waves,
+        waves: wavesWithSold,
         feeStructure:      event.feeStructure,
         categories:        event.categories,
       },

@@ -52,18 +52,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status,       setStatus]       = useState<AuthStatus>("loading");
 
   const hydrate = useCallback(async () => {
-    const noCognito = !process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
-    const isDevBypass =
-      noCognito &&
-      (process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_AUTH_BYPASS === "true");
-
-    // Match server-side legacy bypass when Cognito isn't configured.
-    if (isDevBypass) {
-      setUser({ sub: "dev-bypass-organiser", email: "sarah.mitchell@startline.test" });
-      setStatus("authenticated");
-      return;
-    }
-
     if (process.env.NODE_ENV === "development" && typeof document !== "undefined" && document.cookie.includes("__e2e_bypass")) {
       setUser({ sub: "dev-bypass", email: "bypass@startline.test" });
       setStatus("authenticated");

@@ -23,7 +23,7 @@ jobs:
       AMPLIFY_BRANCH: ${{ github.ref_name }}
       ENV: ${{ github.ref_name == 'prod' && 'prod' || 'staging' }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - uses: ./.github/actions/load-env
         with:
@@ -56,7 +56,7 @@ jobs:
 
       - name: Start deployment
         id: deployment
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
           script: |
             const deployment = await github.rest.repos.createDeployment({
@@ -108,7 +108,7 @@ jobs:
 
       - name: Finish deployment
         if: always() && steps.deployment.outputs.deployment_id != ''
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
           script: |
             const state = '${{ job.status }}' === 'success' ? 'success' : 'failure'
