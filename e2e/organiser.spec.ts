@@ -148,9 +148,19 @@ test.describe("organiser dashboard", () => {
     await organiserLogin(page);
 
     await expect(page.locator("h1")).toContainText("Hi there");
-    await expect(page.getByText("Live now")).toBeVisible();
-    await expect(page.getByText("Registrations")).toBeVisible();
-    await expect(page.getByText("Total events")).toBeVisible();
+    await expect(page.getByText("All time", { exact: true })).toBeVisible();
+    await expect(page.getByText("Followers")).toBeVisible();
+    await expect(page.getByText("Revenue (est.)")).toBeVisible();
+    await expect(page.getByText(/Trend/i).first()).toBeVisible();
+    await expect(page.getByLabel("Time range")).toBeVisible();
+    await expect(page.getByLabel("Event")).toBeVisible();
+    await expect(page.getByLabel("Metric")).toBeVisible();
+
+    await page.getByLabel("Metric").click();
+    await page.getByRole("option", { name: "Followers" }).click();
+    await expect(page.getByText("New followers")).toBeVisible();
+    await expect(page.getByLabel("Event")).toHaveCount(0);
+
     await expect(page.getByText("Your upcoming events")).toBeVisible();
   });
 
