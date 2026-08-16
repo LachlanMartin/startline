@@ -7,6 +7,25 @@ export interface PublicWave {
   startTime?: string;
 }
 
+export interface InformationPdf {
+  url: string;
+  label: string | null;
+  name: string | null;
+}
+
+/** Coerce an arbitrary JSON value (Prisma Json column) into InformationPdf[]. */
+export function normaliseInformationPdfs(value: unknown): InformationPdf[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((p): p is Record<string, unknown> => typeof p === "object" && p !== null)
+    .map((p) => ({
+      url: typeof p.url === "string" ? p.url : "",
+      label: typeof p.label === "string" ? p.label : null,
+      name: typeof p.name === "string" ? p.name : null,
+    }))
+    .filter((p) => p.url.length > 0);
+}
+
 export interface PublicEvent {
   id: string;
   title: string;
@@ -32,7 +51,7 @@ export interface PublicEvent {
   refundPolicy: string | null;
   coverImageUrl: string | null;
   photos: string[];
-  informationPdfUrl: string | null;
+  informationPdfs: InformationPdf[];
   registrationType: string;
   registrationUrl: string | null;
   feeStructure: string;

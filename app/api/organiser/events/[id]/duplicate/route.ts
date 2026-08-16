@@ -59,7 +59,7 @@ export async function POST(
         accessibilityInfo: source.accessibilityInfo,
         additionalNotes: source.additionalNotes,
         coverImageUrl: source.coverImageUrl,
-        informationPdfUrl: source.informationPdfUrl,
+        informationPdfs: source.informationPdfs ?? [],
         photos: source.photos ?? [],
       },
     });

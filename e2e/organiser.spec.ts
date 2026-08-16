@@ -212,14 +212,32 @@ test.describe("organiser pages", () => {
     await expect(page.getByPlaceholder("12 345 678 901")).toBeVisible();
   });
 
-  test("new listing media step offers event information PDF upload", async ({ page }) => {
+  test("new listing media step supports multiple info PDFs with labels, reorder and remove", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await organiserLogin(page);
     await page.goto("/organiser/new-listing");
     await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: /Media & Description/i }).click();
-    await expect(page.getByText(/event information pdf/i)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/upload pdf/i)).toBeVisible();
+    await expect(page.getByText(/event information pdfs/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/add pdfs/i)).toBeVisible();
+
+    const pdfInput = page.locator('input[type="file"][accept="application/pdf"]');
+    await pdfInput.setInputFiles([
+      { name: "course-map.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 course map") },
+      { name: "rules.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 rules") },
+    ]);
+
+    await expect(page.getByText(/course-map\.pdf/i)).toBeVisible();
+    await expect(page.getByText(/rules\.pdf/i)).toBeVisible();
+
+    await page.getByPlaceholder(/label \(e\.g\. course map\)/i).nth(0).fill("Course Map");
+    await expect(page.getByRole("button", { name: "Remove PDF" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Move up" }).first()).toBeDisabled();
+    await page.getByRole("button", { name: "Move down" }).first().click();
+
+    await page.getByRole("button", { name: "Remove PDF" }).nth(1).click();
+    await expect(page.getByText(/course-map\.pdf/i)).not.toBeVisible();
+    await expect(page.getByText(/rules\.pdf/i)).toBeVisible();
   });
 
   test("organiser how it works page visual snapshot", async ({ page }) => {

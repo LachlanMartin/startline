@@ -60,6 +60,14 @@ test.describe("event detail page", () => {
     await argosScreenshot(page, "event-detail");
   });
 
+  test("renders all event information PDFs as labelled downloads", async ({ page }) => {
+    await page.goto("/events/seed-event-044");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: /^Event information$/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /course map/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /athlete guide/i })).toBeVisible();
+  });
+
   test("shows organiser reviews section when reviews exist", async ({ page }) => {
     await page.goto("/events/seed-event-001");
     await page.waitForLoadState("networkidle");
