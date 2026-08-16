@@ -1,15 +1,17 @@
 import { test, expect, type Page } from "@playwright/test";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { organiserLogin } from "./helpers";
 
-// Read only DATABASE_URL from .env.local. Loading the whole file would leak
-// NEXT_PUBLIC_* vars (e.g. a real Cognito pool id) into the shared worker env
-// and make auth.spec's hasCognito guard run its real-Cognito tests.
-const envLocal = readFileSync(".env.local", "utf8");
-const dbUrl = envLocal.match(/^DATABASE_URL=(.+)$/m)?.[1]?.trim();
-if (dbUrl && !process.env.DATABASE_URL) process.env.DATABASE_URL = dbUrl;
+// Prefer the CI-provided DATABASE_URL; locally read it from .env.local (which
+// may not exist in CI). Only DATABASE_URL is read — loading the whole file
+// would leak NEXT_PUBLIC_* vars (e.g. a real Cognito pool id) into the shared
+// worker env and make auth.spec's hasCognito guard run its real-Cognito tests.
+if (!process.env.DATABASE_URL && existsSync(".env.local")) {
+  const dbUrl = readFileSync(".env.local", "utf8").match(/^DATABASE_URL=(.+)$/m)?.[1]?.trim();
+  if (dbUrl) process.env.DATABASE_URL = dbUrl;
+}
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
@@ -17,7 +19,11 @@ const prisma = new PrismaClient({
 
 const EVENT_ID = "seed-event-001";
 const REG_ID = "seed-reg-checkin-e2e";
-const USER_EMAIL = "jade.nguyen@startline.test"; // the __e2e_bypass "user" identity
+// Tom Whitfield (the __e2e_bypass "member" identity). Unlike jade, he has no
+// seeded registration on seed-event-001, so the check-in lookup resolves
+// unambiguously to the registration this spec creates.
+const USER_EMAIL = "tom.whitfield@startline.test";
+const ATHLETE_NAME = "Tom Whitfield";
 
 async function setBypass(page: Page, value: string): Promise<void> {
   await page.context().addCookies([
@@ -50,7 +56,7 @@ test.beforeAll(async () => {
       id: REG_ID,
       eventId: EVENT_ID,
       organiserId: event!.organiserId,
-      athleteName: "Jade Nguyen",
+      athleteName: ATHLETE_NAME,
       athleteEmail: USER_EMAIL,
       waveLabel: "General",
       amountCents: 11500,
@@ -94,11 +100,11 @@ test("signed-in registered athlete checks in and sees the confirmed state", asyn
   await prisma.registration.update({ where: { id: REG_ID }, data: { checkedInAt: null } });
 
   const url = await getCheckinUrl(page);
-  await setBypass(page, "user"); // jade.nguyen@startline.test
+  await setBypass(page, "member"); // tom.whitfield@startline.test
   await page.goto(url);
 
   await expect(page.getByText("Check in to this event")).toBeVisible();
-  await expect(page.getByRole("main").getByText("Jade Nguyen")).toBeVisible();
+  await expect(page.getByRole("main").getByText(ATHLETE_NAME)).toBeVisible();
 
   await page.getByRole("button", { name: "Check In" }).click();
   await expect(page.getByText("You're checked in")).toBeVisible();
@@ -110,7 +116,7 @@ test("signed-in registered athlete checks in and sees the confirmed state", asyn
 
 test("organiser dashboard shows the live checked-in count", async ({ page }) => {
   // Check in via the athlete API so the assertion doesn't depend on UI clicks.
-  await setBypass(page, "user");
+  await setBypass(page, "member");
   const res = await page.request.post(`/api/checkin/${EVENT_ID}`);
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
