@@ -831,22 +831,25 @@ async function main() {
     id: string;
     userId: string | undefined;
     eventId: string;
-    finishTime?: string | null;
-    result?: string | null;
+    resultTime?: string | null;
+    resultPlacement?: string | null;
   }[] = [
-    { id: "seed-history-user-001", userId: userSeedId, eventId: "seed-event-040", result: "12th", finishTime: "02:14:37" },
-    { id: "seed-history-user-002", userId: userSeedId, eventId: "seed-event-042", result: "8th",  finishTime: "01:47:22" },
-    { id: "seed-history-user-003", userId: userSeedId, eventId: "seed-event-044", result: "1st",  finishTime: "00:42:10" },
-    { id: "seed-history-user-004", userId: userSeedId, eventId: "seed-event-022", result: "24th", finishTime: null },
-    { id: "seed-history-user-005", userId: userSeedId, eventId: "seed-event-006", result: "157th", finishTime: "04:28:51" },
-    { id: "seed-history-user-006", userId: userSeedId, eventId: "seed-event-024", result: "19th", finishTime: null },
-    { id: "seed-history-admin-001", userId: adminSeedId, eventId: "seed-event-041", result: "3rd", finishTime: "01:23:40" },
-    { id: "seed-history-admin-002", userId: adminSeedId, eventId: "seed-event-043", result: "DNF", finishTime: null },
-    { id: "seed-history-organiser-001", userId: organiserSeedId, eventId: "seed-event-040", result: "5th", finishTime: "02:01:12" },
-    { id: "seed-history-organiser-002", userId: organiserSeedId, eventId: "seed-event-044", result: "2nd", finishTime: "00:39:58" },
+    { id: "seed-history-user-001", userId: userSeedId, eventId: "seed-event-040", resultPlacement: "12th", resultTime: "02:14:37" },
+    { id: "seed-history-user-002", userId: userSeedId, eventId: "seed-event-042", resultPlacement: "8th",  resultTime: "01:47:22" },
+    { id: "seed-history-user-003", userId: userSeedId, eventId: "seed-event-044", resultPlacement: "1st",  resultTime: "00:42:10" },
+    { id: "seed-history-user-004", userId: userSeedId, eventId: "seed-event-022", resultPlacement: "24th", resultTime: null },
+    { id: "seed-history-user-005", userId: userSeedId, eventId: "seed-event-006", resultPlacement: "157th", resultTime: "04:28:51" },
+    { id: "seed-history-user-006", userId: userSeedId, eventId: "seed-event-024", resultPlacement: "19th", resultTime: null },
+    // On the Apex Throwdown board so the race-management e2e can enter a result
+    // for a profile-linked athlete and assert it renders on her public profile.
+    { id: "seed-history-user-007", userId: userSeedId, eventId: "seed-event-001", resultPlacement: null, resultTime: null },
+    { id: "seed-history-admin-001", userId: adminSeedId, eventId: "seed-event-041", resultPlacement: "3rd", resultTime: "01:23:40" },
+    { id: "seed-history-admin-002", userId: adminSeedId, eventId: "seed-event-043", resultPlacement: "DNF", resultTime: null },
+    { id: "seed-history-organiser-001", userId: organiserSeedId, eventId: "seed-event-040", resultPlacement: "5th", resultTime: "02:01:12" },
+    { id: "seed-history-organiser-002", userId: organiserSeedId, eventId: "seed-event-044", resultPlacement: "2nd", resultTime: "00:39:58" },
     // Upcoming and unraced, so the athlete-side refund-request flow has something
     // it is actually allowed to act on (past events can no longer be refunded).
-    { id: "seed-history-organiser-003", userId: organiserSeedId, eventId: "seed-event-005", result: null, finishTime: null },
+    { id: "seed-history-organiser-003", userId: organiserSeedId, eventId: "seed-event-005", resultPlacement: null, resultTime: null },
   ];
 
   let historyCount = 0;
@@ -873,11 +876,9 @@ async function main() {
         platformFeeCents: 0,
         feeStructure: "athlete",
         status: "CONFIRMED",
-        finishTime: h.finishTime ?? null,
-        result: h.result ?? null,
-        // New-style result fields (race management / public profile table)
-        resultTime: h.finishTime ?? null,
-        resultPlacement: h.result ?? null,
+        // Race-management result fields (public profile table)
+        resultTime: h.resultTime ?? null,
+        resultPlacement: h.resultPlacement ?? null,
         resultDistance: "5K",
       },
     });
@@ -888,18 +889,18 @@ async function main() {
   // ── Athlete race history (new regular users) ─────────────────────────────
   // Give the extra athletes a couple of completed races each so their
   // profile KStats / timeline aren't empty.
-  const athleteHistory: { email: string; eventId: string; result: string; finishTime: string | null }[] = [
-    { email: "harper.jones@startline.test",  eventId: "seed-event-005", result: "43rd",  finishTime: "00:48:22" },
-    { email: "harper.jones@startline.test",  eventId: "seed-event-010", result: "DNF",   finishTime: null },
-    { email: "mateo.silva@startline.test",   eventId: "seed-event-014", result: "27th",  finishTime: "00:51:09" },
-    { email: "mateo.silva@startline.test",   eventId: "seed-event-017", result: "DNF",   finishTime: null },
-    { email: "aria.kapoor@startline.test",   eventId: "seed-event-006", result: "88th",  finishTime: "04:01:44" },
-    { email: "aria.kapoor@startline.test",   eventId: "seed-event-022", result: "12th",  finishTime: null },
-    { email: "oscar.ngata@startline.test",   eventId: "seed-event-015", result: "5th",  finishTime: "06:12:03" },
-    { email: "oscar.ngata@startline.test",   eventId: "seed-event-044", result: "9th",  finishTime: "00:44:30" },
-    { email: "sophie.moreau@startline.test", eventId: "seed-event-008", result: "31st",  finishTime: "03:52:18" },
-    { email: "lucas.tan@startline.test",     eventId: "seed-event-026", result: "DNF",   finishTime: null },
-    { email: "lucas.tan@startline.test",     eventId: "seed-event-017", result: "66th",  finishTime: "02:41:55" },
+  const athleteHistory: { email: string; eventId: string; resultPlacement: string; resultTime: string | null }[] = [
+    { email: "harper.jones@startline.test",  eventId: "seed-event-005", resultPlacement: "43rd",  resultTime: "00:48:22" },
+    { email: "harper.jones@startline.test",  eventId: "seed-event-010", resultPlacement: "DNF",   resultTime: null },
+    { email: "mateo.silva@startline.test",   eventId: "seed-event-014", resultPlacement: "27th",  resultTime: "00:51:09" },
+    { email: "mateo.silva@startline.test",   eventId: "seed-event-017", resultPlacement: "DNF",   resultTime: null },
+    { email: "aria.kapoor@startline.test",   eventId: "seed-event-006", resultPlacement: "88th",  resultTime: "04:01:44" },
+    { email: "aria.kapoor@startline.test",   eventId: "seed-event-022", resultPlacement: "12th",  resultTime: null },
+    { email: "oscar.ngata@startline.test",   eventId: "seed-event-015", resultPlacement: "5th",  resultTime: "06:12:03" },
+    { email: "oscar.ngata@startline.test",   eventId: "seed-event-044", resultPlacement: "9th",  resultTime: "00:44:30" },
+    { email: "sophie.moreau@startline.test", eventId: "seed-event-008", resultPlacement: "31st",  resultTime: "03:52:18" },
+    { email: "lucas.tan@startline.test",     eventId: "seed-event-026", resultPlacement: "DNF",   resultTime: null },
+    { email: "lucas.tan@startline.test",     eventId: "seed-event-017", resultPlacement: "66th",  resultTime: "02:41:55" },
   ];
   let athleteHistoryCount = 0;
   for (let i = 0; i < athleteHistory.length; i++) {
@@ -923,8 +924,8 @@ async function main() {
         platformFeeCents: 0,
         feeStructure: "athlete",
         status: "CONFIRMED",
-        finishTime: ah.finishTime ?? null,
-        result: ah.result ?? null,
+        resultTime: ah.resultTime ?? null,
+        resultPlacement: ah.resultPlacement ?? null,
       },
     });
     athleteHistoryCount++;
@@ -1008,8 +1009,6 @@ async function main() {
           isTopResult: r.top,
           bibNumber: r.bib,
           userId: athleteUserId,
-          finishTime: r.time,
-          result: r.placement,
         },
         create: {
           id: r.id,
@@ -1029,8 +1028,6 @@ async function main() {
           resultPlacement: r.placement,
           isPersonalBest: r.pb,
           isTopResult: r.top,
-          finishTime: r.time,
-          result: r.placement,
         },
       });
     }
