@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   ArrowLeft, ArrowRight, Check, Plus, Trash2,
   Upload, X, MapPin, Calendar, Users,
-  ChevronDown, Clock, Eye,
+  ChevronDown, ChevronUp, Clock, Eye,
   Ticket, ExternalLink, DollarSign, Bold, Italic, Underline,
   AlignLeft, Trophy, FileText,
 } from "lucide-react";
@@ -40,6 +40,13 @@ type AusState   = "nsw" | "vic" | "qld" | "wa" | "sa" | "tas" | "act" | "nt" | "
 
 interface Wave { label: string; price: string; closes: string; startTime: string; }
 
+interface InfoPdf {
+  file: File | null;
+  url: string;
+  label: string;
+  name: string;
+}
+
 interface FormState {
   title: string;
   discipline: Discipline;
@@ -69,8 +76,7 @@ interface FormState {
   registrationUrl: string;
   coverImage: File | null;
   coverImageUrl: string;
-  informationPdf: File | null;
-  informationPdfUrl: string;
+  informationPdfs: InfoPdf[];
   photos: File[];
   photoUrls: string[];
 }
@@ -85,7 +91,7 @@ const INITIAL: FormState = {
   refundPolicy: "",
   registrationType: "startline", feeStructure: "athlete", registrationUrl: "",
   coverImage: null, coverImageUrl: "",
-  informationPdf: null, informationPdfUrl: "",
+  informationPdfs: [],
   photos: [], photoUrls: [],
 };
 
@@ -783,6 +789,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
    STEP 4 — MEDIA & DESCRIPTION
    ══════════════════════════════════════════════════════════════ */
 const MAX_GALLERY_PHOTOS = 8;
+const MAX_INFO_PDFS = 10;
 
 function GalleryThumb({ src, onRemove }: { src: string; onRemove: () => void }) {
   return (
@@ -816,6 +823,30 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
     const remaining = MAX_GALLERY_PHOTOS - galleryCount;
     if (files.length && remaining > 0) update({ photos: [...form.photos, ...files.slice(0, remaining)] });
   };
+
+  const addInfoPdfs = (list: FileList | null) => {
+    const files = Array.from(list ?? []).filter(f => f.type === "application/pdf");
+    const remaining = MAX_INFO_PDFS - form.informationPdfs.length;
+    if (files.length && remaining > 0) {
+      update({
+        informationPdfs: [
+          ...form.informationPdfs,
+          ...files.slice(0, remaining).map(f => ({ file: f, url: "", label: "", name: f.name })),
+        ],
+      });
+    }
+  };
+  const updateInfoPdfLabel = (i: number, label: string) =>
+    update({ informationPdfs: form.informationPdfs.map((p, j) => (j === i ? { ...p, label } : p)) });
+  const moveInfoPdf = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= form.informationPdfs.length) return;
+    const next = [...form.informationPdfs];
+    [next[i], next[j]] = [next[j], next[i]];
+    update({ informationPdfs: next });
+  };
+  const removeInfoPdf = (i: number) =>
+    update({ informationPdfs: form.informationPdfs.filter((_, j) => j !== i) });
 
   return (
     <div>
@@ -865,42 +896,66 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
         </p>
       </Field>
 
-      <Field label="Event information PDF" hint="Optional · Max 15 MB">
-        {form.informationPdf || form.informationPdfUrl ? (
-          <div className="flex items-center gap-3 rounded-md border border-primary/40 bg-dark-light px-4 py-3">
-            <FileText className="w-5 h-5 text-primary shrink-0" />
-            <div className="min-w-0 flex-1">
-              <div className="font-headline text-[12px] font-bold uppercase tracking-widest text-light truncate">
-                {form.informationPdf?.name ?? "Event information PDF"}
-              </div>
-              <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">
-                Athletes can download this from the event page
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => update({ informationPdf: null, informationPdfUrl: "" })}
-              className="w-8 h-8 rounded-full bg-dark/70 text-muted hover:text-white flex items-center justify-center transition-colors"
-              aria-label="Remove PDF"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
+      <Field label="Event information PDFs" hint={`${form.informationPdfs.length}/${MAX_INFO_PDFS} · Optional`}>
+        {form.informationPdfs.length === 0 ? (
           <label className="block cursor-pointer">
             <div className="rounded-md border-2 border-dashed border-dark-lighter hover:border-primary/40 bg-dark-light px-5 py-8 flex flex-col items-center justify-center transition-colors">
               <Upload className="w-6 h-6 text-primary mb-2" />
-              <span className="font-headline text-[11px] font-bold uppercase tracking-widest text-light">Upload PDF</span>
+              <span className="font-headline text-[11px] font-bold uppercase tracking-widest text-light">Add PDFs</span>
               <span className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-1">Course maps, info packs, athlete guides</span>
             </div>
-            <input
-              type="file"
-              accept="application/pdf"
-              className="sr-only"
-              onChange={(e) => update({ informationPdf: e.target.files?.[0] ?? null })}
-            />
+            <input type="file" accept="application/pdf" multiple className="sr-only"
+              onChange={e => { addInfoPdfs(e.target.files); e.target.value = ""; }} />
           </label>
+        ) : (
+          <div className="space-y-3">
+            {form.informationPdfs.map((pdf, i) => (
+              <div key={pdf.file ? `${pdf.file.name}-${pdf.file.lastModified}-${i}` : `${pdf.url}-${i}`}
+                className="rounded-md border border-dark-lighter bg-dark-light px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-primary shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-headline text-[12px] font-bold uppercase tracking-widest text-light truncate">
+                      {pdf.file?.name ?? pdf.name ?? "Event information PDF"}
+                    </div>
+                    <input
+                      type="text"
+                      value={pdf.label}
+                      placeholder="Label (e.g. Course Map)"
+                      onChange={e => updateInfoPdfLabel(i, e.target.value)}
+                      className="w-full bg-dark border border-dark-lighter rounded-md px-3 py-2 mt-1.5 font-headline text-[12px] text-light placeholder:text-muted focus:border-primary focus:outline-none transition-colors"
+                    />
+                  </div>
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    <button type="button" onClick={() => moveInfoPdf(i, -1)} disabled={i === 0}
+                      className="w-7 h-7 rounded-full bg-dark/70 text-muted hover:text-white disabled:opacity-30 flex items-center justify-center transition-colors" aria-label="Move up">
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                    <button type="button" onClick={() => moveInfoPdf(i, 1)} disabled={i === form.informationPdfs.length - 1}
+                      className="w-7 h-7 rounded-full bg-dark/70 text-muted hover:text-white disabled:opacity-30 flex items-center justify-center transition-colors" aria-label="Move down">
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <button type="button" onClick={() => removeInfoPdf(i)}
+                    className="w-8 h-8 rounded-full bg-dark/70 text-muted hover:text-white flex items-center justify-center transition-colors shrink-0" aria-label="Remove PDF">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {form.informationPdfs.length < MAX_INFO_PDFS && (
+              <label className="flex items-center justify-center gap-2 rounded-md border-2 border-dashed border-dark-lighter hover:border-primary/40 bg-dark-light px-4 py-3 cursor-pointer transition-colors">
+                <Plus className="w-4 h-4 text-primary" />
+                <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted">Add another PDF</span>
+                <input type="file" accept="application/pdf" multiple className="sr-only"
+                  onChange={e => { addInfoPdfs(e.target.files); e.target.value = ""; }} />
+              </label>
+            )}
+          </div>
         )}
+        <p className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-2">
+          Shown as downloads on your event page — up to 15 MB each
+        </p>
       </Field>
 
       <Field label="Full description" required hint={`${stripHtml(form.description).length} chars`}>
@@ -938,7 +993,7 @@ function ReviewStep({ form, setStep, confirmed, onConfirm }: {
     { k: "Refund policy",  v: form.refundPolicy || "—",                                                            step: 2 },
     { k: "Prize money",    v: form.prizeMoney ? (normalisePrizeAmount(form.prizeMoneyAmount) ? `$${normalisePrizeAmount(form.prizeMoneyAmount)} prize pool` : "Yes") : "No", step: 2 },
     { k: "Cover image",    v: form.coverImage || form.coverImageUrl ? "Uploaded" : "No image",                    step: 3 },
-    { k: "Info PDF",       v: form.informationPdf || form.informationPdfUrl ? "Uploaded" : "None",               step: 3 },
+    { k: "Info PDFs",      v: (() => { const n = form.informationPdfs.length; return n ? `${n} PDF${n !== 1 ? "s" : ""}` : "None"; })(), step: 3 },
     { k: "Gallery",        v: (() => { const n = form.photoUrls.length + form.photos.length; return n ? `${n} photo${n !== 1 ? "s" : ""}` : "None"; })(), step: 3 },
     { k: "Description",    v: form.description ? `${stripHtml(form.description).slice(0, 60)}…` : "—", step: 3 },
   ];
@@ -1467,8 +1522,11 @@ export default function EventFormWizard({
           registrationUrl:   e.registrationUrl   ?? "",
           coverImage:        null,
           coverImageUrl:     e.coverImageUrl  ?? "",
-          informationPdf:    null,
-          informationPdfUrl: e.informationPdfUrl ?? "",
+          informationPdfs:   Array.isArray(e.informationPdfs)
+            ? e.informationPdfs.map((p: { url: string; label?: string | null; name?: string | null }) => ({
+                file: null, url: p.url ?? "", label: p.label ?? "", name: p.name ?? "",
+              }))
+            : [],
           photos:            [],
           photoUrls:         Array.isArray(e.photos) ? e.photos.filter((p: unknown): p is string => typeof p === "string") : [],
         });
@@ -1526,14 +1584,18 @@ export default function EventFormWizard({
         const { fileUrl } = await uploadRes.json(); coverImageUrl = fileUrl;
       }
 
-      let informationPdfUrl: string | null = form.informationPdfUrl || null;
-      if (form.informationPdf) {
-        const fd = new FormData();
-        fd.append("file", form.informationPdf);
-        fd.append("type", "document");
-        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-        if (!uploadRes.ok) { setApiError("PDF upload failed. Please try again or remove the file."); return false; }
-        const { fileUrl } = await uploadRes.json(); informationPdfUrl = fileUrl;
+      const informationPdfs: { url: string; label: string; name: string }[] = [];
+      for (const pdf of form.informationPdfs) {
+        let url = pdf.url;
+        if (pdf.file) {
+          const fd = new FormData();
+          fd.append("file", pdf.file);
+          fd.append("type", "document");
+          const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+          if (!uploadRes.ok) { setApiError(`PDF "${pdf.file.name}" failed to upload. Please try again or remove it.`); return false; }
+          const { fileUrl } = await uploadRes.json(); url = fileUrl;
+        }
+        if (url) informationPdfs.push({ url, label: pdf.label.trim(), name: pdf.name });
       }
 
       const photoUrls: string[] = [...form.photoUrls];
@@ -1576,7 +1638,7 @@ export default function EventFormWizard({
         accessibilityInfo: originalFields.current.accessibilityInfo ?? null,
         submit:            !asDraft,
         coverImageUrl:     coverImageUrl ?? form.coverImageUrl ?? null,
-        informationPdfUrl,
+        informationPdfs,
         photos:            photoUrls,
         ...(!eventId && organiserId ? { organiserId } : {}),
       };

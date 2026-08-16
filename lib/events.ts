@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { archivePastEvents } from "@/lib/archive-events";
 import { getOrganiserRatings } from "@/lib/reviews";
-import { lowestPrice, type PublicEvent, type PublicWave } from "./event-types";
+import { lowestPrice, normaliseInformationPdfs, type PublicEvent, type PublicWave } from "./event-types";
 
 export async function getAllEvents() {
   try {
@@ -88,7 +88,7 @@ const publicEventSelect = {
   refundPolicy: true,
   coverImageUrl: true,
   photos: true,
-  informationPdfUrl: true,
+  informationPdfs: true,
   registrationType: true,
   registrationUrl: true,
   feeStructure: true,
@@ -116,6 +116,7 @@ export async function getPublicEventById(id: string): Promise<PublicEvent | null
     const ratings = await getOrganiserRatings([event.organiserId]);
     return {
       ...event,
+      informationPdfs: normaliseInformationPdfs(event.informationPdfs),
       fromPrice: lowestPrice(event.waves),
       registrationCount: event._count.registrations,
       organiser: event.organiser

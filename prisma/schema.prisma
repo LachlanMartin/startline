@@ -171,7 +171,8 @@ model Event {
   // Step 5 — media & logistics
   coverImageUrl       String?
   photos              String[]
-  informationPdfUrl   String?
+  // Ordered list of { url, label, name } info PDFs — same JSON-array pattern as photos.
+  informationPdfs     Json    @default("[]")
   registrationUrl     String?
   bagDrop             String?
   parking             String?

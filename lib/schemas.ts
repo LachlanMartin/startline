@@ -43,7 +43,16 @@ export const eventPayloadSchema = z.object({
   registrationUrl: z.string().max(2000).nullable().optional(),
   accessibilityInfo: z.string().max(10000).nullable().optional(),
   coverImageUrl: z.string().max(2000).nullable().optional(),
-  informationPdfUrl: z.string().max(2000).nullable().optional(),
+  informationPdfs: z
+    .array(
+      z.object({
+        url: z.string().max(2000),
+        label: z.string().max(120).nullable().optional(),
+        name: z.string().max(255).nullable().optional(),
+      }),
+    )
+    .max(20)
+    .optional(),
   photos: z.array(z.string().max(3000)).optional(),
 });
 

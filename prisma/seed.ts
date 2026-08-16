@@ -622,7 +622,10 @@ async function main() {
     { id: "seed-event-041", status: "APPROVED" as const, title: "Hybrid Hustle Series — Round 1", discipline: "hybrid",   eventDate: "2025-11-08", startTime: "08:00", endTime: "14:00", venue: "Kokoda Track Memorial Walkway", city: "Scoresby", state: "vic", format: "individual", level: "open", categories: ["Open Male", "Open Female"], cap: 150, waves: [{ label: "General Entry", price: "75" }], description: "Season opener for the Hybrid Hustle Series through the Dandenongs.", coverImageUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&q=80" },
     { id: "seed-event-042", status: "APPROVED" as const, title: "Hybrid Hustle Series — Round 2", discipline: "hybrid",   eventDate: "2026-02-14", startTime: "08:00", endTime: "14:00", venue: "You Yangs Regional Park", city: "Little River", state: "vic", format: "individual", level: "open", categories: ["Open Male", "Open Female", "Masters 40+"], cap: 180, waves: [{ label: "General Entry", price: "80" }], description: "Round 2 pushed athletes through the You Yangs trails and granite climbs.", coverImageUrl: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=1200&q=80" },
     { id: "seed-event-043", status: "APPROVED" as const, title: "Apex Winter Classic",           discipline: "crossfit",  eventDate: "2026-06-07", startTime: "08:00", endTime: "16:00", venue: "CrossFit South Yarra", city: "Melbourne", state: "vic", coords: [-37.8380, 144.9960] as [number, number], format: "both", level: "open", categories: ["Individual", "Team of 2"], cap: 220, waves: [{ label: "Individual", price: "90" }, { label: "Team (per person)", price: "70" }], description: "A one-day winter throwdown with three scored workouts and a packed spectator floor.", coverImageUrl: "https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=1200&q=80" },
-    { id: "seed-event-044", status: "APPROVED" as const, title: "Apex Bay Run",                 discipline: "running",   eventDate: "2026-03-22", startTime: "07:00", endTime: "11:00", venue: "Albert Park Lake", city: "Melbourne", state: "vic", coords: [-37.8481, 144.9602] as [number, number], format: "individual", level: "open", categories: ["5K", "10K", "Half Marathon"], cap: 1200, waves: [{ label: "5K", price: "35" }, { label: "10K", price: "45" }, { label: "Half", price: "65" }], description: "Apex's community run around Albert Park — perfect for PBs and first-timers.", coverImageUrl: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=1200&q=80" },
+    { id: "seed-event-044", status: "APPROVED" as const, title: "Apex Bay Run",                 discipline: "running",   eventDate: "2026-03-22", startTime: "07:00", endTime: "11:00", venue: "Albert Park Lake", city: "Melbourne", state: "vic", coords: [-37.8481, 144.9602] as [number, number], format: "individual", level: "open", categories: ["5K", "10K", "Half Marathon"], cap: 1200, waves: [{ label: "5K", price: "35" }, { label: "10K", price: "45" }, { label: "Half", price: "65" }], description: "Apex's community run around Albert Park — perfect for PBs and first-timers.", coverImageUrl: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=1200&q=80", informationPdfs: [
+      { url: "https://d1xh1jysda20ej.cloudfront.net/uploads/course-map.pdf", label: "Course Map", name: "course-map.pdf" },
+      { url: "https://d1xh1jysda20ej.cloudfront.net/uploads/athlete-guide.pdf", label: "Athlete Guide", name: "athlete-guide.pdf" },
+    ] },
     { id: "seed-event-045", status: "APPROVED" as const, title: "Apex Team Relay Challenge",    discipline: "hybrid",    eventDate: "2025-12-06", startTime: "09:00", endTime: "15:00", venue: "MSAC Outdoor Courts", city: "Melbourne", state: "vic", coords: [-37.8686, 144.9686] as [number, number], format: "team", level: "open", categories: ["Teams of 4"], cap: 80, waves: [{ label: "Team Entry", price: "280" }], description: "A festive team relay mixing runs, carries, and partner workouts.", coverImageUrl: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=1200&q=80" },
   ];
 
@@ -636,7 +639,9 @@ async function main() {
         cap: e.cap, waves: e.waves, registrationType: "startline", feeStructure: "athlete",
         coverImageUrl: "coverImageUrl" in e && e.coverImageUrl
           ? e.coverImageUrl
-          : DISCIPLINE_COVERS[e.discipline] ?? null },
+          : DISCIPLINE_COVERS[e.discipline] ?? null,
+        informationPdfs: "informationPdfs" in e && e.informationPdfs ? e.informationPdfs : [],
+      },
     });
   }
 
