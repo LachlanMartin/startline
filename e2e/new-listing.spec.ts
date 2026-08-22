@@ -62,6 +62,22 @@ test.describe("new listing wizard", () => {
     // ponytail: skips if AWS GeoPlaces API unavailable in test env
   });
 
+  test("blocks an end time at or before the start time", async ({ page }) => {
+    await organiserLogin(page);
+    await page.goto("/organiser/new-listing");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByPlaceholder(/Apex Throwdown/i).fill("Time Test Event");
+    await page.getByRole("button", { name: /continue/i }).click();
+    await expect(page.getByText(/when and where/i).first()).toBeVisible();
+
+    const timeInputs = page.locator('input[type="time"]');
+    await timeInputs.nth(0).fill("10:00");
+    await timeInputs.nth(1).fill("09:00");
+
+    await expect(page.getByText(/end time must be after start time/i)).toBeVisible();
+  });
+
   test("fills all 5 steps and saves as draft", async ({ page }) => {
     await organiserLogin(page);
     await page.goto("/organiser/new-listing");

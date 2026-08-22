@@ -445,6 +445,8 @@ function StateSelect({ value, onChange }: { value: AusState; onChange: (v: AusSt
 }
 
 function WhenStep({ form, update }: { form: FormState; update: (p: Partial<FormState>) => void }) {
+  const timeInvalid = !!(form.startTime && form.endTime && form.endTime <= form.startTime);
+
   return (
     <div>
       <Field label="Event date(s)" required hint="Tap start then end for multi-day">
@@ -470,6 +472,11 @@ function WhenStep({ form, update }: { form: FormState; update: (p: Partial<FormS
         </Field>
         <Field label="Cut-off time" hint="Last finisher">
           <TimePicker value={form.endTime} onChange={v => update({ endTime: v })} placeholder="Select end time" />
+          {timeInvalid && (
+            <p className="font-headline text-[10px] uppercase tracking-widest text-red-400 mt-1.5">
+              End time must be after start time.
+            </p>
+          )}
         </Field>
       </div>
 
@@ -696,7 +703,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
                 </div>
                 <div>
                   <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mb-1.5">Category closes</div>
-                  <DatePicker value={w.closes} onChange={v => updateWave(i, { closes: v })} placeholder="Optional close date" disablePast={false} />
+                  <DatePicker value={w.closes} onChange={v => updateWave(i, { closes: v })} placeholder="Optional close date" disablePast={false} maxDate={form.endDate || form.date} />
                 </div>
               </div>
 
@@ -1548,7 +1555,8 @@ export default function EventFormWizard({
         (!hasCatRequirement || form.categories.length > 0)
       );
     }
-    if (s === 1) return !(form.date && form.startTime && form.address.trim() && form.city.trim() && form.state);
+    if (s === 1) return !(form.date && form.startTime && form.address.trim() && form.city.trim() && form.state) ||
+      !!(form.startTime && form.endTime && form.endTime <= form.startTime);
     if (s === 2) return !(
       form.waves.length > 0 &&
       (form.waves[0]?.price === "0" || !!form.waves[0]?.price) &&
