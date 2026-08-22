@@ -29,23 +29,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid upload type." }, { status: 400 });
   }
 
-  const allowed = [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/gif",
-    "video/mp4",
-    "video/webm",
-    "video/quicktime",
-    "video/avi",
-    "video/ogg",
-    "application/pdf",
-  ];
-  if (!allowed.includes(file.type)) {
-    return NextResponse.json({ error: "File type not allowed." }, { status: 400 });
-  }
-  if (type === "document" && file.type !== "application/pdf") {
-    return NextResponse.json({ error: "Documents must be PDF." }, { status: 400 });
+  const TYPE_MIMES: Record<string, string[]> = {
+    logo: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+    cover: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+    photo: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+    avatar: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+    video: ["video/mp4", "video/webm", "video/quicktime", "video/avi", "video/ogg"],
+    document: ["application/pdf"],
+  };
+  if (!TYPE_MIMES[type]?.includes(file.type)) {
+    return NextResponse.json({ error: "File type not allowed for this upload." }, { status: 400 });
   }
   if (type === "document" && file.size > 15 * 1024 * 1024) {
     return NextResponse.json({ error: "PDF must be 15 MB or smaller." }, { status: 400 });
