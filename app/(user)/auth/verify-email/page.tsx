@@ -148,6 +148,9 @@ function VerifyEmailForm() {
               {email ? <strong className="text-light">{email}</strong> : "your email"}.
               Enter it below to activate your account.
             </p>
+            <p className="text-muted text-[13px] leading-relaxed mb-6 text-center mt-1">
+              Can&apos;t see it? Check your spam or junk folder.
+            </p>
             {error && (
               <div className="mb-5 px-4 py-3 rounded-md bg-red-900/20 border border-red-500/30 text-red-400 font-headline text-[13px]">
                 {error}

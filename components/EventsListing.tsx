@@ -470,6 +470,20 @@ function EventsListingInner() {
   );
 
   const [priceMin, priceMax] = priceRange ?? [PRICE_RANGE_MIN, PRICE_RANGE_MAX];
+
+  // Clicking the track snaps the nearer endpoint to the clicked value.
+  const onTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const val = Math.round(frac * PRICE_RANGE_MAX);
+    const [lo, hi] = priceRange ?? [PRICE_RANGE_MIN, PRICE_RANGE_MAX];
+    if (Math.abs(val - lo) <= Math.abs(val - hi)) {
+      setPriceRange([Math.min(val, hi - 5), hi]);
+    } else {
+      setPriceRange([lo, Math.max(val, lo + 5)]);
+    }
+  };
+
   const priceDropdown = (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -480,7 +494,7 @@ function EventsListingInner() {
           <button onClick={() => setPriceRange(null)} className="font-headline text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/70">Reset</button>
         )}
       </div>
-      <div className="relative h-4 mt-2 mb-1">
+      <div className="relative h-4 mt-2 mb-1 cursor-pointer" onClick={onTrackClick}>
         <div className="absolute top-1/2 -translate-y-1/2 w-full h-1 rounded-full bg-dark-lighter" />
         <div className="absolute top-1/2 -translate-y-1/2 h-1 rounded-full bg-primary"
           style={{ left: `${(priceMin / PRICE_RANGE_MAX) * 100}%`, right: `${100 - (priceMax / PRICE_RANGE_MAX) * 100}%` }}
@@ -591,7 +605,11 @@ function EventsListingInner() {
         {dateDropdown}
       </FilterTrigger>
       <FilterTrigger label="Price" active={!!priceRange} isOpen={openDropdown === "price"}
-        onToggle={() => setOpenDropdown(openDropdown === "price" ? null : "price")} panelClassName="w-64">
+        onToggle={() => {
+          if (openDropdown === "price") setOpenDropdown(null);
+          else if (priceRange) setPriceRange(null);
+          else setOpenDropdown("price");
+        }} panelClassName="w-64">
         {priceDropdown}
       </FilterTrigger>
       <FilterTrigger label="Format & Level" active={formatFilters.length > 0 || levelFilters.length > 0} isOpen={openDropdown === "format-level"}

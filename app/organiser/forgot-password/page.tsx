@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, KeyRound } from "lucide-react";
 import { resetPassword, confirmResetPassword } from "aws-amplify/auth";
+import { mapResetPasswordError } from "@/lib/auth-errors";
 
 type Step = "request" | "confirm";
 
@@ -59,15 +60,7 @@ function ForgotPasswordForm() {
       router.push("/organiser");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("CodeMismatchException")) {
-        setError("That code is incorrect. Please check and try again.");
-      } else if (msg.includes("ExpiredCodeException")) {
-        setError("That code has expired. Go back and request a new one.");
-      } else if (msg.includes("InvalidPasswordException")) {
-        setError("Password does not meet requirements (min 8 chars, upper, lower, number).");
-      } else {
-        setError("Could not reset your password. Please try again.");
-      }
+      setError(mapResetPasswordError(msg));
     } finally {
       setLoading(false);
     }
@@ -128,6 +121,9 @@ function ForgotPasswordForm() {
             </h1>
             <p className="text-muted text-[15px] leading-relaxed mb-8 text-center">
               Check <strong className="text-light">{email}</strong> for your 6-digit code, then choose a new password.
+            </p>
+            <p className="text-muted text-[13px] leading-relaxed mb-8 text-center mt-1">
+              Can&apos;t see it? Check your spam or junk folder.
             </p>
 
             {error && (

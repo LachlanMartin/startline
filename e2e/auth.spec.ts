@@ -144,4 +144,9 @@ test.describe("forgot-password route", () => {
     await page.waitForLoadState("networkidle");
     await argosScreenshot(page, "forgot-password");
   });
+
+  test("verify-email page shows a check-spam note", async ({ page }) => {
+    await page.goto("/auth/verify-email?email=user@example.com");
+    await expect(page.getByText(/check your spam or junk folder/i)).toBeVisible();
+  });
 });

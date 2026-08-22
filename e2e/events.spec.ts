@@ -108,6 +108,50 @@ test.describe("event detail page", () => {
     // Star rating chip is only rendered when the organiser has published reviews
     await expect(page.getByLabel(/Rated .+ out of 5 from \d+ reviews/i).first()).toBeVisible();
   });
+
+  test("back to events button is visible and navigates to the listing", async ({ page }) => {
+    await page.goto("/events/seed-event-001");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20000 });
+    const back = page.getByRole("link", { name: /back to events/i });
+    await expect(back).toBeVisible();
+    await back.click();
+    await expect(page).toHaveURL(/\/events$/);
+  });
+});
+
+test.describe("events price filter", () => {
+  test("clicking the track moves the nearer endpoint", async ({ page }) => {
+    await page.goto("/events?view=list");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: /^Price$/ }).click();
+    const panel = page.locator("[data-filter-panel]");
+    const track = panel.locator(".relative.h-4");
+    const box = await track.boundingBox();
+    expect(box).not.toBeNull();
+    // Click at 60% of the track — the max thumb snaps there.
+    await page.mouse.click(box!.x + box!.width * 0.6, box!.y + box!.height / 2);
+    await expect(panel.getByText(/^\$0 – \$\d+/)).toHaveText(/\$0 – \$1\d{2}/);
+  });
+
+  test("re-clicking the active Price pill clears the filter", async ({ page }) => {
+    await page.goto("/events?view=list");
+    await page.waitForLoadState("networkidle");
+    const pricePill = page.getByRole("button", { name: /^Price$/ });
+    await pricePill.click();
+    // Set a range by moving the max thumb (drag from its default position)
+    const maxThumb = page.locator('input[type="range"]').nth(1);
+    await maxThumb.focus();
+    await maxThumb.press("ArrowLeft");
+    const priceChip = page.getByRole("button", { name: /^\$\d+ – \$\d+/ });
+    await expect(priceChip).toBeVisible();
+    // Dismiss the dropdown; the filter stays active.
+    await page.keyboard.press("Escape");
+    await expect(priceChip).toBeVisible();
+    // Re-clicking the active pill removes the filter.
+    await pricePill.click();
+    await expect(priceChip).not.toBeVisible();
+    await expect(page.getByRole("button", { name: /clear all/i })).not.toBeVisible();
+  });
 });
 
 test.describe("static pages", () => {
