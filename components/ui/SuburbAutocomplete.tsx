@@ -13,6 +13,8 @@ interface Props {
   value: string;
   onChange: (city: string) => void;
   onStateChange?: (state: string) => void;
+  onSelect?: (label: string) => void;
+  onEnter?: () => void;
   placeholder?: string;
   className?: string;
 }
@@ -21,6 +23,8 @@ export default function SuburbAutocomplete({
   value,
   onChange,
   onStateChange,
+  onSelect,
+  onEnter,
   placeholder = "e.g. Melbourne",
   className = "",
 }: Props) {
@@ -68,8 +72,10 @@ export default function SuburbAutocomplete({
   };
 
   const select = (item: PlaceResult) => {
-    onChange(item.label.split(",")[0].trim());
+    const label = item.label.split(",")[0].trim();
+    onChange(label);
     setOpen(false);
+    onSelect?.(label);
     fetch(`/api/places/geocode?q=${encodeURIComponent(item.title)}`)
       .then(r => r.json())
       .then(data => {
@@ -79,6 +85,16 @@ export default function SuburbAutocomplete({
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") { setOpen(false); return; }
+    if (e.key === "Enter") {
+      if (open && activeIdx >= 0) {
+        e.preventDefault();
+        select(suggestions[activeIdx]);
+      } else {
+        onEnter?.();
+      }
+      return;
+    }
     if (!open) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -86,11 +102,6 @@ export default function SuburbAutocomplete({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIdx(i => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && activeIdx >= 0) {
-      e.preventDefault();
-      select(suggestions[activeIdx]);
-    } else if (e.key === "Escape") {
-      setOpen(false);
     }
   };
 

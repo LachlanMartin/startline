@@ -19,6 +19,7 @@ import { useAuthContext } from "@/context/AuthContext";
 import EventMap from "@/components/EventMap";
 import type { EventMapHandle } from "@/components/EventMap";
 import EventCard from "@/components/EventCard";
+import SuburbAutocomplete from "@/components/ui/SuburbAutocomplete";
 
 const DISCIPLINE_OPTIONS = EVENT_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }));
 const STATE_CHIP_OPTIONS  = STATE_OPTIONS.map((o) => ({ value: o.value, label: o.shortLabel }));
@@ -254,7 +255,11 @@ function EventsListingInner() {
   }), [typeFilters, stateFilters, formatFilters, levelFilters, priceRange, dateFilter, whatQuery, searchOrigin]);
 
   const displayEvents = useMemo(() => {
-    let results = filterEvents(allEvents, filterState);
+    // Geocoded search drops the hard radius cap — results are still sorted
+    // closest-first below, so a suburb with no nearby event surfaces the
+    // closest matches instead of an empty list.
+    const effectiveFilter = searchOrigin ? { ...filterState, maxDistance: undefined } : filterState;
+    let results = filterEvents(allEvents, effectiveFilter);
     if (searchOrigin) {
       // Geocoded search — sort closest-first and stamp distance onto each event.
       results = results
@@ -375,13 +380,17 @@ function EventsListingInner() {
             {whatQuery && <button type="button" onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
           </div>
           <div className="flex-1 px-3.5 py-2.5 min-w-0 flex items-center gap-1.5">
-            <label className="flex-1 min-w-0 cursor-text">
+            <div className="flex-1 min-w-0">
               <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Where</span>
-              <input type="text" placeholder="State, city, or suburb" value={whereQuery}
-                onChange={(e) => setWhereQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleWhereSearch()}
-                className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none" />
-            </label>
+              <SuburbAutocomplete
+                value={whereQuery}
+                onChange={setWhereQuery}
+                onSelect={(label) => handleWhereSearch(label)}
+                onEnter={() => handleWhereSearch()}
+                placeholder="State, city, or suburb"
+                className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none"
+              />
+            </div>
             {isGeocoding
               ? <Loader2 data-testid="geocoding-spinner" className="w-3.5 h-3.5 text-muted animate-spin flex-shrink-0" />
               : <button type="button" onClick={locateMe} aria-label="Use my location" title="Use my location" className="text-muted hover:text-primary flex-shrink-0"><Locate className="w-3.5 h-3.5" /></button>}
@@ -406,10 +415,16 @@ function EventsListingInner() {
           </div>
           <div className="flex items-center gap-2 bg-dark rounded-xl px-4 py-2.5">
             <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
-            <input type="text" placeholder="City or state" value={whereQuery}
-              onChange={(e) => setWhereQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleWhereSearch()}
-              className="flex-1 bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none" />
+            <div className="flex-1 min-w-0">
+              <SuburbAutocomplete
+                value={whereQuery}
+                onChange={setWhereQuery}
+                onSelect={(label) => handleWhereSearch(label)}
+                onEnter={() => handleWhereSearch()}
+                placeholder="City or state"
+                className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none"
+              />
+            </div>
             {isGeocoding
               ? <Loader2 data-testid="geocoding-spinner" className="w-4 h-4 text-muted animate-spin flex-shrink-0" />
               : <button onClick={locateMe} aria-label="Use my location" title="Use my location" className="text-muted hover:text-primary flex-shrink-0"><Locate className="w-4 h-4" /></button>}
@@ -640,7 +655,16 @@ function EventsListingInner() {
   const resultsHeader = (
     <div className="px-3 lg:px-6 pt-4 pb-1 flex items-center justify-between gap-3 flex-wrap flex-shrink-0">
       <h2 className="font-headline text-base lg:text-xl font-black italic tracking-tighter text-light">
-        <span className="text-primary">{displayEvents.length}</span> event{displayEvents.length !== 1 ? "s" : ""} found
+        {searchOrigin ? (
+          <>
+            <span className="text-primary">{displayEvents.length}</span> closest event{displayEvents.length !== 1 ? "s" : ""} to{" "}
+            <span className="text-light">{whereQuery || "your location"}</span>
+          </>
+        ) : (
+          <>
+            <span className="text-primary">{displayEvents.length}</span> event{displayEvents.length !== 1 ? "s" : ""} found
+          </>
+        )}
       </h2>
     </div>
   );
