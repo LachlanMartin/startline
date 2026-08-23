@@ -14,6 +14,9 @@ export default function OrganiserSetupPage() {
   const { status } = useAuthContext();
   const [step, setStep] = useState<"info" | "form">("info");
   const [orgName, setOrgName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -57,6 +60,14 @@ export default function OrganiserSetupPage() {
       setError("Please enter an organisation name.");
       return;
     }
+    if (!contactName.trim()) {
+      setError("Please enter a contact name.");
+      return;
+    }
+    if (!contactEmail.trim()) {
+      setError("Please enter a contact email.");
+      return;
+    }
     setLoading(true);
     setError("");
 
@@ -64,7 +75,12 @@ export default function OrganiserSetupPage() {
       const res = await fetch("/api/organiser/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orgName: orgName.trim() }),
+        body: JSON.stringify({
+          orgName: orgName.trim(),
+          contactName: contactName.trim(),
+          contactEmail: contactEmail.trim(),
+          phone: phone.trim(),
+        }),
       });
 
       if (!res.ok) {
@@ -164,7 +180,7 @@ export default function OrganiserSetupPage() {
                 <span className="text-primary">organisation.</span>
               </h2>
               <p className="text-light text-[14px] leading-relaxed">
-                This is the name athletes see on your listings. You can add your logo, bio and contact details straight after.
+                This is the name athletes see on your listings. Add your contact details so we can reach you about your events.
               </p>
             </div>
 
@@ -183,6 +199,42 @@ export default function OrganiserSetupPage() {
                   type="text" required value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
                   placeholder="e.g. Apex Endurance Events"
+                  className="w-full bg-dark border border-dark-lighter rounded-md px-4 py-3 text-[15px] text-light placeholder:text-light/70 focus:border-primary focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-light block mb-2">
+                  Contact name <span className="text-primary text-[15px] leading-none">*</span>
+                </label>
+                <input
+                  type="text" required value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Full name"
+                  className="w-full bg-dark border border-dark-lighter rounded-md px-4 py-3 text-[15px] text-light placeholder:text-light/70 focus:border-primary focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-light block mb-2">
+                  Contact email <span className="text-primary text-[15px] leading-none">*</span>
+                </label>
+                <input
+                  type="email" required value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="events@yourorg.com.au"
+                  className="w-full bg-dark border border-dark-lighter rounded-md px-4 py-3 text-[15px] text-light placeholder:text-light/70 focus:border-primary focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-light block mb-2">
+                  Phone
+                </label>
+                <input
+                  type="tel" value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+61 4xx xxx xxx"
                   className="w-full bg-dark border border-dark-lighter rounded-md px-4 py-3 text-[15px] text-light placeholder:text-light/70 focus:border-primary focus:outline-none transition-colors"
                 />
               </div>
