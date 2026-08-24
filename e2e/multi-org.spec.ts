@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { multiOrganiserLogin } from "./helpers";
 
+const futureDate = (days: number) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+
 interface Membership {
   organiserId: string;
   organiserName: string;
@@ -11,7 +13,7 @@ function eventPayload(title: string, organiserId: string) {
   return {
     title,
     discipline: "running",
-    eventDate: "2027-03-14",
+    eventDate: futureDate(120),
     startTime: "08:00",
     city: "Melbourne",
     state: "vic",

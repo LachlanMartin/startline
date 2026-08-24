@@ -1,6 +1,14 @@
 import { test, expect } from "@playwright/test";
 import { organiserLogin } from "./helpers";
 
+const futureDate = (days: number) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+const shift = (iso: string, days: number) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+};
+
 test.describe("duplicate listing", () => {
   test("API duplicates into a draft with title and date +7 days", async ({ page }) => {
     await organiserLogin(page);
@@ -20,8 +28,8 @@ test.describe("duplicate listing", () => {
     const draft = await draftRes.json();
     expect(draft.status).toBe("DRAFT");
     expect(draft.title).toBe(source.title);
-    expect(draft.eventDate).toBe("2026-08-22"); // source 2026-08-15 + 7
-    expect(draft.endDate).toBe("2026-08-23"); // source 2026-08-16 + 7
+    expect(draft.eventDate).toBe(shift(source.eventDate, 7));
+    expect(draft.endDate).toBe(shift(source.endDate, 7));
   });
 
   test("Duplicate listing from listings menu opens wizard with copied title", async ({ page }) => {
@@ -61,7 +69,7 @@ test.describe("verified organiser publish", () => {
         submit: true,
         title: `E2E Live Notify ${Date.now()}`,
         discipline: "running",
-        eventDate: "2026-09-01",
+        eventDate: futureDate(30),
         startTime: "06:30",
         endTime: "08:00",
         city: "Sydney",

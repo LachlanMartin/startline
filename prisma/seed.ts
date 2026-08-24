@@ -489,7 +489,7 @@ async function main() {
       "<h4>Athlete check-in</h4>",
       "<p>Check-in opens 6:45am at Gate 3, bag drop available. First heat briefing is 7:15am sharp — don't be late.</p>",
     ].join(""),
-    eventDate: "2026-08-15", endDate: "2026-08-16", startTime: "07:30", endTime: "17:00",
+    eventDate: isoDaysFromNow(30), endDate: isoDaysFromNow(31), startTime: "07:30", endTime: "17:00",
     venue: "Melbourne Sports & Aquatic Centre", address: "30 Aughtie Drive, Albert Park",
     city: "Melbourne", state: "vic", ...seedCoords("Melbourne", "vic", [-37.8686, 144.9686]), format: "both", level: "high",
     categories: ["Individual Scaled", "Individual RX", "Individual Elite", "Team of 2"],
