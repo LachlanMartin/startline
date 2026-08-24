@@ -96,10 +96,11 @@ describe("sortEventsByDate", () => {
 });
 
 describe("filterEvents", () => {
+  const today = new Date();
   const baseEvents: UserEvent[] = [
-    { date: "2026-08-20", type: "crossfit", state: "vic", format: "team", level: "elite", fromPrice: 150, title: "CrossFit Melbourne", city: "Melbourne", location: "Melbourne Arena" } as UserEvent,
-    { date: "2025-01-01", type: "running", state: "qld", format: "individual", level: "open", fromPrice: 40, title: "Old Event", city: "Brisbane", location: "GABBA" } as UserEvent,
-    { date: "2026-09-10", type: "running", state: "nsw", format: "individual", level: "open", fromPrice: 40, title: "Fun Run", city: "Sydney", location: "Park" } as UserEvent,
+    { date: format(addDays(today, 7), "yyyy-MM-dd"), type: "crossfit", state: "vic", format: "team", level: "elite", fromPrice: 150, title: "CrossFit Melbourne", city: "Melbourne", location: "Melbourne Arena" } as UserEvent,
+    { date: format(addDays(today, -365), "yyyy-MM-dd"), type: "running", state: "qld", format: "individual", level: "open", fromPrice: 40, title: "Old Event", city: "Brisbane", location: "GABBA" } as UserEvent,
+    { date: format(addDays(today, 30), "yyyy-MM-dd"), type: "running", state: "nsw", format: "individual", level: "open", fromPrice: 40, title: "Fun Run", city: "Sydney", location: "Park" } as UserEvent,
   ];
 
   const emptyFilters: FilterState = { types: [], states: [], formats: [], levels: [], priceRange: null, dateRange: "all", searchQuery: "" };
@@ -107,7 +108,7 @@ describe("filterEvents", () => {
   it("excludes past events", () => {
     const result = filterEvents(baseEvents, emptyFilters);
     const dates = result.map((e) => e.date);
-    expect(dates).not.toContain("2025-01-01");
+    expect(dates).not.toContain(baseEvents[1].date);
   });
 
   it("filters by type", () => {
@@ -226,9 +227,10 @@ describe("getPastEvents", () => {
 
 describe("getTotalUpcomingEvents", () => {
   it("counts only future events", () => {
+    const today = new Date();
     const events: UserEvent[] = [
-      { date: "2026-10-10" } as UserEvent,
-      { date: "2020-01-01" } as UserEvent,
+      { date: format(addDays(today, 30), "yyyy-MM-dd") } as UserEvent,
+      { date: format(addDays(today, -365), "yyyy-MM-dd") } as UserEvent,
     ];
     expect(getTotalUpcomingEvents(events)).toBe(1);
   });

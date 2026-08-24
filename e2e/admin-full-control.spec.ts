@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { adminLogin } from "./helpers";
 
 const ts = () => Date.now().toString().slice(-6);
+const futureDate = (days: number) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 
 async function getApexOrganiserId(page: import("@playwright/test").Page): Promise<string> {
   const res = await page.request.get("/api/admin/organisers");
@@ -24,7 +25,7 @@ async function createEventViaApi(
     data: {
       title,
       discipline: "running",
-      eventDate: "2027-01-15",
+      eventDate: futureDate(120),
       startTime: "08:00",
       endTime: "10:00",
       venue: "Test Venue",
