@@ -68,6 +68,38 @@ test.describe("distance-based search", () => {
     await expect(page.getByText("No events found.").first()).toBeVisible({ timeout: 10000 });
   });
 
+  test("a suburb far from all events still shows the closest events", async ({ page }) => {
+    const PERTH = { latitude: -31.9522, longitude: 115.8589 };
+    await stubGeocode(page, PERTH);
+    await page.goto("/events?view=list");
+    await page.waitForLoadState("networkidle");
+
+    await searchWhere(page, "Perth");
+
+    // The radius cap is dropped for geocoded search — events still appear,
+    // sorted closest-first, with a "closest events" heading.
+    await expect(page.locator('[data-testid="event-distance"]').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/closest event/i).first()).toBeVisible();
+  });
+
+  test("typing in the where field shows place suggestions", async ({ page }) => {
+    await page.route("**/api/places/autocomplete**", (route) =>
+      route.fulfill({
+        json: {
+          results: [
+            { placeId: "p1", label: "Perth WA, Australia", title: "Perth", placeType: "Locality" },
+          ],
+        },
+      }),
+    );
+    await page.goto("/events?view=list");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByPlaceholder("State, city, or suburb").fill("Per");
+
+    await expect(page.getByRole("button", { name: /Perth WA/ })).toBeVisible({ timeout: 10000 });
+  });
+
   test("clearing the where input resets to normal listing", async ({ page }) => {
     await stubGeocode(page, SYDNEY);
     await page.goto("/events?view=list");
