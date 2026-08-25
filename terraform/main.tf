@@ -146,7 +146,7 @@ locals {
       cognito_deletion_protection      = false
       bucket_cors_allowed_origins      = ["*"]
       site_url                         = "https://staging.startlineau.com"
-      enable_daily_stop                = true
+      enable_daily_stop                = false
     }
   }
 
