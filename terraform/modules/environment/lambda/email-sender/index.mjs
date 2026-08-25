@@ -132,6 +132,9 @@ function footer() {
           <a href="https://www.strava.com/clubs/startlineau" style="color:#6E737B;text-decoration:none;">Strava</a>
         </p>
         <p style="margin:0 0 6px;font-family:'Inter',Arial,sans-serif;font-size:12px;color:#8A8F98;">
+          Didn't get this email? Check your spam or junk folder.
+        </p>
+        <p style="margin:0 0 6px;font-family:'Inter',Arial,sans-serif;font-size:12px;color:#8A8F98;">
           Need help? <a href="mailto:support@startline.com.au" style="color:#8A8F98;">support@startline.com.au</a>
         </p>
         <p style="margin:0 0 16px;font-family:'Inter',Arial,sans-serif;font-size:11px;color:#6E737B;">

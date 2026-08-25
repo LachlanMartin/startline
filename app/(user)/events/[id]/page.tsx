@@ -2,7 +2,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { MapPin, Calendar, ExternalLink, Trophy, Clock, Ticket, FileText } from "lucide-react";
+import { MapPin, Calendar, ExternalLink, Trophy, Clock, Ticket, FileText, ArrowLeft } from "lucide-react";
 import { getAllEvents, getPublicEventById } from "@/lib/events";
 import { todayIso } from "@/lib/event-types";
 import { parsePrizePool } from "@/lib/prize-pool";
@@ -133,9 +133,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       <section className="max-w-[1440px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <Link
           href="/events"
-          className="inline-flex items-center gap-2 font-headline text-xs font-medium uppercase tracking-widest text-muted hover:text-primary transition-colors mb-6"
+          className="inline-flex items-center gap-2 font-headline text-xs font-bold uppercase tracking-widest border border-dark-lighter text-light hover:border-primary hover:text-primary px-4 py-2 rounded-full transition-colors mb-6"
         >
-          &larr; Back to Events
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to Events
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
