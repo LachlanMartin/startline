@@ -1,9 +1,17 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Building2, ArrowRight } from "lucide-react";
+import { getOrganiserSession } from "@/lib/amplify-server";
 
-const CUSTOMER_URL = process.env.NODE_ENV === "development" ? "/" : "https://startlineau.com";
+const CUSTOMER_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.NODE_ENV === "development" ? "" : "https://startlineau.com")
+).replace(/\/$/, "");
 
-export default function OrganiserLandingPage() {
+export default async function OrganiserLandingPage() {
+  const session = await getOrganiserSession();
+  if (session) redirect("/organiser/dashboard");
+
   return (
     <main className="min-h-screen bg-dark-darker flex items-center justify-center px-6">
       <div className="text-center max-w-md">
@@ -17,7 +25,7 @@ export default function OrganiserLandingPage() {
           Sign up for a free user account, then set up your organiser profile to start publishing events on Australia&apos;s fitness calendar.
         </p>
         <Link
-          href={`${CUSTOMER_URL}organiser-setup`}
+          href={`${CUSTOMER_URL}/organiser-setup`}
           className="bg-machined shadow-machined inline-flex items-center gap-2 text-dark font-headline text-sm font-bold uppercase tracking-widest py-4 px-8 rounded-md hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-transform"
         >
           Get started <ArrowRight className="w-4 h-4" />

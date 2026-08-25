@@ -5,7 +5,7 @@ resource "cloudflare_turnstile_widget" "spam_bot_protection" {
   account_id = var.cloudflare_account_id
   name       = "startline-web-app"
 
-  domains = ["startlineau.com", "staging.startlineau.com", "localhost"]
+  domains = ["startlineau.com", "www.startlineau.com", "staging.startlineau.com", "localhost"]
 
   mode = "invisible"
 }

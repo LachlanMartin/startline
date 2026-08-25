@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, startTransition } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Plus, Minus, LogIn, Check, ChevronDown } from "lucide-react";
@@ -16,6 +16,7 @@ import { useAuthContext } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+const BOT_CHECK_HOSTS = ["startlineau.com", "www.startlineau.com", "staging.startlineau.com"];
 import {
   Skeleton, PageHeaderSkeleton, PageShellSkeleton,
 } from "@/components/ui/skeleton";
@@ -162,6 +163,16 @@ function RegisterContent() {
   const [error, setError] = useState("");
   const [isSignInOpen, setIsSignInOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  // Turnstile only works on hostnames whitelisted on the widget; Amplify
+  // preview URLs are dynamic and can't be enumerated, so hide it there (the
+  // server fails open for those hosts). Start hidden to keep SSR/hydration in
+  // sync, then reveal once we know the real hostname.
+  const [showTurnstile, setShowTurnstile] = useState(false);
+  useEffect(() => {
+    startTransition(() => {
+      setShowTurnstile(Boolean(TURNSTILE_SITE_KEY) && BOT_CHECK_HOSTS.includes(window.location.hostname));
+    });
+  }, []);
 
   // Tickets chosen on step 1: wave label → quantity. Locked once the buyer
   // moves on; changing it means going Back to this step.
@@ -631,7 +642,7 @@ function RegisterContent() {
 
             <StepRail current={step} />
 
-            {TURNSTILE_SITE_KEY && (
+            {showTurnstile && (
               <div className="mb-4">
                 <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onTokenChange={setTurnstileToken} />
               </div>

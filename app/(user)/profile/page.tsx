@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/amplify-server";
 import prisma from "@/lib/prisma";
+import ProfileServerView, {
+  PROFILE_USER_SELECT,
+  type ProfileUser,
+} from "@/components/profile/ProfileServerView";
 
 export default async function ProfilePage() {
   const session = await getServerSession();
@@ -22,7 +26,7 @@ export default async function ProfilePage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.sub },
-    select: { username: true },
+    select: PROFILE_USER_SELECT,
   });
 
   // Fallback: resolve by email (covers dev bypass + accounts without a
@@ -30,10 +34,18 @@ export default async function ProfilePage() {
   const userByEmail = !user && session.email
     ? await prisma.user.findUnique({
         where: { email: session.email },
-        select: { username: true },
+        select: PROFILE_USER_SELECT,
       })
     : null;
 
-  const handle = user?.username ?? userByEmail?.username ?? session.email?.split("@")[0] ?? "athlete";
-  redirect(`/profile/${handle}`);
+  const resolved = (user ?? userByEmail) as ProfileUser | null;
+  if (!resolved) return null;
+
+  // Users without a handle can't reach /profile/{username}, so render their
+  // own profile directly by id.
+  if (!resolved.username) {
+    return <ProfileServerView user={resolved} isOwner />;
+  }
+
+  redirect(`/profile/${resolved.username}`);
 }

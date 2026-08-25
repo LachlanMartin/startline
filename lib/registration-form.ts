@@ -177,6 +177,14 @@ export function getRegistrationFormErrors(
     if (!data.emergencyContactPhone.trim()) {
       errors.emergencyContactPhone = "Emergency contact number is required.";
     }
+    // Emergency contact must be someone other than the participant themselves
+    // (mirrors the group/shared-contact check in getEmergencyContactErrors).
+    const selfErrors = getEmergencyContactErrors(
+      { name: data.emergencyContactName, phone: data.emergencyContactPhone },
+      [data]
+    );
+    if (selfErrors.emergencyContactName) errors.emergencyContactName = selfErrors.emergencyContactName;
+    if (selfErrors.emergencyContactPhone) errors.emergencyContactPhone = selfErrors.emergencyContactPhone;
   }
 
   if (includeWaiver && !data.waiverAccepted) {
