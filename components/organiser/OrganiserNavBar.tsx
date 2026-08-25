@@ -171,7 +171,7 @@ export default function OrganiserNavBar() {
 
           {/* ── Logo ── */}
           <div className="shrink-0 flex items-center gap-3 min-w-0">
-            <Link href="/" className="py-1 flex items-center gap-2">
+            <Link href="/organiser/dashboard" className="py-1 flex items-center gap-2">
               <Image src="/images/logo-title.svg" alt="Startline" width={110} height={28} className="h-6 w-auto" />
             </Link>
           </div>

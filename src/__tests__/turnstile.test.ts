@@ -13,9 +13,9 @@ import { recordSecurityEvent } from "@/lib/security-event";
 
 const recordMock = recordSecurityEvent as ReturnType<typeof vi.fn>;
 
-function makeRequest() {
-  return new NextRequest("http://localhost:3000/api/contact", {
-    headers: { "x-forwarded-for": "203.0.113.9" },
+function makeRequest(host = "startlineau.com") {
+  return new NextRequest(`http://${host}/api/contact`, {
+    headers: { "x-forwarded-for": "203.0.113.9", host },
   });
 }
 
@@ -107,6 +107,17 @@ describe("assertTurnstile", () => {
   it("passes through when Turnstile is unconfigured", async () => {
     delete process.env.TURNSTILE_SECRET_KEY;
     const res = await assertTurnstile(makeRequest(), { turnstileToken: undefined }, "contact");
+    expect(res).toBeNull();
+    expect(recordMock).not.toHaveBeenCalled();
+  });
+
+  it("fails open on non-production hostnames (Amplify preview URLs)", async () => {
+    process.env.TURNSTILE_SECRET_KEY = "secret";
+    const res = await assertTurnstile(
+      makeRequest("main.d1xamplifyapp.com.amplifyapp.com"),
+      { turnstileToken: undefined },
+      "contact",
+    );
     expect(res).toBeNull();
     expect(recordMock).not.toHaveBeenCalled();
   });

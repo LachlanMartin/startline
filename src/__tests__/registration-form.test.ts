@@ -37,6 +37,16 @@ describe("registration form validation", () => {
     expect(validateRegistrationForm({ ...valid, emergencyContactPhone: "" })).toMatch(/emergency/i);
   });
 
+  it("rejects an emergency contact matching the single registrant", () => {
+    const errors = getRegistrationFormErrors({
+      ...valid,
+      emergencyContactName: "Alex Rossi",
+      emergencyContactPhone: "0400000000",
+    });
+    expect(errors.emergencyContactName).toMatch(/other than a participant/i);
+    expect(errors.emergencyContactPhone).toMatch(/differ from participant/i);
+  });
+
   it("requires participants to be at least 18", () => {
     const latestAllowed = maxDateOfBirthForMinAge();
     const d = new Date(latestAllowed + "T00:00:00");
