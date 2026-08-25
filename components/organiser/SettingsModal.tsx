@@ -278,7 +278,9 @@ function PersonalInfoForm() {
     try {
       const url = await uploadImage(file, "logo");
       const updated = { ...form, logoUrl: url };
-      await fetch("/api/organiser/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+      const res = await fetch("/api/organiser/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error ?? "Logo upload failed."); return; }
       patch({ logoUrl: url });
       router.refresh();
     } catch { setError("Logo upload failed."); }
@@ -290,7 +292,9 @@ function PersonalInfoForm() {
     try {
       const url = await uploadImage(file, "cover");
       const updated = { ...form, coverImageUrl: url };
-      await fetch("/api/organiser/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+      const res = await fetch("/api/organiser/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error ?? "Cover upload failed."); return; }
       patch({ coverImageUrl: url });
       router.refresh();
     } catch { setError("Cover upload failed."); }

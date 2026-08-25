@@ -2,6 +2,41 @@ import { test, expect } from "@playwright/test";
 import { argosScreenshot } from "@argos-ci/playwright";
 import { organiserLogin } from "./helpers";
 
+test.describe("organiser setup", () => {
+  test("requires contact details when creating a profile", async ({ page }) => {
+    // 'user' bypass maps to a seeded authenticated account.
+    await page.context().addCookies([
+      { name: "__e2e_bypass", value: "user", domain: "localhost", path: "/", sameSite: "Lax" },
+    ]);
+    await page.goto("/organiser-setup");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByRole("button", { name: /continue/i }).click();
+
+    // Org name alone is no longer enough — contact details are required.
+    await page.getByPlaceholder(/Apex Endurance/i).fill("E2E Setup Org");
+    await page.getByRole("button", { name: /create organiser profile/i }).click();
+    await expect(page.getByText(/please enter a contact name/i)).toBeVisible();
+
+    // Filling the contact fields lets the form submit.
+    await page.getByPlaceholder(/full name/i).fill("E2E Contact");
+    await page.getByPlaceholder(/events@yourorg/i).fill("e2e@example.com");
+    await page.getByPlaceholder(/\+61/i).fill("0412000000");
+    await page.getByRole("button", { name: /create organiser profile/i }).click();
+    await expect(page).toHaveURL(/\/organiser\/dashboard/, { timeout: 15000 });
+  });
+
+  test("setup API rejects missing contact details", async ({ request }) => {
+    const res = await request.post("/api/organiser/setup", {
+      headers: { Cookie: "__e2e_bypass=user" },
+      data: { orgName: "X" },
+    });
+    expect(res.status()).toBe(400);
+    const data = await res.json();
+    expect(data.error).toMatch(/contact details are required/i);
+  });
+});
+
 
 
 test.describe("organiser login", () => {
