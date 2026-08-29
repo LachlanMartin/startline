@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Clock, Users } from "lucide-react";
+import { MapPin, Clock, Users, ArrowRight } from "lucide-react";
 import type { UserEvent } from "@/types";
 import { EVENT_TYPE_LABELS, STATE_LABELS } from "@/types";
 import { cn, formatShortDate, formatTime, formatCompetitionFormat, stripHtml } from "@/lib/utils";
@@ -107,6 +107,21 @@ export default function EventCard({ event, className, cardClassName, onSelect, s
             <span className="text-light">From </span>
             <span className="text-primary">${event.fromPrice}</span>
           </span>
+        )}
+
+        {/* In map mode the card selects rather than navigates, so a selected
+            card needs its own way through to the event. stopPropagation keeps
+            the click off the card's select handler, which would otherwise
+            toggle the selection off on the way out. */}
+        {onSelect && selected && (
+          <Link
+            href={`/events/${event.id}`}
+            onClick={(e) => e.stopPropagation()}
+            data-testid="event-more-info"
+            className="mt-3 flex items-center justify-center gap-2 bg-primary hover:bg-primary-light active:bg-primary-dark text-dark font-headline text-[11px] font-black uppercase tracking-widest rounded-full py-2.5 transition-colors"
+          >
+            More info <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         )}
       </div>
     </div>

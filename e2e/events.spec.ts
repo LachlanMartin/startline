@@ -35,6 +35,23 @@ test.describe("events page", () => {
   const viewToggle = (page: Page, mode: "map" | "list") =>
     page.getByTestId(`view-mode-${mode}`).filter({ visible: true });
 
+  test("selected map card offers a More info link through to the event", async ({ page }) => {
+    await page.goto("/events?view=map");
+    await page.waitForLoadState("networkidle");
+
+    const moreInfo = page.getByTestId("event-more-info").filter({ visible: true });
+    // In map mode a card selects rather than navigates, so the link only
+    // appears once a card is chosen.
+    await expect(moreInfo).toHaveCount(0);
+
+    const card = page.locator("div.cursor-pointer").filter({ visible: true }).first();
+    await card.click();
+    await expect(moreInfo).toHaveCount(1);
+
+    await moreInfo.first().click();
+    await expect(page).toHaveURL(/\/events\/[^?]+$/);
+  });
+
   test("offers other events beneath a set of results", async ({ page }) => {
     await page.goto("/events?view=list&type=running");
     await page.waitForLoadState("networkidle");
