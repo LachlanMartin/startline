@@ -16,6 +16,7 @@ import SuburbAutocomplete   from "@/components/ui/SuburbAutocomplete";
 import LocationPreviewMap   from "@/components/organiser/LocationPreviewMap";
 import DatePicker           from "@/components/ui/DatePicker";
 import SelectMenu           from "@/components/ui/SelectMenu";
+import TimePicker           from "@/components/ui/TimePicker";
 
 /* ── Step definitions ───────────────────────────────────────── */
 const STEPS = [
@@ -102,10 +103,10 @@ function Field({ label, hint, required, children }: {
   return (
     <div className="mb-6">
       <div className="flex items-baseline justify-between mb-2">
-        <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-light/70">
+        <label className="font-headline text-[11px] font-bold uppercase tracking-widest text-light">
           {label}{required && <span className="text-primary font-black text-[15px] leading-none ml-1">*</span>}
         </label>
-        {hint && <span className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">{hint}</span>}
+        {hint && <span className="font-headline text-[10px] uppercase tracking-widest text-light">{hint}</span>}
       </div>
       {children}
     </div>
@@ -124,21 +125,6 @@ function fmt24to12(t: string): string {
   const period = h >= 12 ? "PM" : "AM";
   const h12    = h === 0 ? 12 : h > 12 ? h - 12 : h;
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
-}
-
-function TimePicker({ value, onChange }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return (
-    <div className="relative flex items-center">
-      <input type="time" value={value} onChange={e => onChange(e.target.value)}
-        className={`w-full bg-dark-light border border-dark-lighter rounded-md px-4 py-3 font-headline text-[15px] text-light placeholder:text-muted focus:border-primary focus:outline-none transition-colors ${value ? "text-light" : "text-muted-dark"}`} />
-      {value && (
-        <button type="button" onClick={() => onChange("")}
-          className="absolute right-3 p-1.5 text-muted-dark hover:text-light transition-colors" title="Clear time">
-          <X className="w-3.5 h-3.5" />
-        </button>
-      )}
-    </div>
-  );
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -164,7 +150,7 @@ function RichTextEditor({ value, onChange }: { value: string; onChange: (html: s
     editorRef.current?.focus();
   };
 
-  const toolbarBtn = "w-8 h-8 rounded flex items-center justify-center text-muted hover:bg-white/5 hover:text-light transition-colors font-headline font-bold text-[13px]";
+  const toolbarBtn = "w-8 h-8 rounded flex items-center justify-center text-light hover:bg-white/5 hover:text-light transition-colors font-headline font-bold text-[13px]";
 
   return (
     <div className="border border-dark-lighter rounded-md overflow-hidden focus-within:border-primary transition-colors">
@@ -196,7 +182,7 @@ function RichTextEditor({ value, onChange }: { value: string; onChange: (html: s
             if (e.key === "u") { e.preventDefault(); exec("underline"); }
           }
         }}
-        data-placeholder="Tell athletes what makes this event unmissable — course details, atmosphere, divisions, what to bring…"
+        data-placeholder="Tell athletes what makes this event unmissable: course details, atmosphere, divisions, what to bring…"
         className="min-h-[220px] px-4 py-3 font-headline text-[14px] text-light focus:outline-none prose prose-sm max-w-none
           [&_h3]:font-headline [&_h3]:font-black [&_h3]:text-[16px] [&_h3]:text-light [&_h3]:mt-3 [&_h3]:mb-1
           [&_h4]:font-headline [&_h4]:font-bold [&_h4]:text-[14px] [&_h4]:text-light [&_h4]:mt-2 [&_h4]:mb-1
@@ -279,7 +265,7 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
                 className={`flex sm:flex-col items-center sm:items-start gap-3 sm:gap-1 text-left p-3 sm:p-4 rounded-md border transition-all
                   ${on ? "border-primary bg-primary/10" : "border-dark-lighter hover:border-primary/40"}`}>
                 <div className={`font-headline text-[14px] font-black italic tracking-tighter ${on ? "text-primary" : "text-light"}`}>{f.l}</div>
-                <div className="font-headline text-[10px] uppercase tracking-widest text-muted">{f.d}</div>
+                <div className="font-headline text-[10px] uppercase tracking-widest text-light">{f.d}</div>
               </button>
             );
           })}
@@ -294,7 +280,7 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
               <button key={d.v} type="button" onClick={() => update({ discipline: d.v, categories: [] })}
                 className={`text-left p-4 rounded-md border transition-all ${on ? "border-primary bg-primary/10" : "border-dark-lighter hover:border-primary/40"}`}>
                 <div className={`font-headline text-[15px] font-black italic tracking-tighter ${on ? "text-primary" : "text-light"}`}>{d.l}</div>
-                <div className="font-headline text-[10px] uppercase tracking-widest text-muted mt-1">{d.d}</div>
+                <div className="font-headline text-[10px] uppercase tracking-widest text-light mt-1">{d.d}</div>
               </button>
             );
           })}
@@ -307,7 +293,7 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
             {(DISCIPLINE_CATS[form.discipline as Discipline] ?? []).map(c => (
               <button key={c} type="button" onClick={() => toggle(c)}
                 className={`font-headline text-[11px] font-bold uppercase tracking-widest px-3 py-2 rounded-md border transition-colors
-                  ${form.categories.includes(c) ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-muted hover:border-primary/40 hover:text-light"}`}>
+                  ${form.categories.includes(c) ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-light hover:border-primary/40 hover:text-light"}`}>
                 {form.categories.includes(c) && <Check className="w-3 h-3 inline mr-1" />}{c}
               </button>
             ))}
@@ -325,11 +311,11 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
                   placeholder="e.g. Masters 45+" className={`${inputCls} !py-2 w-36 text-[12px]`} />
                 <button type="button" onClick={commitCustomCat}
                   className="font-headline text-[11px] font-bold uppercase tracking-widest px-3 py-2 rounded-md bg-primary/10 hover:bg-primary/20 text-primary transition-colors">Add</button>
-                <button type="button" onClick={() => { setShowCustomCat(false); setCustomCatInput(""); }} className="text-muted-dark hover:text-light transition-colors"><X className="w-4 h-4" /></button>
+                <button type="button" onClick={() => { setShowCustomCat(false); setCustomCatInput(""); }} className="text-light hover:text-light transition-colors"><X className="w-4 h-4" /></button>
               </div>
             ) : (
               <button type="button" onClick={() => setShowCustomCat(true)}
-                className="font-headline text-[11px] font-bold uppercase tracking-widest px-3 py-2 rounded-md border border-dark-lighter text-muted hover:border-primary hover:bg-primary/10 hover:text-primary transition-colors">
+                className="font-headline text-[11px] font-bold uppercase tracking-widest px-3 py-2 rounded-md border border-dark-lighter text-light hover:border-primary hover:bg-primary/10 hover:text-primary transition-colors">
                 <Plus className="w-3 h-3 inline mr-1" /> Custom…
               </button>
             )}
@@ -346,7 +332,7 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
                 className={`flex flex-col items-start text-left p-3 sm:p-4 rounded-md border transition-all
                   ${on ? "border-primary bg-primary/10" : "border-dark-lighter hover:border-primary/40"}`}>
                 <div className={`font-headline text-[14px] font-black italic tracking-tighter ${on ? "text-primary" : "text-light"}`}>{l.l}</div>
-                <div className="font-headline text-[10px] uppercase tracking-widest text-muted mt-0.5">{l.d}</div>
+                <div className="font-headline text-[10px] uppercase tracking-widest text-light mt-0.5">{l.d}</div>
               </button>
             );
           })}
@@ -360,14 +346,14 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
             return (
               <button key={c} type="button" onClick={() => { update({ cap: c }); setCapMode("preset"); }}
                 className={`font-headline text-[12px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-md border transition-colors
-                  ${active ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-muted hover:border-primary/40 hover:text-light"}`}>
+                  ${active ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-light hover:border-primary/40 hover:text-light"}`}>
                 {parseInt(c).toLocaleString()}
               </button>
             );
           })}
           <button type="button" onClick={() => setCapMode("custom")}
             className={`font-headline text-[12px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-md border transition-colors
-              ${capMode === "custom" ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-muted hover:border-primary/40 hover:text-light"}`}>
+              ${capMode === "custom" ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-light hover:border-primary/40 hover:text-light"}`}>
             Custom
           </button>
         </div>
@@ -381,19 +367,19 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
         <div className="flex flex-wrap gap-2 mb-3">
           <button type="button" onClick={() => { update({ minAge: "0" }); setAgeMode("open"); }}
             className={`font-headline text-[12px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-md border transition-colors
-              ${ageMode === "open" ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-muted hover:border-primary/40 hover:text-light"}`}>
+              ${ageMode === "open" ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-light hover:border-primary/40 hover:text-light"}`}>
             Open to all
           </button>
           {AGE_PRESETS.map(a => (
             <button key={a} type="button" onClick={() => { update({ minAge: a }); setAgeMode("preset"); }}
               className={`font-headline text-[13px] font-bold uppercase tracking-widest px-5 py-2.5 rounded-md border transition-colors
-                ${ageMode === "preset" && form.minAge === a ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-muted hover:border-primary/40 hover:text-light"}`}>
+                ${ageMode === "preset" && form.minAge === a ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-light hover:border-primary/40 hover:text-light"}`}>
               {a}+
             </button>
           ))}
           <button type="button" onClick={() => { update({ minAge: "" }); setAgeMode("custom"); }}
             className={`font-headline text-[12px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-md border transition-colors
-              ${ageMode === "custom" ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-muted hover:border-primary/40 hover:text-light"}`}>
+              ${ageMode === "custom" ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-light hover:border-primary/40 hover:text-light"}`}>
             Custom
           </button>
         </div>
@@ -401,17 +387,17 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
           <div className="flex items-center gap-3">
             <div className="flex items-center border border-dark-lighter rounded-md overflow-hidden">
               <button type="button" onClick={() => update({ minAge: String(Math.max(0, (parseInt(form.minAge) || 0) - 1)) })}
-                className="w-9 h-11 flex items-center justify-center text-muted-dark hover:text-light hover:bg-white/5 transition-colors font-headline text-lg select-none">−</button>
+                className="w-9 h-11 flex items-center justify-center text-light hover:text-light hover:bg-white/5 transition-colors font-headline text-lg select-none">−</button>
               <input type="number" value={form.minAge} onChange={e => update({ minAge: e.target.value })} placeholder="0"
                 className="w-16 bg-dark-light px-2 py-3 font-headline text-[15px] text-light text-center placeholder:text-muted focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
               <button type="button" onClick={() => update({ minAge: String((parseInt(form.minAge) || 0) + 1) })}
-                className="w-9 h-11 flex items-center justify-center text-muted-dark hover:text-light hover:bg-white/5 transition-colors font-headline text-lg select-none">+</button>
+                className="w-9 h-11 flex items-center justify-center text-light hover:text-light hover:bg-white/5 transition-colors font-headline text-lg select-none">+</button>
             </div>
-            <span className="font-headline text-[13px] text-muted">years old minimum</span>
+            <span className="font-headline text-[13px] text-light">years old minimum</span>
           </div>
         )}
         {ageMode === "open" && (
-          <p className="font-headline text-[11px] uppercase tracking-widest text-muted-dark">No age restriction — open to all ages.</p>
+          <p className="font-headline text-[11px] uppercase tracking-widest text-light">No age restriction. Open to all ages.</p>
         )}
       </Field>
     </div>
@@ -457,7 +443,7 @@ function WhenStep({ form, update }: { form: FormState; update: (p: Partial<FormS
         />
         {form.endDate && form.endDate !== form.date && (
           <button type="button" onClick={() => update({ endDate: "" })}
-            className="mt-1.5 font-headline text-[10px] uppercase tracking-widest text-muted-dark hover:text-primary transition-colors flex items-center gap-1">
+            className="mt-1.5 font-headline text-[10px] uppercase tracking-widest text-light hover:text-primary transition-colors flex items-center gap-1">
             <X className="w-3 h-3" /> Make single-day event
           </button>
         )}
@@ -466,7 +452,7 @@ function WhenStep({ form, update }: { form: FormState; update: (p: Partial<FormS
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
         <Field label="Start time" required>
           <TimePicker value={form.startTime} onChange={v => update({ startTime: v })} />
-          <p className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-1.5">
+          <p className="font-headline text-[10px] uppercase tracking-widest text-light mt-1.5">
             Overall start. Per-wave start times can be set in Tickets & Pricing.
           </p>
         </Field>
@@ -594,7 +580,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
                   ${active ? "border-primary bg-primary/10" : "border-dark-lighter bg-dark-light hover:border-primary/40"}`}
               >
                 <div className={`font-headline text-[13px] font-bold uppercase tracking-widest ${active ? "text-primary" : "text-light"}`}>{title}</div>
-                <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">{sub}</div>
+                <div className="font-headline text-[10px] uppercase tracking-widest text-light">{sub}</div>
               </button>
             );
           })}
@@ -603,8 +589,8 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
         {form.registrationType === "startline" && (
           <div className="mt-3 space-y-2">
             <div className="flex items-center justify-between mt-1">
-              <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">Fee structure</div>
-              <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">Startline fee: 3.95% + A$1.45 per ticket</div>
+              <div className="font-headline text-[10px] uppercase tracking-widest text-light">Fee structure</div>
+              <div className="font-headline text-[10px] uppercase tracking-widest text-light">Startline fee: 3.95% + A$1.45 per ticket</div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {([
@@ -617,7 +603,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
                     className={`flex flex-col items-start gap-1 rounded-xl border-2 px-5 py-4 text-left transition-colors
                       ${active ? "border-primary bg-primary/10" : "border-dark-lighter bg-dark-light hover:border-primary/40"}`}>
                     <div className={`font-headline text-[13px] font-bold uppercase tracking-widest ${active ? "text-primary" : "text-light"}`}>{title}</div>
-                    <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">{sub}</div>
+                    <div className="font-headline text-[10px] uppercase tracking-widest text-light">{sub}</div>
                   </button>
                 );
               })}
@@ -647,7 +633,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
                 <input value={w.label} onChange={e => updateWave(i, { label: e.target.value })}
                   placeholder="General admission" className={`${inputCls} flex-1`} />
                 <button onClick={() => removeWave(i)}
-                  className="w-9 h-9 rounded text-muted-dark hover:text-primary hover:bg-white/5 flex items-center justify-center transition-colors shrink-0">
+                  className="w-9 h-9 rounded text-light hover:text-primary hover:bg-white/5 flex items-center justify-center transition-colors shrink-0">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -656,9 +642,9 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">Price (A$)</div>
+                    <div className="font-headline text-[10px] uppercase tracking-widest text-light">Price (A$)</div>
                     <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                      <span className="font-headline text-[10px] uppercase tracking-widest text-muted-dark">Free</span>
+                      <span className="font-headline text-[10px] uppercase tracking-widest text-light">Free</span>
                       <div onClick={() => updateWave(i, { price: w.price === "0" ? "" : "0" })}
                         className={`relative w-8 h-4 rounded-full transition-colors duration-200 cursor-pointer ${w.price === "0" ? "bg-primary/100" : "bg-dark-lighter"}`}>
                         <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform duration-200 ${w.price === "0" ? "translate-x-4" : "translate-x-0.5"}`} />
@@ -669,7 +655,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
                     <div className="w-full bg-primary/10 border border-primary/30 rounded-md px-4 py-3 font-headline text-[13px] font-bold uppercase tracking-widest text-primary">Free</div>
                   ) : (
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-headline text-[13px] text-muted">A$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-headline text-[13px] text-light">A$</span>
                       <input value={w.price} inputMode="decimal"
                         onChange={e => updateWave(i, { price: e.target.value.replace(/[^\d.]/g, "") })}
                         placeholder="129" className={`${inputCls} pl-9`} />
@@ -692,9 +678,9 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
                         ] as const).map(r => (
                           <div key={r.label} className="flex items-baseline justify-between">
                             <span className="font-headline text-[13px] uppercase tracking-widest text-light">
-                              {r.label}{r.sub && <span className="ml-1.5 normal-case text-[11px] text-muted">({r.sub})</span>}
+                              {r.label}{r.sub && <span className="ml-1.5 normal-case text-[11px] text-light">({r.sub})</span>}
                             </span>
-                            <span className={`font-headline text-[14px] font-bold ${r.muted ? "text-muted" : "text-light"}`}>{r.value}</span>
+                            <span className={`font-headline text-[14px] font-bold ${r.muted ? "text-light" : "text-light"}`}>{r.value}</span>
                           </div>
                         ))}
                       </div>
@@ -702,22 +688,22 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
                   })()}
                 </div>
                 <div>
-                  <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mb-1.5">Category closes</div>
+                  <div className="font-headline text-[10px] uppercase tracking-widest text-light mb-1.5">Category closes</div>
                   <DatePicker value={w.closes} onChange={v => updateWave(i, { closes: v })} placeholder="Optional close date" disablePast={false} maxDate={form.endDate || form.date} />
                 </div>
               </div>
 
               {/* Per-wave start time */}
               <div>
-                <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mb-1.5 flex items-center gap-1.5">
-                  <Clock className="w-3 h-3" /> Wave start time <span className="text-muted-dark">— optional</span>
+                <div className="font-headline text-[10px] uppercase tracking-widest text-light mb-1.5 flex items-center gap-1.5">
+                  <Clock className="w-3 h-3" /> Wave start time <span className="text-light">(optional)</span>
                 </div>
                 <TimePicker value={w.startTime} onChange={v => updateWave(i, { startTime: v })} placeholder="Same as event start" />
               </div>
             </div>
           ))}
           <button onClick={addWave}
-            className="w-full border border-dashed border-dark-lighter rounded-md py-3 font-headline text-[12px] uppercase tracking-widest text-muted hover:text-primary hover:border-primary/40 flex items-center justify-center gap-2 transition-colors">
+            className="w-full border border-dashed border-dark-lighter rounded-md py-3 font-headline text-[12px] uppercase tracking-widest text-light hover:text-primary hover:border-primary/40 flex items-center justify-center gap-2 transition-colors">
             <Plus className="w-4 h-4" /> Add ticket category
           </button>
         </div>
@@ -731,7 +717,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
             <div className="font-headline text-[13px] font-bold uppercase tracking-widest text-light text-left flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-primary" /> Prize money
             </div>
-            <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-0.5 text-left">This event offers a cash prize pool</div>
+            <div className="font-headline text-[10px] uppercase tracking-widest text-light mt-0.5 text-left">This event offers a cash prize pool</div>
           </div>
           <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${form.prizeMoney ? "bg-primary/100" : "bg-dark-lighter"}`}>
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.prizeMoney ? "translate-x-5" : "translate-x-0"}`} />
@@ -740,16 +726,16 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
         {form.prizeMoney && (
           <div className="px-5 pb-5 pt-3 bg-white/[0.02] border-t border-dark-lighter space-y-3">
             <div>
-              <div className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted mb-1.5">Total prize pool</div>
+              <div className="font-headline text-[10px] font-bold uppercase tracking-widest text-light mb-1.5">Total prize pool</div>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-headline text-[13px] text-muted">A$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-headline text-[13px] text-light">A$</span>
                 <input value={form.prizeMoneyAmount} onChange={e => update({ prizeMoneyAmount: e.target.value })}
                   placeholder="e.g. 2,000"
                   className={`${inputCls} pl-9`} />
               </div>
             </div>
             <div>
-              <div className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted mb-1.5">How it&apos;s awarded</div>
+              <div className="font-headline text-[10px] font-bold uppercase tracking-widest text-light mb-1.5">How it&apos;s awarded</div>
               <input value={form.prizeMoneyDetails} onChange={e => update({ prizeMoneyDetails: e.target.value })}
                 placeholder="e.g. Awarded to podium finishers per division"
                 className={inputCls} />
@@ -761,7 +747,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
                   <p className="font-headline text-[17px] font-bold text-primary leading-tight">
                     ${normalisePrizeAmount(form.prizeMoneyAmount)} prize pool
                   </p>
-                  <p className="font-headline text-[11px] font-medium uppercase tracking-widest text-muted mt-0.5 truncate">
+                  <p className="font-headline text-[11px] font-medium uppercase tracking-widest text-light mt-0.5 truncate">
                     {form.prizeMoneyDetails.trim() || "Cash prizes up for grabs"}
                   </p>
                 </div>
@@ -779,7 +765,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
             return (
               <button key={v} type="button" onClick={() => toggleRefund(v)}
                 className={`font-headline text-[11px] font-bold uppercase tracking-widest px-3 py-2.5 rounded-md border transition-colors flex items-center gap-1.5
-                  ${active ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-muted hover:border-primary/40 hover:text-light"}`}>
+                  ${active ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-light hover:border-primary/40 hover:text-light"}`}>
                 {active && <Check className="w-3 h-3" />}{l}
               </button>
             );
@@ -803,7 +789,7 @@ function GalleryThumb({ src, onRemove }: { src: string; onRemove: () => void }) 
     <div className="relative aspect-square rounded-md overflow-hidden border border-dark-lighter">
       <Image src={src} alt="" fill unoptimized className="object-cover" />
       <button type="button" onClick={onRemove}
-        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-dark/70 text-muted hover:text-white flex items-center justify-center transition-colors">
+        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-dark/70 text-light hover:text-white flex items-center justify-center transition-colors">
         <X className="w-3.5 h-3.5" />
       </button>
     </div>
@@ -863,7 +849,7 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
             <div className="relative rounded-md overflow-hidden border border-primary/40 aspect-video">
               <Image src={coverSrc} alt="Cover preview" fill unoptimized className="object-cover" />
               <button type="button" onClick={e => { e.preventDefault(); update({ coverImage: null, coverImageUrl: "" }); }}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-dark/70 text-muted hover:text-white flex items-center justify-center transition-colors">
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-dark/70 text-light hover:text-white flex items-center justify-center transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -871,7 +857,7 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
             <div className="relative rounded-md border-2 border-dashed border-dark-lighter hover:border-primary/40 bg-dark-light aspect-video flex flex-col items-center justify-center transition-colors">
               <Upload className="w-6 h-6 text-primary mb-2" />
               <span className="font-headline text-[11px] font-bold uppercase tracking-widest text-light">Upload cover image</span>
-              <span className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-1">JPG · PNG · WEBP · 1920×1080</span>
+              <span className="font-headline text-[10px] uppercase tracking-widest text-light mt-1">JPG · PNG · WEBP · 1920×1080</span>
             </div>
           )}
           <input type="file" accept="image/*" className="sr-only"
@@ -892,14 +878,14 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
           {galleryCount < MAX_GALLERY_PHOTOS && (
             <label className="aspect-square rounded-md border-2 border-dashed border-dark-lighter hover:border-primary/40 bg-dark-light flex flex-col items-center justify-center cursor-pointer transition-colors">
               <Plus className="w-5 h-5 text-primary mb-1" />
-              <span className="font-headline text-[9px] font-bold uppercase tracking-widest text-muted">Add photos</span>
+              <span className="font-headline text-[9px] font-bold uppercase tracking-widest text-light">Add photos</span>
               <input type="file" accept="image/*" multiple className="sr-only"
                 onChange={e => { addGalleryFiles(e.target.files); e.target.value = ""; }} />
             </label>
           )}
         </div>
-        <p className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-2">
-          Shown as a gallery on your event page — venue, atmosphere, past editions.
+        <p className="font-headline text-[10px] uppercase tracking-widest text-light mt-2">
+          Shown as a gallery on your event page: venue, atmosphere, past editions.
         </p>
       </Field>
 
@@ -909,7 +895,7 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
             <div className="rounded-md border-2 border-dashed border-dark-lighter hover:border-primary/40 bg-dark-light px-5 py-8 flex flex-col items-center justify-center transition-colors">
               <Upload className="w-6 h-6 text-primary mb-2" />
               <span className="font-headline text-[11px] font-bold uppercase tracking-widest text-light">Add PDFs</span>
-              <span className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-1">Course maps, info packs, athlete guides</span>
+              <span className="font-headline text-[10px] uppercase tracking-widest text-light mt-1">Course maps, info packs, athlete guides</span>
             </div>
             <input type="file" accept="application/pdf" multiple className="sr-only"
               onChange={e => { addInfoPdfs(e.target.files); e.target.value = ""; }} />
@@ -935,16 +921,16 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
                   </div>
                   <div className="flex flex-col items-center gap-1 shrink-0">
                     <button type="button" onClick={() => moveInfoPdf(i, -1)} disabled={i === 0}
-                      className="w-7 h-7 rounded-full bg-dark/70 text-muted hover:text-white disabled:opacity-30 flex items-center justify-center transition-colors" aria-label="Move up">
+                      className="w-7 h-7 rounded-full bg-dark/70 text-light hover:text-white disabled:opacity-30 flex items-center justify-center transition-colors" aria-label="Move up">
                       <ChevronUp className="w-4 h-4" />
                     </button>
                     <button type="button" onClick={() => moveInfoPdf(i, 1)} disabled={i === form.informationPdfs.length - 1}
-                      className="w-7 h-7 rounded-full bg-dark/70 text-muted hover:text-white disabled:opacity-30 flex items-center justify-center transition-colors" aria-label="Move down">
+                      className="w-7 h-7 rounded-full bg-dark/70 text-light hover:text-white disabled:opacity-30 flex items-center justify-center transition-colors" aria-label="Move down">
                       <ChevronDown className="w-4 h-4" />
                     </button>
                   </div>
                   <button type="button" onClick={() => removeInfoPdf(i)}
-                    className="w-8 h-8 rounded-full bg-dark/70 text-muted hover:text-white flex items-center justify-center transition-colors shrink-0" aria-label="Remove PDF">
+                    className="w-8 h-8 rounded-full bg-dark/70 text-light hover:text-white flex items-center justify-center transition-colors shrink-0" aria-label="Remove PDF">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -953,15 +939,15 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
             {form.informationPdfs.length < MAX_INFO_PDFS && (
               <label className="flex items-center justify-center gap-2 rounded-md border-2 border-dashed border-dark-lighter hover:border-primary/40 bg-dark-light px-4 py-3 cursor-pointer transition-colors">
                 <Plus className="w-4 h-4 text-primary" />
-                <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted">Add another PDF</span>
+                <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-light">Add another PDF</span>
                 <input type="file" accept="application/pdf" multiple className="sr-only"
                   onChange={e => { addInfoPdfs(e.target.files); e.target.value = ""; }} />
               </label>
             )}
           </div>
         )}
-        <p className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-2">
-          Shown as downloads on your event page — up to 15 MB each
+        <p className="font-headline text-[10px] uppercase tracking-widest text-light mt-2">
+          Shown as downloads on your event page, up to 15 MB each
         </p>
       </Field>
 
@@ -1010,10 +996,10 @@ function ReviewStep({ form, setStep, confirmed, onConfirm }: {
       <div className="bg-dark border border-dark-lighter rounded-lg overflow-hidden mb-6">
         {rows.map((r, i) => (
           <div key={r.k} className={`flex items-center gap-4 px-5 py-4 ${i === rows.length - 1 ? "" : "border-b border-white/5"}`}>
-            <div className="font-headline text-[11px] uppercase tracking-widest text-muted w-32 flex-shrink-0">{r.k}</div>
+            <div className="font-headline text-[11px] uppercase tracking-widest text-light w-32 flex-shrink-0">{r.k}</div>
             <div className="flex-1 font-headline text-[14px] text-light truncate">{r.v}</div>
             <button onClick={() => setStep(r.step)}
-              className="font-headline text-[11px] uppercase tracking-widest text-muted-dark hover:text-primary flex items-center gap-1 transition-colors">
+              className="font-headline text-[11px] uppercase tracking-widest text-light hover:text-primary flex items-center gap-1 transition-colors">
               Edit <ArrowRight className="w-3 h-3" />
             </button>
           </div>
@@ -1022,7 +1008,7 @@ function ReviewStep({ form, setStep, confirmed, onConfirm }: {
 
       <div className="bg-primary/5 border border-primary/30 rounded-md p-5 mb-6">
         <div className="font-headline text-[14px] font-black italic tracking-tighter text-light mb-1">Your listing is ready to publish.</div>
-        <p className="font-headline text-[13px] text-muted leading-relaxed">
+        <p className="font-headline text-[13px] text-light leading-relaxed">
           Once published, athletes will be able to find your event in search and carousels.
           You&apos;ll receive a notification each time someone registers.
         </p>
@@ -1031,7 +1017,7 @@ function ReviewStep({ form, setStep, confirmed, onConfirm }: {
       <label className="flex items-start gap-3 cursor-pointer">
         <input type="checkbox" checked={confirmed} onChange={e => onConfirm(e.target.checked)}
           className="accent-primary w-4 h-4 mt-1 cursor-pointer" />
-        <span className="font-headline text-[13px] text-muted leading-relaxed">
+        <span className="font-headline text-[13px] text-light leading-relaxed">
           I confirm I have the rights to host this event and the information provided is accurate.
           I agree to the{" "}
           <span className="text-primary hover:underline cursor-pointer">Organiser Terms</span> and{" "}
@@ -1099,7 +1085,7 @@ function LivePreview({ form }: { form: FormState }) {
           {/* Date badge */}
           {sDay && sMon && (
             <div className="absolute top-3 right-3 bg-dark-light/90 backdrop-blur-sm rounded-lg px-3 py-2 text-center leading-tight">
-              <span className="block font-headline text-[9px] font-bold uppercase tracking-widest text-muted">{sMon}</span>
+              <span className="block font-headline text-[9px] font-bold uppercase tracking-widest text-light">{sMon}</span>
               <span className="block font-headline text-xl font-black text-light leading-none mt-0.5">{sDay}</span>
             </div>
           )}
@@ -1113,11 +1099,11 @@ function LivePreview({ form }: { form: FormState }) {
             </span>
           )}
           <h3 className="font-headline text-lg sm:text-xl font-black italic tracking-tighter text-light leading-tight mb-3 line-clamp-2">
-            {form.title || <span className="text-muted/40">Event title...</span>}
+            {form.title || <span className="text-light/40">Event title...</span>}
           </h3>
 
           <div className="space-y-1.5 mb-3">
-            <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
+            <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-light">
               <MapPin className="w-3 h-3 text-primary flex-shrink-0" />
               <span className="truncate">
                 {form.city || form.state
@@ -1125,12 +1111,12 @@ function LivePreview({ form }: { form: FormState }) {
                   : "Venue TBC"}
               </span>
             </div>
-            <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
+            <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-light">
               <Clock className="w-3 h-3 text-primary flex-shrink-0" />
               <span>{form.startTime ? fmt24to12(form.startTime) : "Time TBC"}</span>
             </div>
             {form.format && (
-              <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
+              <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-light">
                 <Users className="w-3 h-3 text-primary flex-shrink-0" />
                 <span>
                   {form.format === "both"        ? "Individual & Team"
@@ -1142,7 +1128,7 @@ function LivePreview({ form }: { form: FormState }) {
           </div>
 
           {descriptionText && (
-            <p className="font-headline text-xs text-muted leading-relaxed line-clamp-2 mb-3">
+            <p className="font-headline text-xs text-light leading-relaxed line-clamp-2 mb-3">
               {descriptionText}
             </p>
           )}
@@ -1221,10 +1207,10 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
           <div className="flex items-center gap-3">
             <Eye className="w-4 h-4 text-primary" />
             <span className="font-headline text-[11px] font-bold uppercase tracking-widest text-primary">Athlete view preview</span>
-            <span className="font-headline text-[10px] uppercase tracking-widest text-muted-dark hidden sm:block">— This is how your listing will appear to athletes</span>
+            <span className="font-headline text-[10px] uppercase tracking-widest text-light hidden sm:block">This is how your listing will appear to athletes</span>
           </div>
           <button onClick={onClose}
-            className="flex items-center gap-2 font-headline text-[11px] font-bold uppercase tracking-widest text-muted hover:text-light transition-colors">
+            className="flex items-center gap-2 font-headline text-[11px] font-bold uppercase tracking-widest text-light hover:text-light transition-colors">
             <X className="w-4 h-4" /> Close preview
           </button>
         </div>
@@ -1254,11 +1240,11 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                 {form.title || "Your event title"}
               </h1>
               <div className="flex flex-wrap items-center gap-3">
-                <span className="flex items-center gap-1.5 font-headline text-xs font-medium uppercase tracking-widest text-muted">
+                <span className="flex items-center gap-1.5 font-headline text-xs font-medium uppercase tracking-widest text-light">
                   <MapPin className="w-3.5 h-3.5 text-primary" />
                   {form.venue || form.city || "Venue TBC"}{stateLabel ? `, ${stateLabel}` : ""}
                 </span>
-                <span className="flex items-center gap-1.5 font-headline text-xs font-medium uppercase tracking-widest text-muted">
+                <span className="flex items-center gap-1.5 font-headline text-xs font-medium uppercase tracking-widest text-light">
                   <Calendar className="w-3.5 h-3.5 text-primary" />
                   {dateLabel}
                 </span>
@@ -1276,14 +1262,14 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                   <h2 className="font-headline text-xs font-medium uppercase tracking-widest text-primary mb-3">Event Overview</h2>
                   {form.description ? (
                     <div
-                      className="text-sm font-medium text-muted leading-relaxed
+                      className="text-sm font-medium text-light leading-relaxed
                         [&_h3]:font-headline [&_h3]:font-black [&_h3]:text-base [&_h3]:text-light [&_h3]:mt-4 [&_h3]:mb-1
                         [&_h4]:font-headline [&_h4]:font-bold [&_h4]:text-sm [&_h4]:text-light [&_h4]:mt-3 [&_h4]:mb-1
                         [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_li]:mb-0.5"
                       dangerouslySetInnerHTML={{ __html: form.description }}
                     />
                   ) : (
-                    <p className="text-sm font-medium text-muted-dark italic">Full description will appear here.</p>
+                    <p className="text-sm font-medium text-light italic">Full description will appear here.</p>
                   )}
                 </div>
 
@@ -1295,7 +1281,7 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                         ${prizeAmount} prize pool
                       </p>
                       {form.prizeMoneyDetails.trim() && (
-                        <p className="font-headline text-[11px] font-medium uppercase tracking-widest text-muted mt-1">
+                        <p className="font-headline text-[11px] font-medium uppercase tracking-widest text-light mt-1">
                           {form.prizeMoneyDetails.trim()}
                         </p>
                       )}
@@ -1313,23 +1299,23 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                             <p className="font-headline text-sm font-bold text-light flex items-center gap-2 flex-wrap">
                               {w.label || "General admission"}
                               {w.isClosed && (
-                                <span className="font-headline text-[9px] font-bold uppercase tracking-widest text-muted border border-dark-lighter px-2 py-0.5 rounded-full">
+                                <span className="font-headline text-[9px] font-bold uppercase tracking-widest text-light border border-dark-lighter px-2 py-0.5 rounded-full">
                                   Closed
                                 </span>
                               )}
                             </p>
                             {w.startTime && (
-                              <p className="font-headline text-xs text-muted uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                              <p className="font-headline text-xs text-light uppercase tracking-widest mt-0.5 flex items-center gap-1">
                                 <Clock className="w-3 h-3" /> Wave start {fmt24to12(w.startTime)}
                               </p>
                             )}
                             {w.closes && (
-                              <p className="font-headline text-xs text-muted uppercase tracking-widest mt-0.5">
+                              <p className="font-headline text-xs text-light uppercase tracking-widest mt-0.5">
                                 {w.isClosed ? "Closed" : "Closes"} {fmtCloseDate(w.closes)}
                               </p>
                             )}
                           </div>
-                          <span className={`font-headline text-2xl font-black italic ${w.isClosed ? "text-muted line-through" : "text-primary"}`}>
+                          <span className={`font-headline text-2xl font-black italic ${w.isClosed ? "text-light line-through" : "text-primary"}`}>
                             {w.price === "0" ? "Free" : `$${w.price}`}
                           </span>
                         </div>
@@ -1367,36 +1353,36 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                 </div>
 
                 <div className="bg-dark rounded-xl p-5 sm:p-6">
-                  <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-muted mb-4">Event Details</h3>
+                  <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-light mb-4">Event Details</h3>
                   <div className="space-y-3 sm:space-y-4">
                     <div>
-                      <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted mb-0.5">Date</p>
+                      <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-light mb-0.5">Date</p>
                       <p className="font-headline text-base font-black italic text-light">{dateLabel}</p>
                     </div>
                     <div>
-                      <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted mb-0.5">Time</p>
+                      <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-light mb-0.5">Time</p>
                       <p className="font-headline text-base font-black italic text-light">
                         {form.startTime ? fmt24to12(form.startTime) : "TBC"}
                         {form.endTime && ` — ${fmt24to12(form.endTime)}`}
                       </p>
                     </div>
                     <div>
-                      <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted mb-0.5">Location</p>
+                      <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-light mb-0.5">Location</p>
                       <p className="font-headline text-base font-black italic text-light">{form.venue || "Venue TBC"}</p>
                       {form.address && (
-                        <p className="font-headline text-xs text-muted uppercase tracking-widest mt-0.5">{form.address}</p>
+                        <p className="font-headline text-xs text-light uppercase tracking-widest mt-0.5">{form.address}</p>
                       )}
                       {form.city && (
-                        <p className="font-headline text-xs text-muted uppercase tracking-widest mt-0.5">{form.city}{stateLabel ? `, ${stateLabel}` : ""}</p>
+                        <p className="font-headline text-xs text-light uppercase tracking-widest mt-0.5">{form.city}{stateLabel ? `, ${stateLabel}` : ""}</p>
                       )}
                     </div>
                     <div>
-                      <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted mb-0.5">Format</p>
+                      <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-light mb-0.5">Format</p>
                       <p className="font-headline text-base font-black italic text-light">{formatLabel}</p>
                     </div>
                     {form.categories.length > 0 && (
                       <div>
-                        <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted mb-1">Divisions</p>
+                        <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-light mb-1">Divisions</p>
                         <div className="flex flex-wrap gap-1.5">
                           {form.categories.map(c => (
                             <span key={c} className="font-headline text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/30 bg-primary/10 px-2 py-1 rounded-md">
@@ -1407,20 +1393,20 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                       </div>
                     )}
                     <div>
-                      <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted mb-0.5">Intensity</p>
+                      <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-light mb-0.5">Intensity</p>
                       <p className="font-headline text-base font-black italic text-light">{intensity}</p>
                     </div>
                     {(cap || form.minAge !== "") && (
                       <div className="grid grid-cols-2 gap-3">
                         {cap != null && cap > 0 && (
                           <div>
-                            <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted mb-0.5">Participant Cap</p>
+                            <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-light mb-0.5">Participant Cap</p>
                             <p className="font-headline text-base font-black italic text-light">{cap.toLocaleString()}</p>
                           </div>
                         )}
                         {form.minAge !== "" && (
                           <div>
-                            <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-muted mb-0.5">Minimum Age</p>
+                            <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-light mb-0.5">Minimum Age</p>
                             <p className="font-headline text-base font-black italic text-light">
                               {form.minAge === "0" ? "All ages" : `${form.minAge}+`}
                             </p>
@@ -1433,8 +1419,8 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
 
                 {form.refundPolicy.trim() && (
                   <div className="bg-dark rounded-xl p-5 sm:p-6">
-                    <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-muted mb-2">Refund &amp; Transfer Policy</h3>
-                    <p className="text-sm font-medium text-muted leading-relaxed">{form.refundPolicy}</p>
+                    <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-light mb-2">Refund &amp; Transfer Policy</h3>
+                    <p className="text-sm font-medium text-light leading-relaxed">{form.refundPolicy}</p>
                   </div>
                 )}
               </div>
@@ -1685,31 +1671,31 @@ export default function EventFormWizard({
   };
 
   const STEP_HEADINGS = [
-    { h: <>Let&apos;s start with<br /><span className="text-primary">the basics.</span></>, sub: "Name, format, discipline and intensity — the essentials every athlete will see first." },
-    { h: <>When and where<br /><span className="text-primary">do athletes race?</span></>, sub: "Athletes search by city, state and date. If your event uses waves, per-wave start times are set in the next step." },
-    { h: <>Tickets, pricing<br /><span className="text-primary">and registration.</span></>, sub: "Add ticket categories and pricing. You can set individual wave start times per category." },
-    { h: <>Images and<br /><span className="text-primary">event description.</span></>, sub: "Upload your cover image and write a compelling event description." },
-    { h: <>Review, then<br /><span className="text-primary">hit publish.</span></>, sub: "Nothing's live yet. You can always come back to edit after publishing." },
+    { h: <>Let&apos;s start with <span className="text-primary">the basics.</span></>, sub: "The essentials every athlete sees first." },
+    { h: <>When and where <span className="text-primary">do athletes race?</span></>, sub: "Athletes search by city, state and date." },
+    { h: <>Tickets, pricing <span className="text-primary">and registration.</span></>, sub: "Add ticket categories, pricing and per-category wave start times." },
+    { h: <>Images and <span className="text-primary">event description.</span></>, sub: "Upload your cover image and write the event description." },
+    { h: <>Review, then <span className="text-primary">hit publish.</span></>, sub: "Nothing is live yet. You can edit anytime after publishing." },
   ];
 
   return (
-    <div className="min-h-screen bg-dark-darker">
+    <div className="min-h-screen bg-dark-darker pt-14">
       <div className="anim-fade-slide">
 
           {/* Sticky header */}
-          <div className="sticky top-16 z-30 bg-dark/95 backdrop-blur border-b border-dark-lighter">
+          <div className="sticky top-14 z-30 bg-dark/95 backdrop-blur border-b border-dark-lighter">
             <div className="max-w-[1280px] mx-auto px-6 lg:px-8 pt-3 pb-3">
               {/* Breadcrumb */}
               <div className="flex items-center gap-3 mb-2">
                 <button onClick={() => setShowCancelModal(true)}
-                  className="flex items-center gap-1.5 text-muted hover:text-primary font-headline text-[11px] uppercase tracking-widest transition-colors">
+                  className="flex items-center gap-1.5 text-light hover:text-primary font-headline text-[11px] uppercase tracking-widest transition-colors">
                   <ArrowLeft className="w-4 h-4" /> Event Listings
                 </button>
-                <span className="font-headline text-muted-dark">/</span>
+                <span className="font-headline text-light">/</span>
                 <span className="font-headline text-[11px] uppercase tracking-widest text-light">{headingLabel}</span>
                 <div className="ml-auto flex items-center gap-3">
                   <button onClick={() => setShowFullPreview(true)}
-                    className="flex items-center gap-1.5 font-headline text-[11px] font-bold uppercase tracking-widest text-muted hover:text-primary transition-colors">
+                    className="flex items-center gap-1.5 font-headline text-[11px] font-bold uppercase tracking-widest text-light hover:text-primary transition-colors">
                     <Eye className="w-3.5 h-3.5" /> Preview
                   </button>
                 </div>
@@ -1726,14 +1712,14 @@ export default function EventFormWizard({
                       <button onClick={() => goTo(i)}
                         className={`flex items-center gap-2.5 text-left transition-opacity min-w-0 ${cur ? "opacity-100" : "opacity-70 hover:opacity-100"}`}>
                         <div className={`relative w-8 h-8 rounded-md border flex items-center justify-center font-headline font-black italic text-[13px] flex-shrink-0
-                          ${cur ? "bg-primary text-dark border-primary" : hasErr ? "bg-orange-400/10 text-orange-400 border-orange-400/40" : done ? "bg-dark-light text-primary border-primary/40" : "bg-dark border-dark-lighter text-muted-dark"}`}>
+                          ${cur ? "bg-primary text-dark border-primary" : hasErr ? "bg-orange-400/10 text-orange-400 border-orange-400/40" : done ? "bg-dark-light text-primary border-primary/40" : "bg-dark border-dark-lighter text-light"}`}>
                           {hasErr ? <span className="text-[15px] leading-none font-black">!</span> : done ? <Check className="w-4 h-4" /> : s.n}
                         </div>
                         <div className="hidden xl:block min-w-0">
-                          <div className={`font-headline text-[11px] font-bold uppercase tracking-widest truncate ${cur ? "text-light" : hasErr ? "text-orange-500" : "text-muted"}`}>
+                          <div className={`font-headline text-[11px] font-bold uppercase tracking-widest truncate ${cur ? "text-light" : hasErr ? "text-orange-500" : "text-light"}`}>
                             {s.label}
                           </div>
-                          <div className={`font-headline text-[10px] uppercase tracking-widest truncate ${hasErr ? "text-orange-400" : "text-muted-dark"}`}>
+                          <div className={`font-headline text-[10px] uppercase tracking-widest truncate ${hasErr ? "text-orange-400" : "text-light"}`}>
                             {hasErr ? "Missing required fields" : s.sub}
                           </div>
                         </div>
@@ -1748,7 +1734,7 @@ export default function EventFormWizard({
 
           {/* Two-column layout */}
           <div className="max-w-[1280px] mx-auto grid lg:grid-cols-[1fr_360px]">
-            <div className="p-4 sm:p-6 lg:p-8 pb-32 lg:pb-10">
+            <div className="p-4 sm:p-6 lg:p-8 pt-8 sm:pt-10 lg:pt-12 pb-32 lg:pb-10">
               <div key={step} className={direction === "forward" ? "step-forward" : "step-back"}>
                 <div className="mb-6">
                   <div className="font-headline text-[11px] font-bold uppercase tracking-[0.25em] text-primary mb-2">
@@ -1757,7 +1743,7 @@ export default function EventFormWizard({
                   <h1 className="font-headline text-[28px] sm:text-[38px] font-black italic tracking-tighter leading-tight text-light">
                     {STEP_HEADINGS[step].h}
                   </h1>
-                  <p className="font-headline text-muted mt-3 max-w-lg text-[14px]">{STEP_HEADINGS[step].sub}</p>
+                  <p className="font-headline text-light mt-3 max-w-2xl text-[14px]">{STEP_HEADINGS[step].sub}</p>
                 </div>
 
                 {step === 0 && <BasicsStep  form={form} update={update} />}
@@ -1801,7 +1787,7 @@ export default function EventFormWizard({
                 <button type="button" onClick={() => setShowMobilePreview(v => !v)}
                   className="w-full flex items-center justify-between px-5 py-4 bg-dark-light text-left">
                   <span className="font-headline text-[11px] font-bold uppercase tracking-widest text-primary">Event preview</span>
-                  <ChevronDown className={`w-4 h-4 text-muted transition-transform duration-200 ${showMobilePreview ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`w-4 h-4 text-light transition-transform duration-200 ${showMobilePreview ? "rotate-180" : ""}`} />
                 </button>
                 {showMobilePreview && (
                   <div className="p-5 pt-0 bg-dark-light border-t border-dark-lighter"><LivePreview form={form} /></div>
@@ -1810,12 +1796,12 @@ export default function EventFormWizard({
 
               <div className="mt-6 flex items-center justify-between pt-5 border-t border-dark-lighter">
                 <button onClick={prev}
-                  className="font-headline text-[13px] font-bold uppercase tracking-widest text-muted hover:text-light flex items-center gap-2 transition-colors">
+                  className="font-headline text-[13px] font-bold uppercase tracking-widest text-light hover:text-light flex items-center gap-2 transition-colors">
                   <ArrowLeft className="w-4 h-4" /> {step === 0 ? "Cancel" : "Back"}
                 </button>
                 <div className="flex items-center gap-3">
                   <button onClick={() => submitToApi(true, form.title.trim() || "Untitled draft")} disabled={saving}
-                    className="font-headline text-[13px] font-bold uppercase tracking-widest text-muted hover:text-light px-5 py-3 transition-colors disabled:opacity-40">
+                    className="font-headline text-[13px] font-bold uppercase tracking-widest text-light hover:text-light px-5 py-3 transition-colors disabled:opacity-40">
                     Save draft
                   </button>
                   <button onClick={next} disabled={saving || (step === STEPS.length - 1 && !confirmed)}
@@ -1844,7 +1830,7 @@ export default function EventFormWizard({
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCancelModal(false)} />
           <div className="relative bg-dark border border-dark-lighter rounded-2xl shadow-2xl w-full max-w-sm p-7 modal-in">
             <h2 className="font-headline text-[22px] font-black italic tracking-tight text-light mb-2">Leave without saving?</h2>
-            <p className="font-headline text-muted text-[14px] leading-relaxed mb-7">
+            <p className="font-headline text-light text-[14px] leading-relaxed mb-7">
               Your event details haven&apos;t been saved yet. Save as a draft so you can come back and finish it later.
             </p>
             <div className="flex flex-col gap-3">
@@ -1854,11 +1840,11 @@ export default function EventFormWizard({
                 {saving ? "Saving…" : <><Check className="w-4 h-4" /> Save draft &amp; leave</>}
               </button>
               <button onClick={() => router.push(cancelRedirect)}
-                className="w-full font-headline text-[13px] font-bold uppercase tracking-widest px-6 py-3.5 rounded-md border border-dark-lighter text-muted hover:text-light hover:border-primary/40 transition-colors">
+                className="w-full font-headline text-[13px] font-bold uppercase tracking-widest px-6 py-3.5 rounded-md border border-dark-lighter text-light hover:text-light hover:border-primary/40 transition-colors">
                 Discard &amp; leave
               </button>
               <button onClick={() => setShowCancelModal(false)}
-                className="font-headline text-[12px] uppercase tracking-widest text-muted-dark hover:text-light transition-colors text-center py-1">
+                className="font-headline text-[12px] uppercase tracking-widest text-light hover:text-light transition-colors text-center py-1">
                 Keep editing
               </button>
             </div>
