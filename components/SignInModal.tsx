@@ -9,6 +9,8 @@ import { X, Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, User, ChevronDown, C
 import { signIn, signUp, signOut, resetPassword, confirmResetPassword, confirmSignIn } from "aws-amplify/auth";
 import { useAuthContext } from "@/context/AuthContext";
 import { validateUsername } from "@/lib/username-validation";
+import { isPasswordValid, PASSWORD_POLICY_SUMMARY } from "@/lib/password-policy";
+import PasswordRequirements from "@/components/PasswordRequirements";
 
 type View = "signin" | "signup" | "onboarding" | "username" | "mfa";
 
@@ -52,6 +54,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
   const [showPrivacy,     setShowPrivacy]     = useState(false);
   const [password,        setPassword]        = useState("");
   const [confirm,         setConfirm]         = useState("");
+  const [pwFocused,       setPwFocused]       = useState(false);
   const [showPw,          setShowPw]          = useState(false);
   const [error,           setError]           = useState("");
   const [loading,         setLoading]         = useState(false);
@@ -91,7 +94,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
       setDobDay(""); setDobMonth(""); setDobYear("");
       setAcceptedTerms(false); setShowTerms(false); setShowPrivacy(false);
       setPassword(""); setConfirm("");
-      setError(""); setShowPw(false);
+      setError(""); setShowPw(false); setPwFocused(false);
       setUsername(""); setUsernameStatus("idle"); setUsernameError("");
       setCheckingEmail(false); setUserExists(null); setUserStatus(null);
       setResetCode(""); setNewPassword(""); setNewPwConfirm("");
@@ -303,7 +306,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
   // ── Handle new‑password challenge from sign-in ──────────────────────────────
   const handleConfirmNewPassword = async () => {
     setError("");
-    if (newPassword.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (!isPasswordValid(newPassword)) { setError("Password must be " + PASSWORD_POLICY_SUMMARY); return; }
     if (newPassword !== newPwConfirm) { setError("Passwords do not match."); return; }
     setLoading(true);
     try {
@@ -348,7 +351,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
   const handleCompleteReset = async () => {
     setError("");
     if (resetCode.length < 6) { setError("Please enter the full verification code."); return; }
-    if (newPassword.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (!isPasswordValid(newPassword)) { setError("Password must be " + PASSWORD_POLICY_SUMMARY); return; }
     if (newPassword !== newPwConfirm) { setError("Passwords do not match."); return; }
     setLoading(true);
     try {
@@ -382,7 +385,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
       } else if (msg.includes("ExpiredCodeException")) {
         setError("That code has expired. Please request a new one.");
       } else if (msg.includes("InvalidPasswordException")) {
-        setError("Password must be at least 8 characters with upper, lower and a number.");
+        setError("Password must be " + PASSWORD_POLICY_SUMMARY);
       } else {
         setError(msg);
       }
@@ -395,11 +398,11 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
   const handleSignUp = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    // The checklist under the field already lists every rule and the submit
+    // button stays disabled until they all pass, so this is a backstop rather
+    // than the user's first sight of the requirements.
+    if (!isPasswordValid(password)) { setError("Password must be " + PASSWORD_POLICY_SUMMARY); return; }
     if (password !== confirm) { setError("Passwords do not match."); return; }
-    if (password.length < 8)  { setError("Password must be at least 8 characters."); return; }
-    if (!/[A-Z]/.test(password)) { setError("Password must contain at least one uppercase letter."); return; }
-    if (!/[a-z]/.test(password)) { setError("Password must contain at least one lowercase letter."); return; }
-    if (!/[0-9]/.test(password)) { setError("Password must contain at least one number."); return; }
     setFirstName(""); setLastName(""); setDobDay(""); setDobMonth(""); setDobYear("");
     setAcceptedTerms(false); setShowTerms(false); setShowPrivacy(false);
     setView("onboarding");
@@ -458,7 +461,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
       if (msg.includes("UsernameExistsException")) {
         setError("An account with that email already exists.");
       } else if (msg.includes("InvalidPasswordException")) {
-        setError("Password must be at least 8 characters with upper, lower and a number.");
+        setError("Password must be " + PASSWORD_POLICY_SUMMARY);
       } else {
         setError(msg || "Registration failed. Please try again.");
       }
@@ -479,6 +482,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
 
   const switchView = (v: "signin" | "signup") => {
     setView(v); setError(""); setPassword(""); setConfirm("");
+    setPwFocused(false);
     setCheckingEmail(false); setUserExists(null); setUserStatus(null);
     setResetCode(""); setNewPassword(""); setNewPwConfirm("");
     setResetSent(false); setNewPwStep("initial"); setChallengeFlow(false);
@@ -490,6 +494,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
     setUserStatus(null);
     setPassword("");
     setError("");
+    setPwFocused(false);
     setResetCode(""); setNewPassword(""); setNewPwConfirm("");
     setResetSent(false); setNewPwStep("initial"); setChallengeFlow(false);
     setMfaStep("none"); setTotpCode(""); setTotpSetupUri(null);
@@ -676,13 +681,17 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Min 8 characters"
+                    aria-describedby="challenge-password-requirements"
+                    placeholder="Create a new password"
                     className={inputCls + " pr-11"}
                     autoFocus
                   />
                   <button type="button" onClick={() => setShowPw(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-dark hover:text-primary transition-colors">
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
+                </div>
+                <div id="challenge-password-requirements">
+                  <PasswordRequirements password={newPassword} />
                 </div>
               </div>
               <div>
@@ -823,10 +832,17 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
                 <label htmlFor="signup-password" className={labelCls}>Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-dark" />
-                  <input id="signup-password" type={showPw ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 characters" className={inputCls + " pr-11"} />
+                  <input id="signup-password" type={showPw ? "text" : "password"} required value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onFocus={() => setPwFocused(true)}
+                    aria-describedby="signup-password-requirements"
+                    placeholder="Create a password" className={inputCls + " pr-11"} />
                   <button type="button" onClick={() => setShowPw(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-dark hover:text-primary transition-colors">
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
+                </div>
+                <div id="signup-password-requirements">
+                  <PasswordRequirements password={password} visible={pwFocused || password.length > 0} />
                 </div>
               </div>
               <div>
@@ -836,7 +852,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
                   <input id="signup-confirm-password" type={showPw ? "text" : "password"} required value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Re-enter password" className={inputCls} />
                 </div>
               </div>
-              <button type="submit" disabled={loading} className={btnCls}>
+              <button type="submit" disabled={loading || !isPasswordValid(password)} className={btnCls}>
                 {loading ? <><span className="w-2 h-2 bg-dark rounded-full animate-pulse-dot" /> Creating account…</> : <>Create account <ArrowRight className="w-4 h-4" /></>}
               </button>
             </form>

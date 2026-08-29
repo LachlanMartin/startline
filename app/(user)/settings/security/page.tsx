@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Shield, ShieldAlert, Trash2, KeyRound, Plus, ArrowRight, Check, Copy, Eye, EyeOff } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
+import { isPasswordValid, PASSWORD_POLICY_SUMMARY } from "@/lib/password-policy";
+import PasswordRequirements from "@/components/PasswordRequirements";
 
 export default function SecuritySettingsPage() {
   const router = useRouter();
@@ -107,7 +109,7 @@ export default function SecuritySettingsPage() {
 
   const handleChangePassword = async () => {
     clearMessages();
-    if (newPw.length < 8) { setError("New password must be at least 8 characters."); return; }
+    if (!isPasswordValid(newPw)) { setError("New password must be " + PASSWORD_POLICY_SUMMARY); return; }
     if (newPw !== confirmPw) { setError("Passwords do not match."); return; }
     setPwLoading(true);
     try {
@@ -263,8 +265,12 @@ export default function SecuritySettingsPage() {
             <label htmlFor="new-pw" className="font-headline text-[11px] font-bold uppercase tracking-widest text-muted block mb-1">New Password</label>
             <div className="relative">
               <input id="new-pw" type={showPw ? "text" : "password"} required value={newPw}
-                onChange={(e) => setNewPw(e.target.value)} placeholder="Min 8 characters"
+                onChange={(e) => setNewPw(e.target.value)} placeholder="Create a new password"
+                aria-describedby="change-password-requirements"
                 className="w-full bg-dark border border-dark-lighter rounded-md px-4 py-2.5 text-[15px] text-light placeholder:text-muted-dark focus:border-primary focus:outline-none transition-colors pr-11" />
+            </div>
+            <div id="change-password-requirements">
+              <PasswordRequirements password={newPw} />
             </div>
           </div>
           <div>
@@ -273,7 +279,7 @@ export default function SecuritySettingsPage() {
               onChange={(e) => setConfirmPw(e.target.value)} placeholder="Re-enter new password"
               className="w-full bg-dark border border-dark-lighter rounded-md px-4 py-2.5 text-[15px] text-light placeholder:text-muted-dark focus:border-primary focus:outline-none transition-colors" />
           </div>
-          <button type="submit" disabled={pwLoading}
+          <button type="submit" disabled={pwLoading || !isPasswordValid(newPw)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-headline text-[11px] font-bold uppercase tracking-widest border transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-primary/30 text-primary hover:bg-primary/10">
             {pwLoading ? <>Updating…</> : <>Change password <ArrowRight className="w-3.5 h-3.5" /></>}
           </button>
