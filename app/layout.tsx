@@ -11,6 +11,10 @@ const inter = Inter({
 const chakraPetch = Chakra_Petch({
   subsets:  ["latin"],
   weight:   ["400", "500", "600", "700"],
+  // Headings use `italic` (hero h1, card/dialog titles). Without this the
+  // browser synthesises the slant and Chakra Petch loses its squared-off
+  // letterforms.
+  style:    ["normal", "italic"],
   variable: "--font-chakra-petch",
 });
 
