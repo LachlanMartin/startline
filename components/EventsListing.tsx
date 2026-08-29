@@ -19,7 +19,7 @@ import { useAuthContext } from "@/context/AuthContext";
 import EventMap from "@/components/EventMap";
 import type { EventMapHandle } from "@/components/EventMap";
 import EventCard from "@/components/EventCard";
-import SuburbAutocomplete from "@/components/ui/SuburbAutocomplete";
+import EventLocationAutocomplete from "@/components/ui/EventLocationAutocomplete";
 import EventAutocomplete from "@/components/ui/EventAutocomplete";
 
 const DISCIPLINE_OPTIONS = EVENT_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }));
@@ -283,6 +283,15 @@ function EventsListingInner() {
     return results;
   }, [allEvents, filterState, whereQuery, sortBy, searchOrigin]);
 
+  // Picking a category from the search dropdown filters in place rather than
+  // navigating, so the listing does not reload underneath the user. The typed
+  // text is cleared since the category filter replaces it.
+  const applyCategory = useCallback((value: string) => {
+    setWhatQuery("");
+    setTypeFilters([value as EventType]);
+    setMobileSearch(false);
+  }, []);
+
   function clearFilters() {
     setWhatQuery(""); clearWhere();
     setTypeFilters([]); setStateFilters([]); setFormatFilters([]); setLevelFilters([]);
@@ -383,6 +392,7 @@ function EventsListingInner() {
             <EventAutocomplete
               value={whatQuery}
               onChange={setWhatQuery}
+              onSelectCategory={applyCategory}
               placeholder="Event name, type or keyword"
               className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none"
             />
@@ -393,7 +403,7 @@ function EventsListingInner() {
         <div className="flex-1 px-5 py-2.5 min-w-0 flex items-center gap-1.5 bg-dark border border-dark-lighter rounded-3xl focus-within:border-primary transition-colors">
           <div className="flex-1 min-w-0">
             <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Where</span>
-            <SuburbAutocomplete
+            <EventLocationAutocomplete
               value={whereQuery}
               onChange={setWhereQuery}
               onSelect={(label) => handleWhereSearch(label)}
@@ -420,6 +430,7 @@ function EventsListingInner() {
             <EventAutocomplete
               value={whatQuery}
               onChange={setWhatQuery}
+              onSelectCategory={applyCategory}
               autoFocus
               placeholder="Event name, type or keyword"
               className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none"
@@ -429,7 +440,7 @@ function EventsListingInner() {
           <div className="flex items-center gap-2 bg-dark rounded-2xl px-4 py-2.5 border border-dark-lighter focus-within:border-primary transition-colors">
             <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <SuburbAutocomplete
+              <EventLocationAutocomplete
                 value={whereQuery}
                 onChange={setWhereQuery}
                 onSelect={(label) => handleWhereSearch(label)}

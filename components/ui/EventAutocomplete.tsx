@@ -13,11 +13,28 @@ interface EventResult {
   eventDate: string;
 }
 
+interface CategoryResult {
+  value: string;
+  label: string;
+  href: string;
+  eventCount: number;
+}
+
+/** One flattened row so arrow keys can walk categories and events as one list. */
+type Row =
+  | { kind: "category"; item: CategoryResult }
+  | { kind: "event"; item: EventResult };
+
 interface Props {
   value: string;
   onChange: (query: string) => void;
   /** Fired on Enter when no suggestion is highlighted. */
   onEnter?: () => void;
+  /**
+   * Applies a category filter in place. The listing passes this so picking a
+   * category filters without a page load; the hero omits it and navigates.
+   */
+  onSelectCategory?: (value: string) => void;
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
@@ -34,6 +51,7 @@ export default function EventAutocomplete({
   value,
   onChange,
   onEnter,
+  onSelectCategory,
   placeholder = "Event name, type or keyword",
   className = "",
   autoFocus = false,
@@ -41,7 +59,7 @@ export default function EventAutocomplete({
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<EventResult[]>([]);
+  const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,19 +82,23 @@ export default function EventAutocomplete({
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
   const fetchSuggestions = async (q: string) => {
-    if (q.trim().length < 2) { setSuggestions([]); setOpen(false); return; }
+    if (q.trim().length < 2) { setRows([]); setOpen(false); return; }
     const seq = ++requestRef.current;
     setLoading(true);
     try {
       const res = await fetch(`/api/events/search?q=${encodeURIComponent(q.trim())}`);
       const data = await res.json();
       if (seq !== requestRef.current) return;
-      const results: EventResult[] = data.results ?? [];
-      setSuggestions(results);
-      setOpen(results.length > 0);
+      // Categories lead, individual events sit under them.
+      const next: Row[] = [
+        ...(data.categories ?? []).map((c: CategoryResult) => ({ kind: "category" as const, item: c })),
+        ...(data.results ?? []).map((e: EventResult) => ({ kind: "event" as const, item: e })),
+      ];
+      setRows(next);
+      setOpen(next.length > 0);
       setActiveIdx(-1);
     } catch {
-      if (seq === requestRef.current) setSuggestions([]);
+      if (seq === requestRef.current) setRows([]);
     } finally {
       if (seq === requestRef.current) setLoading(false);
     }
@@ -88,9 +110,13 @@ export default function EventAutocomplete({
     timerRef.current = setTimeout(() => fetchSuggestions(text), 250);
   };
 
-  const select = (item: EventResult) => {
+  const select = (row: Row) => {
     setOpen(false);
-    router.push(item.href);
+    if (row.kind === "category" && onSelectCategory) {
+      onSelectCategory(row.item.value);
+      return;
+    }
+    router.push(row.item.href);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -98,7 +124,7 @@ export default function EventAutocomplete({
     if (e.key === "Enter") {
       if (open && activeIdx >= 0) {
         e.preventDefault();
-        select(suggestions[activeIdx]);
+        select(rows[activeIdx]);
       } else {
         onEnter?.();
       }
@@ -107,7 +133,7 @@ export default function EventAutocomplete({
     if (!open) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIdx(i => Math.min(i + 1, suggestions.length - 1));
+      setActiveIdx(i => Math.min(i + 1, rows.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIdx(i => Math.max(i - 1, 0));
@@ -121,7 +147,7 @@ export default function EventAutocomplete({
         type="text"
         value={value}
         onChange={e => handleInput(e.target.value)}
-        onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
+        onFocus={() => { if (rows.length > 0) setOpen(true); }}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         className={className}
@@ -129,7 +155,7 @@ export default function EventAutocomplete({
         autoComplete="off"
         role="combobox"
         aria-expanded={open}
-        aria-controls={open && suggestions.length > 0 ? "event-suggestions" : undefined}
+        aria-controls={open && rows.length > 0 ? "event-suggestions" : undefined}
         aria-autocomplete="list"
       />
       {loading && (
@@ -138,23 +164,54 @@ export default function EventAutocomplete({
         </div>
       )}
       {children}
-      {open && suggestions.length > 0 && (
+      {open && rows.length > 0 && (
         <div ref={listRef} id="event-suggestions" data-testid="event-suggestions"
           className="absolute top-full left-0 mt-2 z-50 w-full min-w-[280px] bg-dark border border-dark-lighter rounded-xl shadow-xl overflow-hidden modal-in">
-          {suggestions.map((item, i) => (
-            <button key={item.id} type="button"
-              onClick={() => select(item)}
-              onMouseEnter={() => setActiveIdx(i)}
-              className={`w-full px-4 py-2.5 text-left block transition-colors
-                ${i === activeIdx ? "bg-primary/10" : "hover:bg-white/5"}`}>
-              <span className={`block font-headline text-[14px] truncate ${i === activeIdx ? "text-primary" : "text-light"}`}>
-                {item.title}
-              </span>
-              <span className="block font-headline text-[11px] uppercase tracking-widest text-muted truncate">
-                {item.discipline} · {item.city}, {item.state}
-              </span>
-            </button>
-          ))}
+          {rows.map((row, i) => {
+            // Headings are rendered off the first row of each kind, so the
+            // flat list stays a single sequence for arrow-key navigation.
+            const heading =
+              i === 0 && row.kind === "category" ? "Categories"
+              : row.kind === "event" && (i === 0 || rows[i - 1].kind === "category") ? "Events"
+              : null;
+            const active = i === activeIdx;
+
+            return (
+              <div key={row.kind === "category" ? `c-${row.item.value}` : `e-${row.item.id}`}>
+                {heading && (
+                  <div className="px-4 pt-2.5 pb-1 font-headline text-[10px] font-black uppercase tracking-widest text-muted-dark border-t border-dark-lighter first:border-t-0">
+                    {heading}
+                  </div>
+                )}
+                <button type="button"
+                  data-testid={`suggestion-${row.kind}`}
+                  onClick={() => select(row)}
+                  onMouseEnter={() => setActiveIdx(i)}
+                  className={`w-full px-4 py-2.5 text-left block transition-colors
+                    ${active ? "bg-primary/10" : "hover:bg-white/5"}`}>
+                  {row.kind === "category" ? (
+                    <>
+                      <span className={`block font-headline text-[14px] font-bold truncate ${active ? "text-primary" : "text-light"}`}>
+                        {row.item.label}
+                      </span>
+                      <span className="block font-headline text-[11px] uppercase tracking-widest text-muted truncate">
+                        {row.item.eventCount} {row.item.eventCount === 1 ? "event" : "events"}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className={`block font-headline text-[14px] truncate ${active ? "text-primary" : "text-light"}`}>
+                        {row.item.title}
+                      </span>
+                      <span className="block font-headline text-[11px] uppercase tracking-widest text-muted truncate">
+                        {row.item.discipline} · {row.item.city}, {row.item.state}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

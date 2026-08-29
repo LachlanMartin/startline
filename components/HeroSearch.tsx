@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, MapPin, Locate } from "lucide-react";
 import EventAutocomplete from "@/components/ui/EventAutocomplete";
-import SuburbAutocomplete from "@/components/ui/SuburbAutocomplete";
+import EventLocationAutocomplete from "@/components/ui/EventLocationAutocomplete";
 
 export default function HeroSearch() {
   const router = useRouter();
@@ -59,10 +59,9 @@ export default function HeroSearch() {
             <div className="flex items-center gap-2">
               <MapPin className="w-3.5 h-3.5 text-muted flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <SuburbAutocomplete
+                <EventLocationAutocomplete
                   value={where}
                   onChange={setWhere}
-                  onSelect={() => {}}
                   onEnter={handleSearch}
                   placeholder="State, city, or suburb"
                   className="search-field w-full bg-transparent border-0 rounded-none p-0 text-light font-headline text-base placeholder:text-muted/40 focus:outline-none focus:ring-0"
@@ -126,10 +125,9 @@ export default function HeroSearch() {
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <SuburbAutocomplete
+                <EventLocationAutocomplete
                   value={where}
                   onChange={setWhere}
-                  onSelect={() => {}}
                   onEnter={handleSearch}
                   placeholder="State, city, or suburb"
                   className="search-field w-full bg-transparent border-0 rounded-none p-0 text-light font-headline text-xl placeholder:text-muted/40 focus:outline-none focus:ring-0"

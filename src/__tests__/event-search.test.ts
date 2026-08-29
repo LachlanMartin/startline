@@ -2,13 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
-  default: { event: { findMany: vi.fn() } },
+  default: { event: { findMany: vi.fn(), groupBy: vi.fn() } },
 }));
 
 import prisma from "@/lib/prisma";
 import { GET } from "@/app/api/events/search/route";
 
 const findMany = prisma.event.findMany as ReturnType<typeof vi.fn>;
+const groupBy = prisma.event.groupBy as ReturnType<typeof vi.fn>;
 
 const call = (query: string) =>
   GET(new NextRequest(`http://localhost:3000/api/events/search?${query}`));
@@ -26,7 +27,9 @@ const seedEvent = {
 describe("GET /api/events/search", () => {
   beforeEach(() => {
     findMany.mockReset();
+    groupBy.mockReset();
     findMany.mockResolvedValue([seedEvent]);
+    groupBy.mockResolvedValue([{ discipline: "running", _count: { _all: 5 } }]);
   });
 
   it("returns matches with a slug-based href", async () => {
@@ -76,5 +79,34 @@ describe("GET /api/events/search", () => {
   it("trims the query before searching", async () => {
     await call("q=%20sydney%20");
     expect(findMany.mock.calls[0][0].where.OR[0].title.contains).toBe("sydney");
+  });
+
+  it("puts matching categories in the payload alongside the events", async () => {
+    const body = await (await call("q=run")).json();
+
+    expect(body.categories).toEqual([
+      { value: "running", label: "Running", href: "/events?type=running", eventCount: 5 },
+    ]);
+    // Events still come back; the dropdown renders categories above them.
+    expect(body.results).toHaveLength(1);
+  });
+
+  it("drops categories that hold no events, so none leads to an empty listing", async () => {
+    groupBy.mockResolvedValue([]);
+
+    const body = await (await call("q=run")).json();
+    expect(body.categories).toEqual([]);
+  });
+
+  it("matches a category on its value as well as its label", async () => {
+    groupBy.mockResolvedValue([{ discipline: "crossfit", _count: { _all: 2 } }]);
+
+    const body = await (await call("q=crossfit")).json();
+    expect(body.categories.map((c: { value: string }) => c.value)).toEqual(["crossfit"]);
+  });
+
+  it("skips the category count query entirely when nothing matches", async () => {
+    await call("q=zzzz");
+    expect(groupBy).not.toHaveBeenCalled();
   });
 });

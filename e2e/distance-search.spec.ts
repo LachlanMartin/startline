@@ -82,13 +82,12 @@ test.describe("distance-based search", () => {
     await expect(page.getByText(/closest event/i).first()).toBeVisible();
   });
 
-  test("typing in the where field shows place suggestions", async ({ page }) => {
-    await page.route("**/api/places/autocomplete**", (route) =>
+  test("typing in the where field suggests suburbs that host events", async ({ page }) => {
+    await page.route("**/api/events/suburbs**", (route) =>
       route.fulfill({
         json: {
-          results: [
-            { placeId: "p1", label: "Perth WA, Australia", title: "Perth", placeType: "Locality" },
-          ],
+          nearby: false,
+          results: [{ city: "Perth", state: "wa", eventCount: 3 }],
         },
       }),
     );
@@ -97,7 +96,28 @@ test.describe("distance-based search", () => {
 
     await page.getByPlaceholder("State, city, or suburb").fill("Per");
 
-    await expect(page.getByRole("button", { name: /Perth WA/ })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: /Perth, WA/ })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: /3 events/ })).toBeVisible();
+  });
+
+  test("where field offers the nearest hosting suburbs when none match", async ({ page }) => {
+    await page.route("**/api/events/suburbs**", (route) =>
+      route.fulfill({
+        json: {
+          nearby: true,
+          searched: "Parramatta",
+          results: [{ city: "Sydney", state: "nsw", eventCount: 4, distanceKm: 23 }],
+        },
+      }),
+    );
+    await page.goto("/events?view=list");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByPlaceholder("State, city, or suburb").fill("Parramatta");
+
+    await expect(page.getByText(/No events in Parramatta/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: /Sydney, NSW/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /23 km/ })).toBeVisible();
   });
 
   test("clearing the where input resets to normal listing", async ({ page }) => {
