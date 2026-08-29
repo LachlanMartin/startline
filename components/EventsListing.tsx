@@ -367,15 +367,16 @@ function EventsListingInner() {
       {/* Matches the homepage hero bar: pill rounding, an inset divider rather
           than a full-height border, and a grey outline. Map/List moved to the
           filter row below, so the bar spans the full width. */}
-      <div className="flex flex-1 items-stretch">
-        {/* Each half owns its outline and lights up on its own, so focus stops
-            at the divider rather than ringing the whole bar.
+      <div className="flex flex-1 items-stretch gap-2">
+        {/* Two rounded bubbles. Each field owns a fully closed outline, so a
+            focused field's green ring curves right round and meets itself
+            rather than running open into the divider.
 
             Icons are siblings of the label+input stack, not children of the
             input row, so they centre against the full height of the field
             instead of sitting on the input's baseline. Labels wrap the text
             stack so the field label is part of the clickable area. */}
-        <div className="flex-1 px-5 py-2.5 min-w-0 flex items-center gap-1.5 bg-dark border-y border-l border-dark-lighter rounded-l-3xl focus-within:border-primary transition-colors">
+        <div className="flex-1 px-5 py-2.5 min-w-0 flex items-center gap-1.5 bg-dark border border-dark-lighter rounded-3xl focus-within:border-primary transition-colors">
           <label className="flex-1 min-w-0 cursor-text">
             <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</span>
             <input type="text" placeholder="Event name, type or keyword" value={whatQuery}
@@ -385,9 +386,7 @@ function EventsListingInner() {
           {whatQuery && <button type="button" onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
         </div>
 
-        <div className="w-px bg-dark-lighter self-stretch my-2.5" />
-
-        <div className="flex-1 px-5 py-2.5 min-w-0 flex items-center gap-1.5 bg-dark border-y border-r border-dark-lighter rounded-r-3xl focus-within:border-primary transition-colors">
+        <div className="flex-1 px-5 py-2.5 min-w-0 flex items-center gap-1.5 bg-dark border border-dark-lighter rounded-3xl focus-within:border-primary transition-colors">
           <div className="flex-1 min-w-0">
             <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Where</span>
             <SuburbAutocomplete

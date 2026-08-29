@@ -91,15 +91,12 @@ export default function HeroSearch() {
         </button>
       </div>
 
-      {/* Desktop: horizontal layout. The grey outline belongs to the dark input
-          group only, so it is a sibling of the button rather than a border on
-          the wrapper — bordering the wrapper would outline the green button too. */}
-      <div className="hidden sm:flex items-stretch rounded-3xl overflow-hidden">
-        {/* Each half owns its outline and lights up on its own, so focus stops
-            at the divider instead of ringing the whole bar. The left half
-            carries its own rounding — without it the wrapper's overflow-hidden
-            clips the border mid-stroke and the corners read as square. */}
-        <div className="flex-1 px-6 py-4 min-w-0 bg-dark border-y border-l border-dark-lighter rounded-l-3xl focus-within:border-primary transition-colors">
+      {/* Desktop: three rounded bubbles in a row. Each field owns a fully closed
+          outline, so a focused field's green ring curves right round and meets
+          itself rather than running open into the divider. No overflow-hidden
+          wrapper: it would clip each bubble's border mid-curve. */}
+      <div className="hidden sm:flex items-stretch gap-2">
+        <div className="flex-1 px-6 py-4 min-w-0 bg-dark border border-dark-lighter rounded-3xl focus-within:border-primary transition-colors">
           <label className="font-headline text-xs font-black uppercase tracking-widest text-primary block mb-1.5">
             Event
           </label>
@@ -120,13 +117,10 @@ export default function HeroSearch() {
           </div>
         </div>
 
-        <div className="w-px bg-dark-lighter self-stretch my-4" />
-
-        {/* No right border: the green button caps this edge. The locate button
-            is a sibling of the label+input stack, not a child of the input row,
-            so it centres against the full height of the field instead of
-            sitting on the input's baseline. */}
-        <div className="flex-1 px-6 py-4 min-w-0 flex items-center gap-3 bg-dark border-y border-dark-lighter focus-within:border-primary transition-colors">
+        {/* The locate button is a sibling of the label+input stack, not a child
+            of the input row, so it centres against the full height of the field
+            instead of sitting on the input's baseline. */}
+        <div className="flex-1 px-6 py-4 min-w-0 flex items-center gap-3 bg-dark border border-dark-lighter rounded-3xl focus-within:border-primary transition-colors">
           <div className="flex-1 min-w-0">
             <label className="font-headline text-xs font-black uppercase tracking-widest text-primary block mb-1.5">
               Where
@@ -156,7 +150,7 @@ export default function HeroSearch() {
         <button
           type="button"
           onClick={handleSearch}
-          className="flex items-center gap-3 bg-primary hover:bg-primary/90 text-dark font-headline text-base font-black uppercase tracking-widest px-10 h-auto rounded-none flex-shrink-0 transition-colors active:scale-[0.98] [&_svg]:size-5"
+          className="flex items-center gap-3 bg-primary hover:bg-primary/90 text-dark font-headline text-base font-black uppercase tracking-widest px-10 h-auto rounded-3xl flex-shrink-0 transition-colors active:scale-[0.98] [&_svg]:size-5"
         >
           <Search className="w-5 h-5" />
           Find Events Now
