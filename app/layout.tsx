@@ -98,11 +98,15 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // The next/font variables must sit on <html>, not <body>. Tailwind v4
+  // compiles the @theme block to :root, so --font-sans and --font-headline are
+  // declared there; a custom property substitutes its var() references where it
+  // is declared, so with the font variables on <body> those references resolve
+  // against :root, find nothing, and leave both tokens guaranteed-invalid.
+  // Every element then falls back to the system stack.
   return (
-    <html lang="en">
-      <body
-        className={`${inter.variable} ${chakraPetch.variable} bg-dark-darker text-light font-sans antialiased`}
-      >
+    <html lang="en" className={`${inter.variable} ${chakraPetch.variable}`}>
+      <body className="bg-dark-darker text-light font-sans antialiased">
         <NativeLinkHandler />
         {children}
       </body>
