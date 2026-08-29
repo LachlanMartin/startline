@@ -18,11 +18,11 @@ const call = (q: string) =>
 
 // Sydney hosts three, Newcastle one (~115 km north), Perth one (a continent away).
 const EVENTS = [
-  { city: "Sydney", state: "nsw", latitude: -33.8688, longitude: 151.2093 },
-  { city: "Sydney", state: "nsw", latitude: -33.8688, longitude: 151.2093 },
-  { city: "Sydney", state: "nsw", latitude: -33.8688, longitude: 151.2093 },
-  { city: "Newcastle", state: "nsw", latitude: -32.9283, longitude: 151.7817 },
-  { city: "Perth", state: "wa", latitude: -31.9505, longitude: 115.8605 },
+  { city: "Sydney", state: "nsw", venue: "Bondi Beach", latitude: -33.8688, longitude: 151.2093 },
+  { city: "Sydney", state: "nsw", venue: "Mrs Macquaries Chair", latitude: -33.8688, longitude: 151.2093 },
+  { city: "Sydney", state: "nsw", venue: "Bondi Beach", latitude: -33.8688, longitude: 151.2093 },
+  { city: "Newcastle", state: "nsw", venue: "Newcastle Foreshore", latitude: -32.9283, longitude: 151.7817 },
+  { city: "Perth", state: "wa", venue: "Perth CBD Circuit", latitude: -31.9505, longitude: 115.8605 },
 ];
 
 describe("GET /api/events/suburbs", () => {
@@ -84,5 +84,31 @@ describe("GET /api/events/suburbs", () => {
       expect(body.results).toEqual([]);
     }
     expect(findMany).not.toHaveBeenCalled();
+  });
+
+  it("matches a suburb held in the venue, not just the city", async () => {
+    // Events record a metro city plus a venue; the suburb usually lives in the
+    // venue, so "bondi" must find the Sydney events at Bondi Beach.
+    const body = await (await call("bondi")).json();
+
+    expect(body.nearby).toBe(false);
+    expect(body.results).toEqual([
+      { city: "Sydney", state: "nsw", venue: "Bondi Beach", eventCount: 2 },
+    ]);
+    expect(geocode).not.toHaveBeenCalled();
+  });
+
+  it("lists city matches ahead of venue matches", async () => {
+    const body = await (await call("newcastle")).json();
+
+    // The city row carries no venue; the venue row names the venue it matched.
+    expect(body.results[0]).toEqual({ city: "Newcastle", state: "nsw", eventCount: 1 });
+    expect(body.results.slice(1).every((r: { venue?: string }) => r.venue)).toBe(true);
+  });
+
+  it("does not repeat a suburb already listed by its city name", async () => {
+    const body = await (await call("sydney")).json();
+
+    expect(body.results.filter((r: { city: string }) => r.city === "Sydney")).toHaveLength(1);
   });
 });

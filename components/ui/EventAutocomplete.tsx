@@ -13,16 +13,24 @@ interface EventResult {
   eventDate: string;
 }
 
+interface DivisionResult {
+  name: string;
+  href: string;
+  eventCount: number;
+}
+
 interface CategoryResult {
   value: string;
   label: string;
   href: string;
   eventCount: number;
+  divisions?: DivisionResult[];
 }
 
 /** One flattened row so arrow keys can walk categories and events as one list. */
 type Row =
   | { kind: "category"; item: CategoryResult }
+  | { kind: "division"; item: DivisionResult; discipline: string; disciplineLabel: string }
   | { kind: "event"; item: EventResult };
 
 interface Props {
@@ -35,6 +43,8 @@ interface Props {
    * category filters without a page load; the hero omits it and navigates.
    */
   onSelectCategory?: (value: string) => void;
+  /** Applies a discipline + division filter in place. Listing only, as above. */
+  onSelectDivision?: (value: string, division: string) => void;
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
@@ -52,6 +62,7 @@ export default function EventAutocomplete({
   onChange,
   onEnter,
   onSelectCategory,
+  onSelectDivision,
   placeholder = "Event name, type or keyword",
   className = "",
   autoFocus = false,
@@ -90,8 +101,14 @@ export default function EventAutocomplete({
       const data = await res.json();
       if (seq !== requestRef.current) return;
       // Categories lead, individual events sit under them.
+      // Each discipline is followed by its divisions, then individual events.
       const next: Row[] = [
-        ...(data.categories ?? []).map((c: CategoryResult) => ({ kind: "category" as const, item: c })),
+        ...(data.categories ?? []).flatMap((c: CategoryResult) => [
+          { kind: "category" as const, item: c },
+          ...(c.divisions ?? []).map((d) => ({
+            kind: "division" as const, item: d, discipline: c.value, disciplineLabel: c.label,
+          })),
+        ]),
         ...(data.results ?? []).map((e: EventResult) => ({ kind: "event" as const, item: e })),
       ];
       setRows(next);
@@ -114,6 +131,10 @@ export default function EventAutocomplete({
     setOpen(false);
     if (row.kind === "category" && onSelectCategory) {
       onSelectCategory(row.item.value);
+      return;
+    }
+    if (row.kind === "division" && onSelectDivision) {
+      onSelectDivision(row.discipline, row.item.name);
       return;
     }
     router.push(row.item.href);
@@ -171,13 +192,17 @@ export default function EventAutocomplete({
             // Headings are rendered off the first row of each kind, so the
             // flat list stays a single sequence for arrow-key navigation.
             const heading =
-              i === 0 && row.kind === "category" ? "Categories"
-              : row.kind === "event" && (i === 0 || rows[i - 1].kind === "category") ? "Events"
+              i === 0 && row.kind !== "event" ? "Categories"
+              : row.kind === "event" && (i === 0 || rows[i - 1].kind !== "event") ? "Events"
               : null;
             const active = i === activeIdx;
+            const key =
+              row.kind === "category" ? `c-${row.item.value}`
+              : row.kind === "division" ? `d-${row.discipline}-${row.item.name}`
+              : `e-${row.item.id}`;
 
             return (
-              <div key={row.kind === "category" ? `c-${row.item.value}` : `e-${row.item.id}`}>
+              <div key={key}>
                 {heading && (
                   <div className="px-4 pt-2.5 pb-1 font-headline text-[10px] font-black uppercase tracking-widest text-muted-dark border-t border-dark-lighter first:border-t-0">
                     {heading}
@@ -187,7 +212,8 @@ export default function EventAutocomplete({
                   data-testid={`suggestion-${row.kind}`}
                   onClick={() => select(row)}
                   onMouseEnter={() => setActiveIdx(i)}
-                  className={`w-full px-4 py-2.5 text-left block transition-colors
+                  className={`w-full text-left block transition-colors py-2.5
+                    ${row.kind === "division" ? "pl-8 pr-4" : "px-4"}
                     ${active ? "bg-primary/10" : "hover:bg-white/5"}`}>
                   {row.kind === "category" ? (
                     <>
@@ -198,6 +224,13 @@ export default function EventAutocomplete({
                         {row.item.eventCount} {row.item.eventCount === 1 ? "event" : "events"}
                       </span>
                     </>
+                  ) : row.kind === "division" ? (
+                    <span className={`flex items-baseline gap-2 font-headline text-[13px] truncate ${active ? "text-primary" : "text-light/80"}`}>
+                      <span className="truncate">{row.item.name}</span>
+                      <span className="font-headline text-[10px] uppercase tracking-widest text-muted flex-shrink-0">
+                        {row.item.eventCount}
+                      </span>
+                    </span>
                   ) : (
                     <>
                       <span className={`block font-headline text-[14px] truncate ${active ? "text-primary" : "text-light"}`}>

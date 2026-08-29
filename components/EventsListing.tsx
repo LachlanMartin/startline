@@ -145,7 +145,9 @@ function EventsListingInner() {
   }, [status]);
 
   const searchParams = useSearchParams();
-  const [whatQuery,     setWhatQuery]     = useState(searchParams.get("what")  ?? "");
+  // ?division= comes from the search dropdown's division links; it narrows via
+  // the keyword filter, which matches the organiser-entered divisions.
+  const [whatQuery,     setWhatQuery]     = useState(searchParams.get("what") ?? searchParams.get("division") ?? "");
   const [whereQuery,    setWhereQuery]    = useState(searchParams.get("where") ?? "");
   const [searchOrigin,  setSearchOrigin]  = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding,   setIsGeocoding]   = useState(false);
@@ -283,6 +285,14 @@ function EventsListingInner() {
     return results;
   }, [allEvents, filterState, whereQuery, sortBy, searchOrigin]);
 
+  // Divisions are free text per event rather than a filter dimension, so they
+  // narrow through the keyword filter, which matches an event's divisions.
+  const applyDivision = useCallback((discipline: string, division: string) => {
+    setTypeFilters([discipline as EventType]);
+    setWhatQuery(division);
+    setMobileSearch(false);
+  }, []);
+
   // Picking a category from the search dropdown filters in place rather than
   // navigating, so the listing does not reload underneath the user. The typed
   // text is cleared since the category filter replaces it.
@@ -393,6 +403,7 @@ function EventsListingInner() {
               value={whatQuery}
               onChange={setWhatQuery}
               onSelectCategory={applyCategory}
+              onSelectDivision={applyDivision}
               placeholder="Event name, type or keyword"
               className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none"
             />
@@ -431,6 +442,7 @@ function EventsListingInner() {
               value={whatQuery}
               onChange={setWhatQuery}
               onSelectCategory={applyCategory}
+              onSelectDivision={applyDivision}
               autoFocus
               placeholder="Event name, type or keyword"
               className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none"

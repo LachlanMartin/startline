@@ -19,6 +19,12 @@ export interface SuburbSuggestion {
   city: string;
   state: string;
   eventCount: number;
+  /**
+   * Set when the query matched a venue rather than the city, e.g. "Bondi"
+   * matching Bondi Beach in Sydney. The listing's where filter already matches
+   * on venue, so selecting it narrows correctly.
+   */
+  venue?: string;
   /** Set only on nearby fallback results, in km from the searched place. */
   distanceKm?: number;
 }
@@ -29,6 +35,8 @@ interface SuburbRow {
   count: number;
   lat: number | null;
   lng: number | null;
+  /** Venue names hosting events in this suburb, with their own counts. */
+  venues: Map<string, number>;
 }
 
 /**
@@ -38,7 +46,7 @@ interface SuburbRow {
 async function loadEventSuburbs(): Promise<SuburbRow[]> {
   const events = await prisma.event.findMany({
     where: { status: "APPROVED" },
-    select: { city: true, state: true, latitude: true, longitude: true },
+    select: { city: true, state: true, venue: true, latitude: true, longitude: true },
   });
 
   const byKey = new Map<string, SuburbRow>();
@@ -46,18 +54,18 @@ async function loadEventSuburbs(): Promise<SuburbRow[]> {
     if (!e.city) continue;
     const key = `${e.city.toLowerCase()}|${e.state}`;
     const existing = byKey.get(key);
-    if (existing) {
-      existing.count += 1;
-      if (existing.lat == null && e.latitude != null) {
-        existing.lat = e.latitude;
-        existing.lng = e.longitude;
-      }
-    } else {
-      byKey.set(key, {
-        city: e.city, state: e.state, count: 1,
-        lat: e.latitude, lng: e.longitude,
-      });
+    const row = existing ?? {
+      city: e.city, state: e.state, count: 0,
+      lat: e.latitude, lng: e.longitude,
+      venues: new Map<string, number>(),
+    };
+    row.count += 1;
+    if (row.lat == null && e.latitude != null) {
+      row.lat = e.latitude;
+      row.lng = e.longitude;
     }
+    if (e.venue?.trim()) row.venues.set(e.venue, (row.venues.get(e.venue) ?? 0) + 1);
+    if (!existing) byKey.set(key, row);
   }
   return [...byKey.values()];
 }
@@ -93,13 +101,33 @@ export async function GET(req: NextRequest) {
       b.count - a.count ||
       a.city.localeCompare(b.city));
 
-  if (named.length > 0) {
-    return NextResponse.json({
-      nearby: false,
-      results: named.slice(0, MAX_RESULTS).map(({ city, state, count }): SuburbSuggestion => ({
-        city, state, eventCount: count,
-      })),
-    });
+  // Events record a metro city plus a venue, and the venue is where the suburb
+  // usually lives ("Bondi Beach" in Sydney, "Albert Park Circuit" in
+  // Melbourne). Matching venues as well means a suburb search finds the event
+  // instead of falling through to the geocoder.
+  const venueMatches = suburbs
+    .flatMap((s) =>
+      [...s.venues]
+        .filter(([venue]) => venue.toLowerCase().includes(q))
+        .map(([venue, count]) => ({ suburb: s, venue, count })))
+    .sort((a, b) =>
+      Number(b.venue.toLowerCase().startsWith(q)) - Number(a.venue.toLowerCase().startsWith(q)) ||
+      b.count - a.count ||
+      a.venue.localeCompare(b.venue));
+
+  if (named.length > 0 || venueMatches.length > 0) {
+    const results: SuburbSuggestion[] = [
+      ...named.map(({ city, state, count }) => ({ city, state, eventCount: count })),
+      // Venue hits sit under exact suburb hits, and never duplicate a suburb
+      // already listed by name.
+      ...venueMatches
+        .filter(({ suburb }) => !named.some((n) => n.city === suburb.city && n.state === suburb.state))
+        .map(({ suburb, venue, count }) => ({
+          city: suburb.city, state: suburb.state, venue, eventCount: count,
+        })),
+    ];
+
+    return NextResponse.json({ nearby: false, results: results.slice(0, MAX_RESULTS) });
   }
 
   // Nothing by that name hosts an event: locate the query and offer the closest

@@ -6,6 +6,8 @@ interface SuburbSuggestion {
   city: string;
   state: string;
   eventCount: number;
+  /** Present when the query matched a venue rather than the city name. */
+  venue?: string;
   /** Present only on nearby fallback results, in km from the searched place. */
   distanceKm?: number;
 }
@@ -87,9 +89,12 @@ export default function EventLocationAutocomplete({
   };
 
   const select = (item: SuburbSuggestion) => {
-    onChange(item.city);
+    // A venue match narrows to that venue; the listing's where filter matches
+    // venue as well as city, so the more specific term is the useful one.
+    const text = item.venue ?? item.city;
+    onChange(text);
     setOpen(false);
-    onSelect?.(item.city);
+    onSelect?.(text);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -144,16 +149,18 @@ export default function EventLocationAutocomplete({
             </div>
           )}
           {suggestions.map((item, i) => (
-            <button key={`${item.city}-${item.state}`} type="button"
+            <button key={`${item.city}-${item.state}-${item.venue ?? ""}`} type="button"
               data-testid="suburb-suggestion"
               onClick={() => select(item)}
               onMouseEnter={() => setActiveIdx(i)}
               className={`w-full px-4 py-2.5 text-left block transition-colors
                 ${i === activeIdx ? "bg-primary/10" : "hover:bg-white/5"}`}>
               <span className={`block font-headline text-[14px] truncate ${i === activeIdx ? "text-primary" : "text-light"}`}>
-                {item.city}, {item.state.toUpperCase()}
+                {item.venue ?? item.city}
+                {!item.venue && `, ${item.state.toUpperCase()}`}
               </span>
               <span className="block font-headline text-[11px] uppercase tracking-widest text-muted truncate">
+                {item.venue && `${item.city}, ${item.state.toUpperCase()} · `}
                 {item.distanceKm != null && `${item.distanceKm} km · `}
                 {item.eventCount} {item.eventCount === 1 ? "event" : "events"}
               </span>
