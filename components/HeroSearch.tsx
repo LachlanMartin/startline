@@ -33,7 +33,7 @@ export default function HeroSearch() {
     <div className="w-full mt-6 sm:mt-10">
       {/* Mobile: stacked inputs + full-width button */}
       <div className="flex flex-col sm:hidden gap-2">
-        <div className="bg-dark rounded-2xl px-4 py-3">
+        <div className="bg-dark rounded-2xl px-4 py-3 border border-dark-lighter focus-within:border-primary transition-colors">
           <label className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-1.5">
             Event
           </label>
@@ -44,7 +44,7 @@ export default function HeroSearch() {
               value={what}
               onChange={(e) => setWhat(e.target.value)}
               onKeyDown={handleKey}
-              className="flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-base placeholder:text-muted/40 focus:outline-none focus:ring-0"
+              className="search-field flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-base placeholder:text-muted/40 focus:outline-none focus:ring-0"
             />
             {what && (
               <button onClick={() => setWhat("")} className="text-muted hover:text-light p-1" aria-label="Clear">
@@ -54,29 +54,31 @@ export default function HeroSearch() {
           </div>
         </div>
 
-        <div className="bg-dark rounded-2xl px-4 py-3">
-          <label className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-1.5">
-            Where
-          </label>
-          <div className="flex items-center gap-2">
-            <MapPin className="w-3.5 h-3.5 text-muted flex-shrink-0" />
-            <input
-              type="text"
-              placeholder="State, city, or suburb"
-              value={where}
-              onChange={(e) => setWhere(e.target.value)}
-              onKeyDown={handleKey}
-              className="flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-base placeholder:text-muted/40 focus:outline-none focus:ring-0"
-            />
-            {where && (
-              <button onClick={() => setWhere("")} className="text-muted hover:text-light p-1" aria-label="Clear">
-                <X className="w-4 h-4" />
-              </button>
-            )}
-            <button onClick={handleLocate} className="text-muted hover:text-primary" aria-label="Use my location" title="Use my location">
-              <Locate className="w-4 h-4" />
-            </button>
+        <div className="bg-dark rounded-2xl px-4 py-3 border border-dark-lighter focus-within:border-primary transition-colors flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <label className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-1.5">
+              Where
+            </label>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="State, city, or suburb"
+                value={where}
+                onChange={(e) => setWhere(e.target.value)}
+                onKeyDown={handleKey}
+                className="search-field flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-base placeholder:text-muted/40 focus:outline-none focus:ring-0"
+              />
+              {where && (
+                <button onClick={() => setWhere("")} className="text-muted hover:text-light p-1" aria-label="Clear">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
+          <button onClick={handleLocate} className="text-muted hover:text-primary flex-shrink-0" aria-label="Use my location" title="Use my location">
+            <Locate className="w-4 h-4" />
+          </button>
         </div>
 
         <button
@@ -89,8 +91,11 @@ export default function HeroSearch() {
         </button>
       </div>
 
-      {/* Desktop: horizontal layout */}
-      <div className="hidden sm:flex items-stretch bg-dark rounded-3xl overflow-hidden">
+      {/* Desktop: horizontal layout. The grey outline belongs to the dark input
+          group only, so it is a sibling of the button rather than a border on
+          the wrapper — bordering the wrapper would outline the green button too. */}
+      <div className="hidden sm:flex items-stretch rounded-3xl overflow-hidden">
+        <div className="flex flex-1 items-stretch min-w-0 bg-dark border border-r-0 border-dark-lighter focus-within:border-primary transition-colors">
         <div className="flex-1 px-6 py-4 min-w-0">
           <label className="font-headline text-xs font-black uppercase tracking-widest text-primary block mb-1.5">
             Event
@@ -102,7 +107,7 @@ export default function HeroSearch() {
               value={what}
               onChange={(e) => setWhat(e.target.value)}
               onKeyDown={handleKey}
-              className="flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-xl placeholder:text-muted/40 focus:outline-none focus:ring-0"
+              className="search-field flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-xl placeholder:text-muted/40 focus:outline-none focus:ring-0"
             />
             {what && (
               <button onClick={() => setWhat("")} className="text-muted hover:text-light" aria-label="Clear">
@@ -114,29 +119,35 @@ export default function HeroSearch() {
 
         <div className="w-px bg-dark-lighter self-stretch my-4" />
 
-        <div className="flex-1 px-6 py-4 min-w-0">
-          <label className="font-headline text-xs font-black uppercase tracking-widest text-primary block mb-1.5">
-            Where
-          </label>
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
-            <input
-              type="text"
-              placeholder="State, city, or suburb"
-              value={where}
-              onChange={(e) => setWhere(e.target.value)}
-              onKeyDown={handleKey}
-              className="flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-xl placeholder:text-muted/40 focus:outline-none focus:ring-0"
-            />
-            {where && (
-              <button onClick={() => setWhere("")} className="text-muted hover:text-light" aria-label="Clear">
-                <X className="w-4 h-4" />
-              </button>
-            )}
-            <button onClick={handleLocate} className="text-muted hover:text-primary" aria-label="Use my location" title="Use my location">
-              <Locate className="w-5 h-5" />
-            </button>
+        {/* The locate button is a sibling of the label+input stack, not a child
+            of the input row, so it centres against the full height of the field
+            instead of sitting on the input's baseline. */}
+        <div className="flex-1 px-6 py-4 min-w-0 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <label className="font-headline text-xs font-black uppercase tracking-widest text-primary block mb-1.5">
+              Where
+            </label>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="State, city, or suburb"
+                value={where}
+                onChange={(e) => setWhere(e.target.value)}
+                onKeyDown={handleKey}
+                className="search-field flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-xl placeholder:text-muted/40 focus:outline-none focus:ring-0"
+              />
+              {where && (
+                <button onClick={() => setWhere("")} className="text-muted hover:text-light" aria-label="Clear">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
+          <button onClick={handleLocate} className="text-muted hover:text-primary flex-shrink-0" aria-label="Use my location" title="Use my location">
+            <Locate className="w-5 h-5" />
+          </button>
+        </div>
         </div>
 
         <button

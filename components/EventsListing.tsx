@@ -364,40 +364,43 @@ function EventsListingInner() {
 
   const desktopHeader = (
     <div className="hidden lg:block px-4 pt-4 pb-2 border-b border-dark-lighter bg-dark-darker flex-shrink-0">
-      <div className="flex items-center gap-2">
-        <div className="flex flex-1 items-stretch bg-dark rounded-xl overflow-hidden border border-dark-lighter">
-          {/* Icons are siblings of the label+input stack, not children of the
-              input row, so they centre against the full height of the field
-              instead of sitting on the input's baseline. Labels wrap the text
-              stack so the field label is part of the clickable area. */}
-          <div className="flex-1 px-3.5 py-2.5 border-r border-dark-lighter min-w-0 flex items-center gap-1.5">
-            <label className="flex-1 min-w-0 cursor-text">
-              <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</span>
-              <input type="text" placeholder="Event name, type or keyword" value={whatQuery}
-                onChange={(e) => setWhatQuery(e.target.value)}
-                className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none" />
-            </label>
-            {whatQuery && <button type="button" onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
-          </div>
-          <div className="flex-1 px-3.5 py-2.5 min-w-0 flex items-center gap-1.5">
-            <div className="flex-1 min-w-0">
-              <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Where</span>
-              <SuburbAutocomplete
-                value={whereQuery}
-                onChange={setWhereQuery}
-                onSelect={(label) => handleWhereSearch(label)}
-                onEnter={() => handleWhereSearch()}
-                placeholder="State, city, or suburb"
-                className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none"
-              />
-            </div>
-            {isGeocoding
-              ? <Loader2 data-testid="geocoding-spinner" className="w-3.5 h-3.5 text-muted animate-spin flex-shrink-0" />
-              : <button type="button" onClick={locateMe} aria-label="Use my location" title="Use my location" className="text-muted hover:text-primary flex-shrink-0"><Locate className="w-3.5 h-3.5" /></button>}
-            {whereQuery && <button type="button" onClick={clearWhere} aria-label="Clear where" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
-          </div>
+      {/* Matches the homepage hero bar: pill rounding, an inset divider rather
+          than a full-height border, and a grey outline. Map/List moved to the
+          filter row below, so the bar spans the full width. */}
+      <div className="flex flex-1 items-stretch bg-dark rounded-3xl border border-dark-lighter focus-within:border-primary transition-colors">
+        {/* Icons are siblings of the label+input stack, not children of the
+            input row, so they centre against the full height of the field
+            instead of sitting on the input's baseline. Labels wrap the text
+            stack so the field label is part of the clickable area. */}
+        <div className="flex-1 px-5 py-2.5 min-w-0 flex items-center gap-1.5">
+          <label className="flex-1 min-w-0 cursor-text">
+            <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</span>
+            <input type="text" placeholder="Event name, type or keyword" value={whatQuery}
+              onChange={(e) => setWhatQuery(e.target.value)}
+              className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none" />
+          </label>
+          {whatQuery && <button type="button" onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
         </div>
-        {viewToggle}
+
+        <div className="w-px bg-dark-lighter self-stretch my-2.5" />
+
+        <div className="flex-1 px-5 py-2.5 min-w-0 flex items-center gap-1.5">
+          <div className="flex-1 min-w-0">
+            <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Where</span>
+            <SuburbAutocomplete
+              value={whereQuery}
+              onChange={setWhereQuery}
+              onSelect={(label) => handleWhereSearch(label)}
+              onEnter={() => handleWhereSearch()}
+              placeholder="State, city, or suburb"
+              className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none"
+            />
+          </div>
+          {isGeocoding
+            ? <Loader2 data-testid="geocoding-spinner" className="w-3.5 h-3.5 text-muted animate-spin flex-shrink-0" />
+            : <button type="button" onClick={locateMe} aria-label="Use my location" title="Use my location" className="text-muted hover:text-primary flex-shrink-0"><Locate className="w-3.5 h-3.5" /></button>}
+          {whereQuery && <button type="button" onClick={clearWhere} aria-label="Clear where" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
+        </div>
       </div>
     </div>
   );
@@ -406,14 +409,14 @@ function EventsListingInner() {
     <div className="lg:hidden px-4 pt-3 pb-2 border-b border-dark-lighter flex-shrink-0">
       {mobileSearch ? (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 bg-dark rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-2 bg-dark rounded-2xl px-4 py-2.5 border border-dark-lighter focus-within:border-primary transition-colors">
             <Search className="w-4 h-4 text-muted flex-shrink-0" />
             <input autoFocus type="text" placeholder="Event name, type or keyword" value={whatQuery}
               onChange={(e) => setWhatQuery(e.target.value)}
-              className="flex-1 bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none" />
-            {whatQuery && <button onClick={() => setWhatQuery("")} className="text-muted"><X className="w-4 h-4" /></button>}
+              className="search-field flex-1 bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none" />
+            {whatQuery && <button onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted"><X className="w-4 h-4" /></button>}
           </div>
-          <div className="flex items-center gap-2 bg-dark rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-2 bg-dark rounded-2xl px-4 py-2.5 border border-dark-lighter focus-within:border-primary transition-colors">
             <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <SuburbAutocomplete
@@ -422,7 +425,7 @@ function EventsListingInner() {
                 onSelect={(label) => handleWhereSearch(label)}
                 onEnter={() => handleWhereSearch()}
                 placeholder="City or state"
-                className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none"
+                className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none"
               />
             </div>
             {isGeocoding
@@ -433,15 +436,12 @@ function EventsListingInner() {
           <button onClick={() => setMobileSearch(false)} className="text-center font-headline text-xs uppercase tracking-widest text-muted py-1">Done</button>
         </div>
       ) : (
-        <div className="flex items-center gap-2">
-          <button onClick={() => setMobileSearch(true)} className="flex-1 flex items-center gap-3 bg-dark rounded-xl px-4 h-11 text-left min-w-0">
-            <Search className="w-4 h-4 text-muted flex-shrink-0" />
-            <span className="flex-1 font-headline text-sm text-muted/60 truncate">
-              {whatQuery || whereQuery ? [whatQuery, whereQuery].filter(Boolean).join(" · ") : "Search events…"}
-            </span>
-          </button>
-          {viewToggle}
-        </div>
+        <button onClick={() => setMobileSearch(true)} className="w-full flex items-center gap-3 bg-dark rounded-2xl border border-dark-lighter px-4 h-11 text-left min-w-0">
+          <Search className="w-4 h-4 text-muted flex-shrink-0" />
+          <span className="flex-1 font-headline text-sm text-muted/60 truncate">
+            {whatQuery || whereQuery ? [whatQuery, whereQuery].filter(Boolean).join(" · ") : "Search events…"}
+          </span>
+        </button>
       )}
     </div>
   );
@@ -590,17 +590,25 @@ function EventsListingInner() {
       </button>
 
       {activeChips.length > 0 && (
-        <button onClick={clearFilters} className="ml-auto font-headline text-xs font-medium uppercase tracking-widest text-muted hover:text-light transition-colors">
+        <button onClick={clearFilters} className="font-headline text-xs font-medium uppercase tracking-widest text-muted hover:text-light transition-colors">
           Clear All
         </button>
       )}
+
+      {/* Pushed right so Map/List anchors the end of the row whether or not
+          Clear All is showing. */}
+      <div className="ml-auto">{viewToggle}</div>
     </div>
   );
 
   const filterSubNav = (
     <div ref={subNavRef} className="flex-shrink-0">
       {mobileFilterBar}
-      <div className="hidden lg:flex border-b border-dark-lighter bg-dark-darker px-3 lg:px-6 py-2 items-center gap-1 overflow-x-auto">
+      {/* Map/List sits with the filters. The filters get their own scrolling
+          container so the toggle stays pinned right instead of scrolling away
+          with them on a narrow desktop window. */}
+      <div className="hidden lg:flex border-b border-dark-lighter bg-dark-darker px-3 lg:px-6 py-2 items-center gap-2">
+      <div className="flex flex-1 items-center gap-1 overflow-x-auto min-w-0">
       <FilterTrigger label={sortLabel} active={sortBy !== "date"}
         isOpen={openDropdown === "sort"} onToggle={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
         panelClassName="w-48" icon={<ArrowUpDown className="w-3.5 h-3.5" />}
@@ -634,6 +642,8 @@ function EventsListingInner() {
       {hasActiveFilters && (
         <button onClick={clearFilters} className="ml-1 flex-shrink-0 font-headline text-xs font-medium uppercase tracking-widest text-muted hover:text-light transition-colors">Clear All</button>
       )}
+      </div>
+      {viewToggle}
       </div>
     </div>
   );

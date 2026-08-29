@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { argosScreenshot } from "@argos-ci/playwright";
 import { goToHomepage } from "./helpers";
 
@@ -29,17 +29,23 @@ test.describe("events page", () => {
     await expect(page.getByText("Where", { exact: true })).toBeVisible();
   });
 
+  // The toggle renders twice, once per breakpoint, and only one is ever
+  // visible. Select on visibility rather than DOM order so the tests don't
+  // depend on which breakpoint's filter bar happens to render first.
+  const viewToggle = (page: Page, mode: "map" | "list") =>
+    page.getByTestId(`view-mode-${mode}`).filter({ visible: true });
+
   test("list/map view toggle is present", async ({ page }) => {
     await page.goto("/events");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByTestId("view-mode-list").first()).toBeVisible();
-    await expect(page.getByTestId("view-mode-map").first()).toBeVisible();
+    await expect(viewToggle(page, "list")).toBeVisible();
+    await expect(viewToggle(page, "map")).toBeVisible();
   });
 
   test("switching to map mode shows map container", async ({ page }) => {
     await page.goto("/events");
     await page.waitForLoadState("networkidle");
-    await page.getByTestId("view-mode-map").first().click();
+    await viewToggle(page, "map").click();
     await expect(page.getByTestId("events-map")).toBeVisible();
   });
 
@@ -48,7 +54,7 @@ test.describe("events page", () => {
     await context.setGeolocation({ latitude: -33.8688, longitude: 151.2093, accuracy: 5 });
     await page.goto("/events");
     await page.waitForLoadState("networkidle");
-    await page.getByTestId("view-mode-map").first().click();
+    await viewToggle(page, "map").click();
     await expect(page.getByTestId("events-map")).toBeVisible();
   });
 });
