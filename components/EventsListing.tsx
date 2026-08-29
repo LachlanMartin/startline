@@ -23,6 +23,9 @@ import EventCard from "@/components/EventCard";
 import EventLocationAutocomplete from "@/components/ui/EventLocationAutocomplete";
 import EventAutocomplete from "@/components/ui/EventAutocomplete";
 
+/** Cards in the "Other events you may like" row under a set of results. */
+const OTHER_EVENTS_LIMIT = 6;
+
 const DISCIPLINE_OPTIONS = EVENT_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }));
 const STATE_CHIP_OPTIONS  = STATE_OPTIONS.map((o) => ({ value: o.value, label: o.shortLabel }));
 const FORMAT_CHIP_OPTIONS = FORMAT_OPTIONS.map((o) => ({ value: o.value, label: o.label }));
@@ -773,6 +776,51 @@ function EventsListingInner() {
     return upcoming.length > 0 ? upcoming : null;
   }, [displayEvents.length, allEvents]);
 
+  /**
+   * Events to offer alongside a set of results. Ranked by what they share with
+   * the current search — same discipline, then same place — so the row reads as
+   * a genuine suggestion rather than an arbitrary tail of the listing.
+   */
+  const otherEvents = useMemo(() => {
+    if (displayEvents.length === 0 || allEvents.length === 0) return [];
+
+    const NO_FILTERS: FilterState = {
+      types: [], states: [], formats: [], levels: [],
+      priceRange: null, dateRange: "all", searchQuery: "",
+    };
+    const shown = new Set(displayEvents.map((e) => e.id));
+    const rest = sortEvents(filterEvents(allEvents, NO_FILTERS), "date")
+      .filter((e) => !shown.has(e.id));
+
+    const types = new Set(displayEvents.map((e) => e.type));
+    const cities = new Set(displayEvents.map((e) => e.city.toLowerCase()));
+    const affinity = (e: UserEvent) =>
+      (types.has(e.type) ? 2 : 0) + (cities.has(e.city.toLowerCase()) ? 1 : 0);
+
+    return [...rest]
+      .sort((a, b) => affinity(b) - affinity(a))
+      .slice(0, OTHER_EVENTS_LIMIT);
+  }, [displayEvents, allEvents]);
+
+  /** "Other events you may like", shown under a set of results. */
+  const otherEventsBlock = (size: "lg" | "sm") => (
+    otherEvents.length > 0 ? (
+      <div className={`mt-8 pt-6 border-t border-dark-lighter ${size === "sm" ? "px-1" : ""}`}>
+        <p className="font-headline text-[10px] font-black uppercase tracking-widest text-muted-dark mb-3">
+          Other events you may like
+        </p>
+        <div
+          className={size === "lg" ? "grid gap-4 sm:gap-5" : "grid grid-cols-1 lg:grid-cols-2 gap-2"}
+          style={size === "lg" ? { gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" } : undefined}
+        >
+          {otherEvents.map((event) => (
+            <EventCard key={event.id} event={event} className="w-full" />
+          ))}
+        </div>
+      </div>
+    ) : null
+  );
+
   /** Shared "nothing matched" block, sized for the full grid or the map list. */
   const noResults = (size: "lg" | "sm") => (
     <div className={size === "lg" ? "p-10 text-center" : "p-8 text-center"}>
@@ -807,11 +855,14 @@ function EventsListingInner() {
   const gridContent = (
     <div className={view === "list" ? "flex-1 overflow-y-auto px-3 lg:px-6 py-4 lg:py-5" : "hidden"}>
       {displayEvents.length === 0 ? emptyState : (
-        <div className="grid gap-4 sm:gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
-          {displayEvents.map((event) => (
-            <EventCard key={event.id} event={event} className="w-full" />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+            {displayEvents.map((event) => (
+              <EventCard key={event.id} event={event} className="w-full" />
+            ))}
+          </div>
+          {otherEventsBlock("lg")}
+        </>
       )}
     </div>
   );
@@ -827,11 +878,14 @@ function EventsListingInner() {
         {displayEvents.length === 0 ? (
           noResults("sm")
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-            {displayEvents.map((event) => (
-              <EventCard key={event.id} event={event} className="w-full" selected={selectedId === event.id} onSelect={() => handleSelect(event.id)} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+              {displayEvents.map((event) => (
+                <EventCard key={event.id} event={event} className="w-full" selected={selectedId === event.id} onSelect={() => handleSelect(event.id)} />
+              ))}
+            </div>
+            {otherEventsBlock("sm")}
+          </>
         )}
       </div>
       <div className="flex-1 relative min-h-[260px] lg:min-h-[320px]">

@@ -35,6 +35,28 @@ test.describe("events page", () => {
   const viewToggle = (page: Page, mode: "map" | "list") =>
     page.getByTestId(`view-mode-${mode}`).filter({ visible: true });
 
+  test("offers other events beneath a set of results", async ({ page }) => {
+    await page.goto("/events?view=list&type=running");
+    await page.waitForLoadState("networkidle");
+
+    // The filtered results come first, then a row of alternatives. The block
+    // renders once per breakpoint with only one visible, so select on that.
+    await expect(page.getByText("Other events you may like").filter({ visible: true }))
+      .toBeVisible({ timeout: 10000 });
+    const cards = page.locator('a[href^="/events/"]');
+    expect(await cards.count()).toBeGreaterThan(5);
+  });
+
+  test("omits the other-events row when every event is already listed", async ({ page }) => {
+    await page.goto("/events?view=list");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator('a[href^="/events/"]').first()).toBeVisible({ timeout: 10000 });
+
+    // Nothing is left over to suggest, so the row is not rendered at all.
+    await expect(page.getByText("Other events you may like").filter({ visible: true }))
+      .toHaveCount(0);
+  });
+
   test("list/map view toggle is present", async ({ page }) => {
     await page.goto("/events");
     await page.waitForLoadState("networkidle");
