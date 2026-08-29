@@ -49,6 +49,11 @@ interface Props {
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
+  /**
+   * The where field's current text, so category and division counts reflect
+   * what the listing would actually show in that location.
+   */
+  where?: string;
   /** Rendered inside the input's relative wrapper, e.g. a clear button. */
   children?: React.ReactNode;
 }
@@ -66,6 +71,7 @@ export default function EventAutocomplete({
   placeholder = "Event name, type or keyword",
   className = "",
   autoFocus = false,
+  where,
   children,
 }: Props) {
   const router = useRouter();
@@ -97,7 +103,9 @@ export default function EventAutocomplete({
     const seq = ++requestRef.current;
     setLoading(true);
     try {
-      const res = await fetch(`/api/events/search?q=${encodeURIComponent(q.trim())}`);
+      const params = new URLSearchParams({ q: q.trim() });
+      if (where?.trim()) params.set("where", where.trim());
+      const res = await fetch(`/api/events/search?${params}`);
       const data = await res.json();
       if (seq !== requestRef.current) return;
       // Categories lead, individual events sit under them.

@@ -62,6 +62,7 @@ export default function HeroSearch() {
               onChange={handleWhatChange}
               onSelectCategory={(sel) => setSelection({ discipline: sel.discipline, division: sel.division })}
               onEnter={handleSearch}
+              where={where}
               placeholder="Event name, type or keyword"
               className="search-field w-full bg-transparent border-0 rounded-none p-0 text-light font-headline text-base placeholder:text-muted/40 focus:outline-none focus:ring-0"
             />
@@ -84,6 +85,7 @@ export default function HeroSearch() {
                 <EventLocationAutocomplete
                   value={where}
                   onChange={setWhere}
+                  filter={selection}
                   onEnter={handleSearch}
                   placeholder="State, city, or suburb"
                   className="search-field w-full bg-transparent border-0 rounded-none p-0 text-light font-headline text-base placeholder:text-muted/40 focus:outline-none focus:ring-0"
@@ -126,6 +128,7 @@ export default function HeroSearch() {
               onChange={handleWhatChange}
               onSelectCategory={(sel) => setSelection({ discipline: sel.discipline, division: sel.division })}
               onEnter={handleSearch}
+              where={where}
               placeholder="Event name, type or keyword"
               className="search-field w-full bg-transparent border-0 rounded-none p-0 text-light font-headline text-xl placeholder:text-muted/40 focus:outline-none focus:ring-0"
             />
@@ -151,6 +154,7 @@ export default function HeroSearch() {
                 <EventLocationAutocomplete
                   value={where}
                   onChange={setWhere}
+                  filter={selection}
                   onEnter={handleSearch}
                   placeholder="State, city, or suburb"
                   className="search-field w-full bg-transparent border-0 rounded-none p-0 text-light font-headline text-xl placeholder:text-muted/40 focus:outline-none focus:ring-0"

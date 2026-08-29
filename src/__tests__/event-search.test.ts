@@ -155,4 +155,22 @@ describe("GET /api/events/search - categories and divisions", () => {
     expect(body.categories[0].eventCount).toBe(2);
     expect(body.categories[0].divisions.map((d: { name: string }) => d.name)).toEqual(["5K"]);
   });
+
+  it("counts categories only within the where field's location", async () => {
+    await call("q=run&where=Albert%20Park%20Circuit");
+
+    // Both queries are scoped, so the counts match what the listing would show.
+    const divisionWhere = findMany.mock.calls[0][0].where;
+    expect(divisionWhere.OR.map((c: Record<string, unknown>) => Object.keys(c)[0]))
+      .toEqual(["city", "state", "venue"]);
+    expect(divisionWhere.OR[0].city.contains).toBe("Albert Park Circuit");
+    expect(findMany.mock.calls[1][0].where.AND).toBeDefined();
+  });
+
+  it("leaves the queries unscoped when the where field is empty", async () => {
+    await call("q=run");
+
+    expect(findMany.mock.calls[0][0].where.OR).toBeUndefined();
+    expect(findMany.mock.calls[1][0].where.AND).toBeUndefined();
+  });
 });

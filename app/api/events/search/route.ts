@@ -11,6 +11,9 @@ const MAX_DIVISIONS = 5;
 
 const searchQuery = z.object({
   q: z.string().trim().min(2).max(100),
+  // The where field's current text. Counts are taken against it so a category
+  // is never offered, or counted, for events the listing would then filter out.
+  where: z.string().trim().max(100).optional(),
 });
 
 /**
@@ -32,6 +35,18 @@ export async function GET(req: NextRequest) {
 
   const lower = q.toLowerCase();
 
+  // Mirrors the listing's where filter, which matches city, state or venue.
+  const where = parsed.data.where;
+  const locationFilter = where
+    ? {
+        OR: [
+          { city: { contains: where, mode: "insensitive" as const } },
+          { state: { contains: where, mode: "insensitive" as const } },
+          { venue: { contains: where, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+
   // Disciplines are a fixed list, so they are matched here rather than queried.
   const matchedTypes = EVENT_TYPE_OPTIONS.filter((o) =>
     o.label.toLowerCase().includes(lower) ||
@@ -49,6 +64,7 @@ export async function GET(req: NextRequest) {
       ...(matchedTypes.length
         ? {}
         : { discipline: { in: EVENT_TYPE_OPTIONS.map((o) => o.value) } }),
+      ...locationFilter,
     },
     select: { discipline: true, categories: true },
   });
@@ -98,6 +114,7 @@ export async function GET(req: NextRequest) {
   const events = await prisma.event.findMany({
     where: {
       status: "APPROVED",
+      ...(where ? { AND: [locationFilter] } : {}),
       OR: [
         { title: { contains: q, mode: "insensitive" } },
         { venue: { contains: q, mode: "insensitive" } },

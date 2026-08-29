@@ -19,6 +19,12 @@ interface Props {
   onEnter?: () => void;
   placeholder?: string;
   className?: string;
+  /**
+   * The event field's active selection. Passed through so suggestions and
+   * their counts reflect what the listing would actually show, rather than
+   * offering a suburb whose only events this filter excludes.
+   */
+  filter?: { discipline: string; division: string | null } | null;
 }
 
 /**
@@ -37,6 +43,7 @@ export default function EventLocationAutocomplete({
   onEnter,
   placeholder = "State, city, or suburb",
   className = "",
+  filter,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<SuburbSuggestion[]>([]);
@@ -66,7 +73,10 @@ export default function EventLocationAutocomplete({
     const seq = ++requestRef.current;
     setLoading(true);
     try {
-      const res = await fetch(`/api/events/suburbs?q=${encodeURIComponent(q.trim())}`);
+      const params = new URLSearchParams({ q: q.trim() });
+      if (filter?.discipline) params.set("type", filter.discipline);
+      if (filter?.division) params.set("division", filter.division);
+      const res = await fetch(`/api/events/suburbs?${params}`);
       const data = await res.json();
       if (seq !== requestRef.current) return;
       const results: SuburbSuggestion[] = data.results ?? [];
@@ -81,6 +91,16 @@ export default function EventLocationAutocomplete({
       if (seq === requestRef.current) setLoading(false);
     }
   };
+
+  // Re-run against the new filter so the list never shows counts taken under
+  // the previous one. Setting state here is the point: the counts on screen are
+  // stale until the refetch lands.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (value.trim().length >= 2) fetchSuggestions(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter?.discipline, filter?.division]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleInput = (text: string) => {
     onChange(text);

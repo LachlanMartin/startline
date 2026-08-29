@@ -13,8 +13,8 @@ import { GET } from "@/app/api/events/suburbs/route";
 const findMany = prisma.event.findMany as ReturnType<typeof vi.fn>;
 const geocode = geocodePlace as ReturnType<typeof vi.fn>;
 
-const call = (q: string) =>
-  GET(new NextRequest(`http://localhost:3000/api/events/suburbs?q=${encodeURIComponent(q)}`));
+const call = (q: string, extra = "") =>
+  GET(new NextRequest(`http://localhost:3000/api/events/suburbs?q=${encodeURIComponent(q)}${extra}`));
 
 // Sydney hosts three, Newcastle one (~115 km north), Perth one (a continent away).
 const EVENTS = [
@@ -110,5 +110,40 @@ describe("GET /api/events/suburbs", () => {
     const body = await (await call("sydney")).json();
 
     expect(body.results.filter((r: { city: string }) => r.city === "Sydney")).toHaveLength(1);
+  });
+
+  it("counts only events matching the event field's discipline", async () => {
+    // Sydney hosts three, but only the running one should be counted or offered
+    // once the event field is filtered to running.
+    findMany.mockResolvedValue([
+      { city: "Sydney", state: "nsw", venue: "Bondi Beach", categories: ["10K"], latitude: -33.8, longitude: 151.2 },
+    ]);
+
+    const body = await (await call("syd", "&type=running")).json();
+
+    expect(findMany.mock.calls[0][0].where.discipline).toBe("running");
+    expect(body.results).toEqual([{ city: "Sydney", state: "nsw", eventCount: 1 }]);
+  });
+
+  it("counts only events offering the selected division", async () => {
+    findMany.mockResolvedValue([
+      { city: "Sydney", state: "nsw", venue: "A", categories: ["10K"], latitude: -33.8, longitude: 151.2 },
+      { city: "Sydney", state: "nsw", venue: "B", categories: ["5K"], latitude: -33.8, longitude: 151.2 },
+    ]);
+
+    const body = await (await call("syd", "&type=running&division=10K")).json();
+    expect(body.results).toEqual([{ city: "Sydney", state: "nsw", eventCount: 1 }]);
+  });
+
+  it("stops offering a suburb whose only events the event filter excludes", async () => {
+    // The reported case: a cycling-only venue must not be offered, nor counted,
+    // while the event field is set to a running division.
+    findMany.mockResolvedValue([
+      { city: "Melbourne", state: "vic", venue: "Albert Park Circuit", categories: ["100K"], latitude: -37.8, longitude: 144.9 },
+    ]);
+    geocode.mockResolvedValue(null);
+
+    const body = await (await call("albert park", "&type=running&division=10K")).json();
+    expect(body.results).toEqual([]);
   });
 });

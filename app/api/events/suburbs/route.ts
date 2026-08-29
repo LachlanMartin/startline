@@ -13,6 +13,11 @@ const NEARBY_RADIUS_KM = 250;
 
 const suburbQuery = z.object({
   q: z.string().trim().min(2).max(100),
+  // The event field's current selection. Suggestions are counted against it so
+  // a suburb is never offered, or counted, for events the listing would then
+  // filter out.
+  type: z.string().trim().max(40).optional(),
+  division: z.string().trim().max(60).optional(),
 });
 
 export interface SuburbSuggestion {
@@ -43,15 +48,24 @@ interface SuburbRow {
  * Collapse approved events down to the distinct suburbs that actually host
  * them, with a representative coordinate for each.
  */
-async function loadEventSuburbs(): Promise<SuburbRow[]> {
+async function loadEventSuburbs(filter: { type?: string; division?: string }): Promise<SuburbRow[]> {
   const events = await prisma.event.findMany({
-    where: { status: "APPROVED" },
-    select: { city: true, state: true, venue: true, latitude: true, longitude: true },
+    where: {
+      status: "APPROVED",
+      ...(filter.type ? { discipline: filter.type } : {}),
+    },
+    select: { city: true, state: true, venue: true, categories: true, latitude: true, longitude: true },
   });
 
   const byKey = new Map<string, SuburbRow>();
   for (const e of events) {
     if (!e.city) continue;
+    // Divisions live in a Json column, so the division filter is applied here
+    // rather than in the query.
+    if (filter.division) {
+      const divisions = Array.isArray(e.categories) ? e.categories : [];
+      if (!divisions.some((d) => typeof d === "string" && d === filter.division)) continue;
+    }
     const key = `${e.city.toLowerCase()}|${e.state}`;
     const existing = byKey.get(key);
     const row = existing ?? {
@@ -91,7 +105,10 @@ export async function GET(req: NextRequest) {
   }
 
   const q = parsed.data.q.toLowerCase();
-  const suburbs = await loadEventSuburbs();
+  const suburbs = await loadEventSuburbs({
+    type: parsed.data.type,
+    division: parsed.data.division,
+  });
 
   const named = suburbs
     .filter((s) => s.city.toLowerCase().includes(q))

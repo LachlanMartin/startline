@@ -418,6 +418,7 @@ function EventsListingInner() {
               value={whatQuery}
               onChange={handleWhatChange}
               onSelectCategory={applySelection}
+              where={whereQuery}
               placeholder="Event name, type or keyword"
               className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none"
             />
@@ -431,6 +432,7 @@ function EventsListingInner() {
             <EventLocationAutocomplete
               value={whereQuery}
               onChange={setWhereQuery}
+              filter={selection}
               onSelect={(label) => handleWhereSearch(label)}
               onEnter={() => handleWhereSearch()}
               placeholder="State, city, or suburb"
@@ -456,6 +458,7 @@ function EventsListingInner() {
               value={whatQuery}
               onChange={handleWhatChange}
               onSelectCategory={applySelection}
+              where={whereQuery}
               autoFocus
               placeholder="Event name, type or keyword"
               className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none"
@@ -468,6 +471,7 @@ function EventsListingInner() {
               <EventLocationAutocomplete
                 value={whereQuery}
                 onChange={setWhereQuery}
+                filter={selection}
                 onSelect={(label) => handleWhereSearch(label)}
                 onEnter={() => handleWhereSearch()}
                 placeholder="City or state"
@@ -755,14 +759,73 @@ function EventsListingInner() {
     </div>
   ) : null;
 
-  const emptyState = (
-    <div className="p-10 text-center">
-      <p className="font-headline text-2xl font-black italic tracking-tighter text-light mb-4">No events found.</p>
+  // With nothing matching, offer the nearest thing rather than a dead end:
+  // first anything else in the same place, then the same kind of event
+  // elsewhere, then simply what is coming up. Computed from the events already
+  // loaded, so it costs no extra request.
+  const suggestions = useMemo(() => {
+    if (displayEvents.length > 0 || allEvents.length === 0) return null;
+
+    const NO_FILTERS: FilterState = {
+      types: [], states: [], formats: [], levels: [],
+      priceRange: null, dateRange: "all", searchQuery: "",
+    };
+    const upcoming = sortEvents(filterEvents(allEvents, NO_FILTERS), "date");
+
+    const place = whereQuery.trim();
+    if (place) {
+      const q = place.toLowerCase();
+      const here = upcoming.filter((e) =>
+        e.city.toLowerCase().includes(q) ||
+        e.state.toLowerCase().includes(q) ||
+        e.location.toLowerCase().includes(q));
+      if (here.length > 0) return { reason: `Other events at ${place}`, events: here.slice(0, 3) };
+    }
+
+    const eventTerm = selection ? whatQuery : whatQuery.trim();
+    if (eventTerm) {
+      const elsewhere = sortEvents(filterEvents(allEvents, {
+        ...NO_FILTERS,
+        types: selection ? [selection.discipline as EventType] : [],
+        searchQuery: selection ? (selection.division ?? "") : whatQuery,
+      }), "date");
+      if (elsewhere.length > 0) {
+        return { reason: `${eventTerm} events elsewhere`, events: elsewhere.slice(0, 3) };
+      }
+    }
+
+    return upcoming.length > 0 ? { reason: "Coming up soon", events: upcoming.slice(0, 3) } : null;
+  }, [displayEvents.length, allEvents, whereQuery, whatQuery, selection]);
+
+  /** Shared "nothing matched" block, sized for the full grid or the map list. */
+  const noResults = (size: "lg" | "sm") => (
+    <div className={size === "lg" ? "p-10 text-center" : "p-8 text-center"}>
+      <p className={`font-headline font-black italic tracking-tighter text-light mb-2 ${size === "lg" ? "text-2xl" : "text-lg"}`}>
+        No events matched your search.
+      </p>
+      <p className="font-headline text-[13px] text-muted mb-4">
+        Nothing here fits every filter you have set. Try removing one, or take a look at these.
+      </p>
       <button onClick={clearFilters}
-        className="font-headline text-sm font-medium uppercase tracking-widest border border-primary text-primary px-5 py-2.5 hover:bg-primary hover:text-dark transition-colors rounded-full"
+        className={`font-headline font-medium uppercase tracking-widest border border-primary text-primary hover:bg-primary hover:text-dark transition-colors rounded-full ${size === "lg" ? "text-sm px-5 py-2.5" : "text-xs px-4 py-2"}`}
       >Clear Filters</button>
+
+      {suggestions && (
+        <div className="mt-8 text-left">
+          <p className="font-headline text-[10px] font-black uppercase tracking-widest text-muted-dark mb-3">
+            {suggestions.reason}
+          </p>
+          <div className={`grid gap-2 ${size === "lg" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}>
+            {suggestions.events.map((event) => (
+              <EventCard key={event.id} event={event} className="w-full" />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  const emptyState = noResults("lg");
 
   // Full-width results grid — shown for the "List" tab, all breakpoints
   const gridContent = (
@@ -786,12 +849,7 @@ function EventsListingInner() {
           map left neither usable. The List tab is the list. */}
       <div ref={listRef} className="hidden lg:flex flex-col w-full lg:flex-1 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-dark-lighter bg-dark-darker overflow-y-auto lg:max-h-none px-4 py-3 lg:py-4">
         {displayEvents.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="font-headline text-lg font-black italic tracking-tighter text-light mb-3">No events found.</p>
-            <button onClick={clearFilters}
-              className="font-headline text-xs font-medium uppercase tracking-widest border border-primary text-primary px-4 py-2 hover:bg-primary hover:text-dark transition-colors rounded-full"
-            >Clear Filters</button>
-          </div>
+          noResults("sm")
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
             {displayEvents.map((event) => (
