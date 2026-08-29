@@ -20,6 +20,7 @@ import EventMap from "@/components/EventMap";
 import type { EventMapHandle } from "@/components/EventMap";
 import EventCard from "@/components/EventCard";
 import SuburbAutocomplete from "@/components/ui/SuburbAutocomplete";
+import EventAutocomplete from "@/components/ui/EventAutocomplete";
 
 const DISCIPLINE_OPTIONS = EVENT_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }));
 const STATE_CHIP_OPTIONS  = STATE_OPTIONS.map((o) => ({ value: o.value, label: o.shortLabel }));
@@ -377,12 +378,15 @@ function EventsListingInner() {
             instead of sitting on the input's baseline. Labels wrap the text
             stack so the field label is part of the clickable area. */}
         <div className="flex-1 px-5 py-2.5 min-w-0 flex items-center gap-1.5 bg-dark border border-dark-lighter rounded-3xl focus-within:border-primary transition-colors">
-          <label className="flex-1 min-w-0 cursor-text">
+          <div className="flex-1 min-w-0">
             <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</span>
-            <input type="text" placeholder="Event name, type or keyword" value={whatQuery}
-              onChange={(e) => setWhatQuery(e.target.value)}
-              className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none" />
-          </label>
+            <EventAutocomplete
+              value={whatQuery}
+              onChange={setWhatQuery}
+              placeholder="Event name, type or keyword"
+              className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none"
+            />
+          </div>
           {whatQuery && <button type="button" onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
         </div>
 
@@ -413,10 +417,14 @@ function EventsListingInner() {
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 bg-dark rounded-2xl px-4 py-2.5 border border-dark-lighter focus-within:border-primary transition-colors">
             <Search className="w-4 h-4 text-muted flex-shrink-0" />
-            <input autoFocus type="text" placeholder="Event name, type or keyword" value={whatQuery}
-              onChange={(e) => setWhatQuery(e.target.value)}
-              className="search-field flex-1 bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none" />
-            {whatQuery && <button onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted"><X className="w-4 h-4" /></button>}
+            <EventAutocomplete
+              value={whatQuery}
+              onChange={setWhatQuery}
+              autoFocus
+              placeholder="Event name, type or keyword"
+              className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none"
+            />
+            {whatQuery && <button onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted flex-shrink-0"><X className="w-4 h-4" /></button>}
           </div>
           <div className="flex items-center gap-2 bg-dark rounded-2xl px-4 py-2.5 border border-dark-lighter focus-within:border-primary transition-colors">
             <MapPin className="w-4 h-4 text-muted flex-shrink-0" />

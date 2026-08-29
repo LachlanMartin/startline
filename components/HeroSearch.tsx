@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, MapPin, Locate } from "lucide-react";
+import EventAutocomplete from "@/components/ui/EventAutocomplete";
+import SuburbAutocomplete from "@/components/ui/SuburbAutocomplete";
 
 export default function HeroSearch() {
   const router = useRouter();
@@ -25,10 +27,6 @@ export default function HeroSearch() {
     router.push(`/events?${params.toString()}`);
   }
 
-  function handleKey(e: React.KeyboardEvent) {
-    if (e.key === "Enter") handleSearch();
-  }
-
   return (
     <div className="w-full mt-6 sm:mt-10">
       {/* Mobile: stacked inputs + full-width button */}
@@ -38,13 +36,12 @@ export default function HeroSearch() {
             Event
           </label>
           <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Event name, type or keyword"
+            <EventAutocomplete
               value={what}
-              onChange={(e) => setWhat(e.target.value)}
-              onKeyDown={handleKey}
-              className="search-field flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-base placeholder:text-muted/40 focus:outline-none focus:ring-0"
+              onChange={setWhat}
+              onEnter={handleSearch}
+              placeholder="Event name, type or keyword"
+              className="search-field w-full bg-transparent border-0 rounded-none p-0 text-light font-headline text-base placeholder:text-muted/40 focus:outline-none focus:ring-0"
             />
             {what && (
               <button onClick={() => setWhat("")} className="text-muted hover:text-light p-1" aria-label="Clear">
@@ -61,14 +58,16 @@ export default function HeroSearch() {
             </label>
             <div className="flex items-center gap-2">
               <MapPin className="w-3.5 h-3.5 text-muted flex-shrink-0" />
-              <input
-                type="text"
-                placeholder="State, city, or suburb"
-                value={where}
-                onChange={(e) => setWhere(e.target.value)}
-                onKeyDown={handleKey}
-                className="search-field flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-base placeholder:text-muted/40 focus:outline-none focus:ring-0"
-              />
+              <div className="flex-1 min-w-0">
+                <SuburbAutocomplete
+                  value={where}
+                  onChange={setWhere}
+                  onSelect={() => {}}
+                  onEnter={handleSearch}
+                  placeholder="State, city, or suburb"
+                  className="search-field w-full bg-transparent border-0 rounded-none p-0 text-light font-headline text-base placeholder:text-muted/40 focus:outline-none focus:ring-0"
+                />
+              </div>
               {where && (
                 <button onClick={() => setWhere("")} className="text-muted hover:text-light p-1" aria-label="Clear">
                   <X className="w-4 h-4" />
@@ -101,13 +100,12 @@ export default function HeroSearch() {
             Event
           </label>
           <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Event name, type or keyword"
+            <EventAutocomplete
               value={what}
-              onChange={(e) => setWhat(e.target.value)}
-              onKeyDown={handleKey}
-              className="search-field flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-xl placeholder:text-muted/40 focus:outline-none focus:ring-0"
+              onChange={setWhat}
+              onEnter={handleSearch}
+              placeholder="Event name, type or keyword"
+              className="search-field w-full bg-transparent border-0 rounded-none p-0 text-light font-headline text-xl placeholder:text-muted/40 focus:outline-none focus:ring-0"
             />
             {what && (
               <button onClick={() => setWhat("")} className="text-muted hover:text-light" aria-label="Clear">
@@ -127,14 +125,16 @@ export default function HeroSearch() {
             </label>
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
-              <input
-                type="text"
-                placeholder="State, city, or suburb"
-                value={where}
-                onChange={(e) => setWhere(e.target.value)}
-                onKeyDown={handleKey}
-                className="search-field flex-1 bg-transparent border-0 rounded-none p-0 text-light font-headline text-xl placeholder:text-muted/40 focus:outline-none focus:ring-0"
-              />
+              <div className="flex-1 min-w-0">
+                <SuburbAutocomplete
+                  value={where}
+                  onChange={setWhere}
+                  onSelect={() => {}}
+                  onEnter={handleSearch}
+                  placeholder="State, city, or suburb"
+                  className="search-field w-full bg-transparent border-0 rounded-none p-0 text-light font-headline text-xl placeholder:text-muted/40 focus:outline-none focus:ring-0"
+                />
+              </div>
               {where && (
                 <button onClick={() => setWhere("")} className="text-muted hover:text-light" aria-label="Clear">
                   <X className="w-4 h-4" />

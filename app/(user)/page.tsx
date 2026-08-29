@@ -48,7 +48,9 @@ export default async function Home() {
       <VerifiedBanner />
 
       {/* ── Hero ── */}
-      <section className="relative min-h-[520px] sm:min-h-[600px] flex items-end overflow-hidden">
+      {/* No overflow-hidden here: it would clip the search bar's suggestion
+          dropdown at the section's bottom edge. The carousel clips itself. */}
+      <section className="relative min-h-[520px] sm:min-h-[600px] flex items-end">
         <HeroCarousel />
         <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 sm:px-6 pt-20 pb-8 sm:pb-12">
           <p className="font-headline text-[10px] sm:text-xs font-black uppercase tracking-widest text-primary mb-3">

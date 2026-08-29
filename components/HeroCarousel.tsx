@@ -30,7 +30,7 @@ export default function HeroCarousel() {
   }, []);
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 overflow-hidden">
       {SLIDES.map((slide, i) => (
         <Image
           key={slide.url}
