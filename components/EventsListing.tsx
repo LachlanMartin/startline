@@ -759,10 +759,9 @@ function EventsListingInner() {
     </div>
   ) : null;
 
-  // With nothing matching, offer the nearest thing rather than a dead end:
-  // first anything else in the same place, then the same kind of event
-  // elsewhere, then simply what is coming up. Computed from the events already
-  // loaded, so it costs no extra request.
+  // With nothing matching, fall back to the whole upcoming listing rather than
+  // a dead end. Computed from the events already loaded, so it costs no extra
+  // request.
   const suggestions = useMemo(() => {
     if (displayEvents.length > 0 || allEvents.length === 0) return null;
 
@@ -771,31 +770,8 @@ function EventsListingInner() {
       priceRange: null, dateRange: "all", searchQuery: "",
     };
     const upcoming = sortEvents(filterEvents(allEvents, NO_FILTERS), "date");
-
-    const place = whereQuery.trim();
-    if (place) {
-      const q = place.toLowerCase();
-      const here = upcoming.filter((e) =>
-        e.city.toLowerCase().includes(q) ||
-        e.state.toLowerCase().includes(q) ||
-        e.location.toLowerCase().includes(q));
-      if (here.length > 0) return { reason: `Other events at ${place}`, events: here.slice(0, 3) };
-    }
-
-    const eventTerm = selection ? whatQuery : whatQuery.trim();
-    if (eventTerm) {
-      const elsewhere = sortEvents(filterEvents(allEvents, {
-        ...NO_FILTERS,
-        types: selection ? [selection.discipline as EventType] : [],
-        searchQuery: selection ? (selection.division ?? "") : whatQuery,
-      }), "date");
-      if (elsewhere.length > 0) {
-        return { reason: `${eventTerm} events elsewhere`, events: elsewhere.slice(0, 3) };
-      }
-    }
-
-    return upcoming.length > 0 ? { reason: "Coming up soon", events: upcoming.slice(0, 3) } : null;
-  }, [displayEvents.length, allEvents, whereQuery, whatQuery, selection]);
+    return upcoming.length > 0 ? upcoming : null;
+  }, [displayEvents.length, allEvents]);
 
   /** Shared "nothing matched" block, sized for the full grid or the map list. */
   const noResults = (size: "lg" | "sm") => (
@@ -813,10 +789,10 @@ function EventsListingInner() {
       {suggestions && (
         <div className="mt-8 text-left">
           <p className="font-headline text-[10px] font-black uppercase tracking-widest text-muted-dark mb-3">
-            {suggestions.reason}
+            All events
           </p>
           <div className={`grid gap-2 ${size === "lg" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}>
-            {suggestions.events.map((event) => (
+            {suggestions.map((event) => (
               <EventCard key={event.id} event={event} className="w-full" />
             ))}
           </div>

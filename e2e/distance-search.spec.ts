@@ -66,9 +66,9 @@ test.describe("distance-based search", () => {
     await searchWhere(page, "zzz-no-such-place");
 
     await expect(page.getByText("No events matched your search.").first()).toBeVisible({ timeout: 10000 });
-    // A dead end is no use: the empty state offers something to click instead.
-    await expect(page.getByText(/Coming up soon|events elsewhere|Other events at/i).first())
-      .toBeVisible({ timeout: 10000 });
+    // A dead end is no use: the empty state falls back to the whole listing.
+    await expect(page.getByText("All events").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('a[href^="/events/"]').first()).toBeVisible();
   });
 
   test("a suburb far from all events still shows the closest events", async ({ page }) => {

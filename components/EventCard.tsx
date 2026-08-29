@@ -64,7 +64,13 @@ export default function EventCard({ event, className, cardClassName, onSelect, s
         <div className="space-y-1.5 mb-3">
           <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
             <MapPin className="w-3 h-3 text-primary flex-shrink-0" />
-            <span className="truncate">{event.city}, {STATE_LABELS[event.state]}</span>
+            {/* Suburb, city, state — "St Kilda, Melbourne, VIC". The suburb
+                lives in the venue, which is the optional field organisers fill
+                with "Bondi Beach" or "St Kilda", so it is dropped when blank.
+                Matches the label the event form shows on its own map. */}
+            <span className="truncate">
+              {[event.location, event.city, STATE_LABELS[event.state]].filter(Boolean).join(", ")}
+            </span>
             {event.distance && (
               <span data-testid="event-distance" className="ml-auto flex-shrink-0 text-primary font-bold">{event.distance} away</span>
             )}
