@@ -82,7 +82,7 @@ const STATUS_STYLE: Record<EventStatus, { bg: string; text: string; label: strin
   PENDING:  { bg: "bg-blue-400/10",  text: "text-blue-300",  label: "Pending"   },
   APPROVED: { bg: "bg-primary/10",   text: "text-primary",   label: "Published" },
   REJECTED: { bg: "bg-red-400/10",   text: "text-red-300",   label: "Rejected"  },
-  ARCHIVED: { bg: "bg-white/5",      text: "text-light",     label: "Archived"  },
+  ARCHIVED: { bg: "bg-white/5",      text: "text-muted",     label: "Archived"  },
 };
 
 function MetricCell({
@@ -97,7 +97,7 @@ function MetricCell({
       <div className="font-headline text-xl sm:text-2xl font-black tracking-tighter text-light leading-none">
         {value}
       </div>
-      <div className="font-headline text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-light mt-1">
+      <div className="font-headline text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted mt-1">
         {label}
       </div>
     </div>
@@ -112,7 +112,7 @@ function MetricStrip({
   items: { label: string; value: string | number }[];
 }) {
   return (
-    <div className="mb-5 sm:mb-6">
+    <div>
       <p className="font-headline text-[10px] font-bold uppercase tracking-[0.25em] text-primary mb-3">
         {eyebrow}
       </p>
@@ -164,7 +164,6 @@ export default function DashboardPage() {
   }, [load, trendEventId, trendRangeDays]);
 
   const events = data?.events ?? [];
-  const live = data?.current.live ?? 0;
 
   const recent = [...events]
     .filter((e) => e.status !== "ARCHIVED")
@@ -194,26 +193,10 @@ export default function DashboardPage() {
       <main className="pt-14">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-5 sm:py-10 pb-24 lg:pb-12 page-in">
 
-          {/* Header */}
+          {/* Metrics + actions */}
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 sm:mb-10">
-            <div>
-              <div className="font-headline text-[10px] font-bold uppercase tracking-[0.25em] text-primary mb-2">
-                Welcome back
-              </div>
-              <h1 className="font-headline text-[36px] sm:text-[44px] lg:text-[56px] font-black italic tracking-tighter leading-none text-white">
-                Hi there.<br /><span className="text-primary">Here&apos;s your day.</span>
-              </h1>
-              <p className="text-light mt-3 text-[14px] sm:text-[15px]">
-                {loading
-                  ? "Loading your events…"
-                  : live > 0
-                  ? `${live} event${live !== 1 ? "s" : ""} live and taking registrations.`
-                  : events.length === 0
-                  ? "No events yet. Create your first listing to get started."
-                  : "No live events right now. Submit a draft to go live."}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 self-start sm:self-end">
+            <MetricStrip eyebrow="All time" items={allTimeItems} />
+            <div className="flex items-center gap-2 self-start sm:self-end shrink-0">
               <Button asChild size="lg" variant="outline">
                 <Link href="/organiser/new-listing">
                   <Plus className="w-4 h-4" /> Add listing
@@ -225,11 +208,6 @@ export default function DashboardPage() {
                 </Link>
               </Button>
             </div>
-          </div>
-
-          {/* Metrics */}
-          <div className="mb-6 sm:mb-10">
-            <MetricStrip eyebrow="All time" items={allTimeItems} />
           </div>
 
           {/* Trend chart */}
@@ -250,14 +228,14 @@ export default function DashboardPage() {
               </h2>
               <Link
                 href="/organiser/listings"
-                className="font-headline text-[11px] uppercase tracking-widest text-light hover:text-primary flex items-center gap-1 transition-colors"
+                className="font-headline text-[11px] uppercase tracking-widest text-muted hover:text-primary flex items-center gap-1 transition-colors"
               >
                 See all <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
             <Card>
-              <div className="hidden sm:grid grid-cols-12 gap-4 px-5 py-3 bg-white/[0.02] border-b border-dark-lighter font-headline font-bold text-[11px] uppercase tracking-widest text-light rounded-t-xl">
+              <div className="hidden sm:grid grid-cols-12 gap-4 px-5 py-3 bg-white/[0.02] border-b border-dark-lighter font-headline font-bold text-[11px] uppercase tracking-widest text-muted-dark rounded-t-xl">
                 <div className="col-span-5">Event</div>
                 <div className="col-span-2 text-center">Date</div>
                 <div className="col-span-2 text-center">Status</div>
@@ -272,7 +250,7 @@ export default function DashboardPage() {
                   <div className="font-headline text-lg font-black italic text-white mb-1">
                     Nothing here yet
                   </div>
-                  <div className="text-light text-sm mb-5">
+                  <div className="text-muted-dark text-sm mb-5">
                     Create your first listing to get started.
                   </div>
                   <Button asChild>
@@ -311,7 +289,7 @@ export default function DashboardPage() {
                               sizes="48px"
                             />
                           ) : (
-                            <div className="font-mono text-[9px] text-light uppercase">
+                            <div className="font-mono text-[9px] text-muted-dark uppercase">
                               {e.discipline.slice(0, 4)}
                             </div>
                           )}
@@ -325,19 +303,19 @@ export default function DashboardPage() {
                               {s.label}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-1 font-headline text-[10px] text-light uppercase tracking-widest mb-1">
+                          <div className="flex items-center gap-1 font-headline text-[10px] text-muted-dark uppercase tracking-widest mb-1">
                             <MapPin className="w-3 h-3 text-primary shrink-0" /> {e.city},{" "}
                             {e.state.toUpperCase()}
                           </div>
                           <div className="flex items-center justify-between gap-3">
-                            <div className="font-headline text-[11px] text-light">
+                            <div className="font-headline text-[11px] text-muted">
                               {formatEventDate(e.eventDate, e.startTime)}
                             </div>
                             <div className="text-right shrink-0 w-[112px]">
-                              <div className="font-headline text-[12px] font-bold text-light tabular-nums">
+                              <div className="font-headline text-[12px] font-bold text-white tabular-nums">
                                 {(e.registrationCount ?? 0).toLocaleString()}
                                 {e.cap != null ? (
-                                  <span className="font-normal">
+                                  <span className="text-muted-dark font-normal">
                                     {" "}
                                     / {e.cap.toLocaleString()}
                                   </span>
@@ -346,12 +324,12 @@ export default function DashboardPage() {
                               <CapacityBar
                                 count={e.registrationCount ?? 0}
                                 cap={e.cap}
-                                className="mt-1.5 w-full min-w-[96px] max-w-[112px] ml-auto sm:min-w-0 sm:max-w-[88px] sm:ml-0"
+                                className="mt-1.5 w-full"
                               />
                             </div>
                           </div>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-light shrink-0" />
+                        <ArrowRight className="w-4 h-4 text-muted-dark shrink-0" />
                       </div>
 
                       {/* Desktop row — inset rail (no layout shift vs hover:border-l) */}
@@ -375,7 +353,7 @@ export default function DashboardPage() {
                                 sizes="56px"
                               />
                             ) : (
-                              <div className="font-mono text-[9px] text-light uppercase">
+                              <div className="font-mono text-[9px] text-muted-dark uppercase">
                                 {e.discipline.slice(0, 4)}
                               </div>
                             )}
@@ -384,14 +362,14 @@ export default function DashboardPage() {
                             <div className="font-headline text-[15px] font-black italic tracking-tighter text-white">
                               {e.title}
                             </div>
-                            <div className="flex items-center gap-1 font-headline text-[11px] text-light uppercase tracking-widest mt-0.5">
+                            <div className="flex items-center gap-1 font-headline text-[11px] text-muted-dark uppercase tracking-widest mt-0.5">
                               <MapPin className="w-3 h-3 text-primary" /> {e.city},{" "}
                               {e.state.toUpperCase()}
                             </div>
                           </div>
                         </div>
                         <div className="col-span-2 text-center">
-                          <div className="font-headline text-sm font-bold text-light">
+                          <div className="font-headline text-sm font-bold text-muted">
                             {formatEventDate(e.eventDate, e.startTime)}
                           </div>
                         </div>
@@ -402,27 +380,27 @@ export default function DashboardPage() {
                           <div className="font-headline text-sm font-bold text-white">
                             {(e.registrationCount ?? 0).toLocaleString()}
                             {e.cap ? (
-                              <span className="text-light font-normal">
+                              <span className="text-muted-dark font-normal">
                                 {" "}
                                 / {e.cap.toLocaleString()}
                               </span>
                             ) : (
-                              <span className="text-light font-normal"> / —</span>
+                              <span className="text-muted-dark font-normal"> / —</span>
                             )}
                           </div>
                           <CapacityBar
                             count={e.registrationCount ?? 0}
                             cap={e.cap}
-                            className="mt-1.5 w-full min-w-[96px] max-w-[112px] ml-auto sm:min-w-0 sm:max-w-[88px] sm:ml-0"
+                            className="mt-1.5 w-full max-w-[88px]"
                           />
                           {price && (
-                            <div className="font-headline text-[10px] uppercase tracking-widest text-light mt-0.5">
+                            <div className="font-headline text-[10px] uppercase tracking-widest text-muted-dark mt-0.5">
                               from A${price}
                             </div>
                           )}
                         </div>
                         <div className="col-span-1 flex justify-end">
-                          <ArrowRight className="w-4 h-4 text-light" />
+                          <ArrowRight className="w-4 h-4 text-muted-dark" />
                         </div>
                       </div>
                     </div>

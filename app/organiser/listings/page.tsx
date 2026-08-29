@@ -352,12 +352,12 @@ export default function ListingsPage() {
                     </div>
                   </div>
 
-                  {/* ── Desktop table row (≥ sm) ── */}
+                  {/* ── Desktop table row (≥ sm) — inset rail (no layout shift vs hover:border-l) ── */}
                   <div
-                    className={`hidden sm:grid grid-cols-12 gap-4 px-5 py-4 items-center cursor-pointer transition-all
+                    className={`hidden sm:grid grid-cols-12 gap-4 px-5 py-4 items-center cursor-pointer transition-colors
                       ${e.status === "APPROVED"
-                        ? "hover:bg-primary/5 hover:border-l-2 hover:border-l-primary"
-                        : "hover:bg-white/5 hover:border-l-2 hover:border-l-dark-lighter"}`}
+                        ? "hover:bg-primary/5 hover:shadow-[inset_2px_0_0_0_#B3E153]"
+                        : "hover:bg-white/5 hover:shadow-[inset_2px_0_0_0_#353535]"}`}
                     onClick={() => handleRowClick(e)}
                   >
                     <div className="col-span-5 flex items-center gap-4 min-w-0">
@@ -374,7 +374,7 @@ export default function ListingsPage() {
                       </div>
                     </div>
                     <div className="col-span-2 text-center">
-                      <div className="font-headline text-sm font-bold text-white/70">{formatEventDate(e.eventDate, e.startTime)}</div>
+                      <div className="font-headline text-sm font-bold text-muted">{formatEventDate(e.eventDate, e.startTime)}</div>
                     </div>
                     <div className="col-span-2 flex justify-center">
                       <Badge className={`${s.bg} ${s.text} border-0`}>{s.label}</Badge>

@@ -113,7 +113,7 @@ export default function DashboardTrendChart({
                 ? formatAudFromCents(Math.round(total * 100))
                 : total.toLocaleString()}
             </span>
-            <span className="font-headline text-[10px] uppercase tracking-widest text-light">
+            <span className="font-headline text-[10px] uppercase tracking-widest text-muted">
               {rangeLabel}
             </span>
           </div>
