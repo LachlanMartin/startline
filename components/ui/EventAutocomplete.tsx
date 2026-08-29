@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatDivisionLabel, selectionLabel } from "@/lib/divisions";
 
 interface EventResult {
   id: string;
@@ -39,12 +40,12 @@ interface Props {
   /** Fired on Enter when no suggestion is highlighted. */
   onEnter?: () => void;
   /**
-   * Applies a category filter in place. The listing passes this so picking a
-   * category filters without a page load; the hero omits it and navigates.
+   * Fired when a category or division is picked. Picking one fills the field
+   * with a readable label ("Running - 10km") and hands the structured choice
+   * back; it deliberately does not run the search, so the user stays in control
+   * of when that happens. Only picking a named event navigates immediately.
    */
-  onSelectCategory?: (value: string) => void;
-  /** Applies a discipline + division filter in place. Listing only, as above. */
-  onSelectDivision?: (value: string, division: string) => void;
+  onSelectCategory?: (selection: { discipline: string; division: string | null; label: string }) => void;
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
@@ -62,7 +63,6 @@ export default function EventAutocomplete({
   onChange,
   onEnter,
   onSelectCategory,
-  onSelectDivision,
   placeholder = "Event name, type or keyword",
   className = "",
   autoFocus = false,
@@ -129,15 +129,21 @@ export default function EventAutocomplete({
 
   const select = (row: Row) => {
     setOpen(false);
-    if (row.kind === "category" && onSelectCategory) {
-      onSelectCategory(row.item.value);
+
+    // A named event is an unambiguous destination, so it navigates. A category
+    // or division only fills the field and reports the choice upward.
+    if (row.kind === "event") {
+      router.push(row.item.href);
       return;
     }
-    if (row.kind === "division" && onSelectDivision) {
-      onSelectDivision(row.discipline, row.item.name);
-      return;
-    }
-    router.push(row.item.href);
+
+    const discipline = row.kind === "category" ? row.item.value : row.discipline;
+    const disciplineLabel = row.kind === "category" ? row.item.label : row.disciplineLabel;
+    const division = row.kind === "division" ? row.item.name : null;
+    const label = selectionLabel(disciplineLabel, division);
+
+    onChange(label);
+    onSelectCategory?.({ discipline, division, label });
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -226,7 +232,7 @@ export default function EventAutocomplete({
                     </>
                   ) : row.kind === "division" ? (
                     <span className={`flex items-baseline gap-2 font-headline text-[13px] truncate ${active ? "text-primary" : "text-light/80"}`}>
-                      <span className="truncate">{row.item.name}</span>
+                      <span className="truncate">{formatDivisionLabel(row.item.name)}</span>
                       <span className="font-headline text-[10px] uppercase tracking-widest text-muted flex-shrink-0">
                         {row.item.eventCount}
                       </span>

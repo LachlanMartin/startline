@@ -12,6 +12,7 @@ import {
   PRICE_RANGE_MIN, PRICE_RANGE_MAX,
 } from "@/types";
 import { filterEvents, sortEvents } from "@/lib/utils";
+import { selectionLabel } from "@/lib/divisions";
 import { toUserEvents } from "@/lib/user-events";
 import { eventDistance, formatDistance, DEFAULT_RADIUS_KM } from "@/lib/distance";
 import { getEventCoords } from "@/lib/australia-coords";
@@ -145,9 +146,18 @@ function EventsListingInner() {
   }, [status]);
 
   const searchParams = useSearchParams();
-  // ?division= comes from the search dropdown's division links; it narrows via
-  // the keyword filter, which matches the organiser-entered divisions.
-  const [whatQuery,     setWhatQuery]     = useState(searchParams.get("what") ?? searchParams.get("division") ?? "");
+  // A category or division arriving as ?type=/?division=, or picked from the
+  // dropdown. Kept apart from whatQuery because the field shows a readable
+  // label ("Running - 10km") while the filtering uses the raw values.
+  const initialType = searchParams.get("type");
+  const initialDivision = searchParams.get("division");
+  const [selection, setSelection] = useState<{ discipline: string; division: string | null } | null>(
+    initialType ? { discipline: initialType, division: initialDivision } : null);
+  const [whatQuery,     setWhatQuery]     = useState(
+    searchParams.get("what")
+    ?? (initialType
+      ? selectionLabel(EVENT_TYPE_LABELS[initialType as EventType] ?? initialType, initialDivision)
+      : ""));
   const [whereQuery,    setWhereQuery]    = useState(searchParams.get("where") ?? "");
   const [searchOrigin,  setSearchOrigin]  = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding,   setIsGeocoding]   = useState(false);
@@ -251,11 +261,13 @@ function EventsListingInner() {
     levels:      levelFilters,
     priceRange,
     dateRange:   dateFilter,
-    searchQuery: whatQuery,
+    // With a category picked, the discipline filter does the work and the
+    // division (if any) is the keyword; the field's label is not a search term.
+    searchQuery: selection ? (selection.division ?? "") : whatQuery,
     originLat:   searchOrigin?.lat,
     originLng:   searchOrigin?.lng,
     maxDistance: searchOrigin ? DEFAULT_RADIUS_KM : undefined,
-  }), [typeFilters, stateFilters, formatFilters, levelFilters, priceRange, dateFilter, whatQuery, searchOrigin]);
+  }), [typeFilters, stateFilters, formatFilters, levelFilters, priceRange, dateFilter, whatQuery, selection, searchOrigin]);
 
   const displayEvents = useMemo(() => {
     // Geocoded search drops the hard radius cap — results are still sorted
@@ -285,25 +297,28 @@ function EventsListingInner() {
     return results;
   }, [allEvents, filterState, whereQuery, sortBy, searchOrigin]);
 
-  // Divisions are free text per event rather than a filter dimension, so they
-  // narrow through the keyword filter, which matches an event's divisions.
-  const applyDivision = useCallback((discipline: string, division: string) => {
-    setTypeFilters([discipline as EventType]);
-    setWhatQuery(division);
-    setMobileSearch(false);
-  }, []);
+  // Typing again abandons the picked category: the text is no longer its label.
+  const handleWhatChange = useCallback((text: string) => {
+    setWhatQuery(text);
+    setSelection(null);
+  }, [setSelection]);
 
-  // Picking a category from the search dropdown filters in place rather than
-  // navigating, so the listing does not reload underneath the user. The typed
-  // text is cleared since the category filter replaces it.
-  const applyCategory = useCallback((value: string) => {
-    setWhatQuery("");
-    setTypeFilters([value as EventType]);
-    setMobileSearch(false);
-  }, []);
+  // Picking a category or division from the dropdown filters in place rather
+  // than navigating, so the listing does not reload underneath the user. The
+  // field shows the readable label while the filtering uses the raw values.
+  //
+  // Unlike the hero there is no Find Events Now button to wait for, so the
+  // filter applies straight away — the listing has always updated live.
+  const applySelection = useCallback(
+    (sel: { discipline: string; division: string | null; label: string }) => {
+      setSelection({ discipline: sel.discipline, division: sel.division });
+      setWhatQuery(sel.label);
+      setTypeFilters([sel.discipline as EventType]);
+      setMobileSearch(false);
+    }, [setSelection]);
 
   function clearFilters() {
-    setWhatQuery(""); clearWhere();
+    setWhatQuery(""); setSelection(null); clearWhere();
     setTypeFilters([]); setStateFilters([]); setFormatFilters([]); setLevelFilters([]);
     setPriceRange(null); setDateFilter("all");
   }
@@ -401,14 +416,13 @@ function EventsListingInner() {
             <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</span>
             <EventAutocomplete
               value={whatQuery}
-              onChange={setWhatQuery}
-              onSelectCategory={applyCategory}
-              onSelectDivision={applyDivision}
+              onChange={handleWhatChange}
+              onSelectCategory={applySelection}
               placeholder="Event name, type or keyword"
               className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none"
             />
           </div>
-          {whatQuery && <button type="button" onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
+          {whatQuery && <button type="button" onClick={() => { setWhatQuery(""); setSelection(null); }} aria-label="Clear event search" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
         </div>
 
         <div className="flex-1 px-5 py-2.5 min-w-0 flex items-center gap-1.5 bg-dark border border-dark-lighter rounded-3xl focus-within:border-primary transition-colors">
@@ -440,14 +454,13 @@ function EventsListingInner() {
             <Search className="w-4 h-4 text-muted flex-shrink-0" />
             <EventAutocomplete
               value={whatQuery}
-              onChange={setWhatQuery}
-              onSelectCategory={applyCategory}
-              onSelectDivision={applyDivision}
+              onChange={handleWhatChange}
+              onSelectCategory={applySelection}
               autoFocus
               placeholder="Event name, type or keyword"
               className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none"
             />
-            {whatQuery && <button onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted flex-shrink-0"><X className="w-4 h-4" /></button>}
+            {whatQuery && <button onClick={() => { setWhatQuery(""); setSelection(null); }} aria-label="Clear event search" className="text-muted flex-shrink-0"><X className="w-4 h-4" /></button>}
           </div>
           <div className="flex items-center gap-2 bg-dark rounded-2xl px-4 py-2.5 border border-dark-lighter focus-within:border-primary transition-colors">
             <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
