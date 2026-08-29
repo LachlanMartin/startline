@@ -95,8 +95,11 @@ export default function HeroSearch() {
           group only, so it is a sibling of the button rather than a border on
           the wrapper — bordering the wrapper would outline the green button too. */}
       <div className="hidden sm:flex items-stretch rounded-3xl overflow-hidden">
-        <div className="flex flex-1 items-stretch min-w-0 bg-dark border border-r-0 border-dark-lighter focus-within:border-primary transition-colors">
-        <div className="flex-1 px-6 py-4 min-w-0">
+        {/* Each half owns its outline and lights up on its own, so focus stops
+            at the divider instead of ringing the whole bar. The left half
+            carries its own rounding — without it the wrapper's overflow-hidden
+            clips the border mid-stroke and the corners read as square. */}
+        <div className="flex-1 px-6 py-4 min-w-0 bg-dark border-y border-l border-dark-lighter rounded-l-3xl focus-within:border-primary transition-colors">
           <label className="font-headline text-xs font-black uppercase tracking-widest text-primary block mb-1.5">
             Event
           </label>
@@ -119,10 +122,11 @@ export default function HeroSearch() {
 
         <div className="w-px bg-dark-lighter self-stretch my-4" />
 
-        {/* The locate button is a sibling of the label+input stack, not a child
-            of the input row, so it centres against the full height of the field
-            instead of sitting on the input's baseline. */}
-        <div className="flex-1 px-6 py-4 min-w-0 flex items-center gap-3">
+        {/* No right border: the green button caps this edge. The locate button
+            is a sibling of the label+input stack, not a child of the input row,
+            so it centres against the full height of the field instead of
+            sitting on the input's baseline. */}
+        <div className="flex-1 px-6 py-4 min-w-0 flex items-center gap-3 bg-dark border-y border-dark-lighter focus-within:border-primary transition-colors">
           <div className="flex-1 min-w-0">
             <label className="font-headline text-xs font-black uppercase tracking-widest text-primary block mb-1.5">
               Where
@@ -147,7 +151,6 @@ export default function HeroSearch() {
           <button onClick={handleLocate} className="text-muted hover:text-primary flex-shrink-0" aria-label="Use my location" title="Use my location">
             <Locate className="w-5 h-5" />
           </button>
-        </div>
         </div>
 
         <button
