@@ -102,26 +102,42 @@ export default function EventCard({ event, className, cardClassName, onSelect, s
           </p>
         )}
 
-        {event.fromPrice !== null && (
-          <span className="mt-auto pt-1 font-headline text-sm font-bold">
-            <span className="text-light">From </span>
-            <span className="text-primary">${event.fromPrice}</span>
-          </span>
-        )}
+        {/* Price and the More info link share the bottom row. The row carries
+            the mt-auto so it anchors to the card's foot whether or not either
+            half is present.
 
-        {/* In map mode the card selects rather than navigates, so a selected
-            card needs its own way through to the event. stopPropagation keeps
-            the click off the card's select handler, which would otherwise
-            toggle the selection off on the way out. */}
-        {onSelect && selected && (
-          <Link
-            href={`/events/${event.id}`}
-            onClick={(e) => e.stopPropagation()}
-            data-testid="event-more-info"
-            className="mt-3 flex items-center justify-center gap-2 bg-primary hover:bg-primary-light active:bg-primary-dark text-dark font-headline text-[11px] font-black uppercase tracking-widest rounded-full py-2.5 transition-colors"
-          >
-            More info <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+            In map mode the link stays in the layout at all times and only its
+            visibility changes, so selecting a card cannot shift the price by
+            even a pixel. */}
+        {(event.fromPrice !== null || onSelect) && (
+          <div className="mt-auto pt-1 flex items-center gap-3">
+            {event.fromPrice !== null && (
+              <span className="font-headline text-sm font-bold">
+                <span className="text-light">From </span>
+                <span className="text-primary">${event.fromPrice}</span>
+              </span>
+            )}
+
+            {/* In map mode the card selects rather than navigates, so a selected
+                card needs its own way through to the event. stopPropagation
+                keeps the click off the card's select handler, which would
+                otherwise toggle the selection off on the way out. */}
+            {onSelect && (
+              <Link
+                href={`/events/${event.id}`}
+                onClick={(e) => e.stopPropagation()}
+                data-testid="event-more-info"
+                aria-hidden={!selected}
+                tabIndex={selected ? undefined : -1}
+                className={cn(
+                  "ml-auto flex-shrink-0 flex items-center gap-1.5 bg-primary hover:bg-primary-light active:bg-primary-dark text-dark font-headline text-[10px] font-black uppercase tracking-widest rounded-full px-3.5 py-1.5 transition-colors",
+                  !selected && "invisible pointer-events-none",
+                )}
+              >
+                More info <ArrowRight className="w-3 h-3" />
+              </Link>
+            )}
+          </div>
         )}
       </div>
     </div>
