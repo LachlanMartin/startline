@@ -1,0 +1,149 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
+
+vi.mock("@/lib/prisma", () => ({
+  default: { event: { findMany: vi.fn() } },
+}));
+vi.mock("@/lib/geocode", () => ({ geocodePlace: vi.fn() }));
+
+import prisma from "@/lib/prisma";
+import { geocodePlace } from "@/lib/geocode";
+import { GET } from "@/app/api/events/suburbs/route";
+
+const findMany = prisma.event.findMany as ReturnType<typeof vi.fn>;
+const geocode = geocodePlace as ReturnType<typeof vi.fn>;
+
+const call = (q: string, extra = "") =>
+  GET(new NextRequest(`http://localhost:3000/api/events/suburbs?q=${encodeURIComponent(q)}${extra}`));
+
+// Sydney hosts three, Newcastle one (~115 km north), Perth one (a continent away).
+const EVENTS = [
+  { city: "Sydney", state: "nsw", venue: "Bondi Beach", latitude: -33.8688, longitude: 151.2093 },
+  { city: "Sydney", state: "nsw", venue: "Mrs Macquaries Chair", latitude: -33.8688, longitude: 151.2093 },
+  { city: "Sydney", state: "nsw", venue: "Bondi Beach", latitude: -33.8688, longitude: 151.2093 },
+  { city: "Newcastle", state: "nsw", venue: "Newcastle Foreshore", latitude: -32.9283, longitude: 151.7817 },
+  { city: "Perth", state: "wa", venue: "Perth CBD Circuit", latitude: -31.9505, longitude: 115.8605 },
+];
+
+describe("GET /api/events/suburbs", () => {
+  beforeEach(() => {
+    findMany.mockReset();
+    geocode.mockReset();
+    findMany.mockResolvedValue(EVENTS);
+  });
+
+  it("suggests suburbs that host events, with their counts", async () => {
+    const body = await (await call("syd")).json();
+
+    expect(body.nearby).toBe(false);
+    expect(body.results).toEqual([{ city: "Sydney", state: "nsw", eventCount: 3 }]);
+    expect(geocode).not.toHaveBeenCalled();
+  });
+
+  it("does not geocode when a name matches, keeping the lookup free", async () => {
+    await call("newcastle");
+    expect(geocode).not.toHaveBeenCalled();
+  });
+
+  it("orders prefix matches ahead of mid-word ones, then by event count", async () => {
+    findMany.mockResolvedValue([
+      { city: "Port Newcastle", state: "nsw", latitude: -32.9, longitude: 151.7 },
+      { city: "Port Newcastle", state: "nsw", latitude: -32.9, longitude: 151.7 },
+      { city: "Newcastle", state: "nsw", latitude: -32.9283, longitude: 151.7817 },
+    ]);
+
+    const body = await (await call("newcastle")).json();
+    expect(body.results.map((r: { city: string }) => r.city)).toEqual(["Newcastle", "Port Newcastle"]);
+  });
+
+  it("falls back to the nearest hosting suburbs when nothing matches by name", async () => {
+    // Parramatta hosts no events but sits ~23 km west of Sydney.
+    geocode.mockResolvedValue({ latitude: -33.815, longitude: 151.0, city: "Parramatta" });
+
+    const body = await (await call("parramatta")).json();
+
+    expect(body.nearby).toBe(true);
+    expect(body.searched).toBe("Parramatta");
+    expect(body.results[0].city).toBe("Sydney");
+    expect(body.results[0].distanceKm).toBeLessThan(40);
+    // Perth is thousands of km away and must not be offered as "nearby".
+    expect(body.results.map((r: { city: string }) => r.city)).not.toContain("Perth");
+  });
+
+  it("returns nothing when the query cannot be located either", async () => {
+    geocode.mockResolvedValue(null);
+
+    const body = await (await call("nowhere-at-all")).json();
+    expect(body.results).toEqual([]);
+    expect(body.nearby).toBe(false);
+  });
+
+  it("ignores queries too short to be useful, without hitting the database", async () => {
+    for (const q of ["", "a"]) {
+      const body = await (await call(q)).json();
+      expect(body.results).toEqual([]);
+    }
+    expect(findMany).not.toHaveBeenCalled();
+  });
+
+  it("matches a suburb held in the venue, not just the city", async () => {
+    // Events record a metro city plus a venue; the suburb usually lives in the
+    // venue, so "bondi" must find the Sydney events at Bondi Beach.
+    const body = await (await call("bondi")).json();
+
+    expect(body.nearby).toBe(false);
+    expect(body.results).toEqual([
+      { city: "Sydney", state: "nsw", venue: "Bondi Beach", eventCount: 2 },
+    ]);
+    expect(geocode).not.toHaveBeenCalled();
+  });
+
+  it("lists city matches ahead of venue matches", async () => {
+    const body = await (await call("newcastle")).json();
+
+    // The city row carries no venue; the venue row names the venue it matched.
+    expect(body.results[0]).toEqual({ city: "Newcastle", state: "nsw", eventCount: 1 });
+    expect(body.results.slice(1).every((r: { venue?: string }) => r.venue)).toBe(true);
+  });
+
+  it("does not repeat a suburb already listed by its city name", async () => {
+    const body = await (await call("sydney")).json();
+
+    expect(body.results.filter((r: { city: string }) => r.city === "Sydney")).toHaveLength(1);
+  });
+
+  it("counts only events matching the event field's discipline", async () => {
+    // Sydney hosts three, but only the running one should be counted or offered
+    // once the event field is filtered to running.
+    findMany.mockResolvedValue([
+      { city: "Sydney", state: "nsw", venue: "Bondi Beach", categories: ["10K"], latitude: -33.8, longitude: 151.2 },
+    ]);
+
+    const body = await (await call("syd", "&type=running")).json();
+
+    expect(findMany.mock.calls[0][0].where.discipline).toBe("running");
+    expect(body.results).toEqual([{ city: "Sydney", state: "nsw", eventCount: 1 }]);
+  });
+
+  it("counts only events offering the selected division", async () => {
+    findMany.mockResolvedValue([
+      { city: "Sydney", state: "nsw", venue: "A", categories: ["10K"], latitude: -33.8, longitude: 151.2 },
+      { city: "Sydney", state: "nsw", venue: "B", categories: ["5K"], latitude: -33.8, longitude: 151.2 },
+    ]);
+
+    const body = await (await call("syd", "&type=running&division=10K")).json();
+    expect(body.results).toEqual([{ city: "Sydney", state: "nsw", eventCount: 1 }]);
+  });
+
+  it("stops offering a suburb whose only events the event filter excludes", async () => {
+    // The reported case: a cycling-only venue must not be offered, nor counted,
+    // while the event field is set to a running division.
+    findMany.mockResolvedValue([
+      { city: "Melbourne", state: "vic", venue: "Albert Park Circuit", categories: ["100K"], latitude: -37.8, longitude: 144.9 },
+    ]);
+    geocode.mockResolvedValue(null);
+
+    const body = await (await call("albert park", "&type=running&division=10K")).json();
+    expect(body.results).toEqual([]);
+  });
+});

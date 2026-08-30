@@ -54,27 +54,51 @@ test.describe("auth modal — sign up", () => {
     await openSignInModal(page);
     await page.getByRole("button", { name: "Create Account", exact: true }).click();
     await page.getByPlaceholder("you@example.com").fill(`ux.${Date.now()}@example.com`);
-    await page.getByPlaceholder("Min 8 characters").fill("Password123!");
+    await page.getByPlaceholder("Create a password").fill("Password123!");
     await page.getByPlaceholder("Re-enter password").fill("Different123!");
     await page.getByRole("button", { name: "Create account", exact: true }).click();
     await expect(page.getByText("Passwords do not match.")).toBeVisible();
   });
 
-  test("rejects a too-short password", async ({ page }) => {
+  test("lists every password requirement up front and ticks them off (issue #286)", async ({ page }) => {
     await openSignInModal(page);
     await page.getByRole("button", { name: "Create Account", exact: true }).click();
     await page.getByPlaceholder("you@example.com").fill(`ux.${Date.now()}@example.com`);
-    await page.getByPlaceholder("Min 8 characters").fill("abc123");
-    await page.getByPlaceholder("Re-enter password").fill("abc123");
-    await page.getByRole("button", { name: "Create account", exact: true }).click();
-    await expect(page.getByText("Password must be at least 8 characters.")).toBeVisible();
+
+    const pw = page.getByPlaceholder("Create a password");
+    const submit = page.getByRole("button", { name: "Create account", exact: true });
+    const rule = (id: string) => page.locator(`[data-testid="password-rule-${id}"]`);
+
+    // All four rules are visible on focus, before anything is typed, so the
+    // user never discovers them one failed submit at a time.
+    await pw.click();
+    await expect(page.getByTestId("password-requirements")).toBeVisible();
+    for (const id of ["length", "uppercase", "lowercase", "number"]) {
+      await expect(rule(id)).toHaveAttribute("data-met", "false");
+    }
+    await expect(submit).toBeDisabled();
+
+    // A short, lowercase-only password satisfies exactly one rule.
+    await pw.fill("abc123");
+    await expect(rule("lowercase")).toHaveAttribute("data-met", "true");
+    await expect(rule("number")).toHaveAttribute("data-met", "true");
+    await expect(rule("length")).toHaveAttribute("data-met", "false");
+    await expect(rule("uppercase")).toHaveAttribute("data-met", "false");
+    await expect(submit).toBeDisabled();
+
+    // Meeting every rule ticks them all and releases the button.
+    await pw.fill("Password123");
+    for (const id of ["length", "uppercase", "lowercase", "number"]) {
+      await expect(rule(id)).toHaveAttribute("data-met", "true");
+    }
+    await expect(submit).toBeEnabled();
   });
 
   test("onboarding rejects an under-13 date of birth", async ({ page }) => {
     await openSignInModal(page);
     await page.getByRole("button", { name: "Create Account", exact: true }).click();
     await page.getByPlaceholder("you@example.com").fill(`ux.${Date.now()}@example.com`);
-    await page.getByPlaceholder("Min 8 characters").fill("Password123!");
+    await page.getByPlaceholder("Create a password").fill("Password123!");
     await page.getByPlaceholder("Re-enter password").fill("Password123!");
     await page.getByRole("button", { name: "Create account", exact: true }).click();
     await page.waitForSelector("text=Tell us a bit about yourself");
@@ -98,7 +122,7 @@ test.describe("auth modal — sign up", () => {
     await openSignInModal(page);
     await page.getByRole("button", { name: "Create Account", exact: true }).click();
     await page.getByPlaceholder("you@example.com").fill(email);
-    await page.getByPlaceholder("Min 8 characters").fill("Password123!");
+    await page.getByPlaceholder("Create a password").fill("Password123!");
     await page.getByPlaceholder("Re-enter password").fill("Password123!");
     await page.getByRole("button", { name: "Create account", exact: true }).click();
     await page.waitForSelector("text=Tell us a bit about yourself");

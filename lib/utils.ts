@@ -133,7 +133,11 @@ export function filterEvents(
         event.title.toLowerCase().includes(q) ||
         event.location.toLowerCase().includes(q) ||
         event.city.toLowerCase().includes(q) ||
-        (event.organizer?.toLowerCase().includes(q) ?? false);
+        (event.organizer?.toLowerCase().includes(q) ?? false) ||
+        // Divisions the organiser entered ("5K", "Half Marathon"), so searching
+        // a distance finds the events offering it — and so picking a division
+        // from the search dropdown narrows to it.
+        (event.categories?.some((c) => c.toLowerCase().includes(q)) ?? false);
       if (!matches) return false;
     }
 

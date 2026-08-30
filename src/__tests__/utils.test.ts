@@ -117,6 +117,25 @@ describe("filterEvents", () => {
     expect(result[0].type).toBe("crossfit");
   });
 
+  it("matches the search query against organiser-entered divisions", () => {
+    // Picking "Half Marathon" from the search dropdown narrows through this
+    // path, since divisions are per-event free text rather than a filter.
+    const events = [
+      { ...baseEvents[0], title: "Bay Run", categories: ["5K", "Half Marathon"] } as UserEvent,
+      { ...baseEvents[2], title: "City Dash", categories: ["5K"] } as UserEvent,
+    ];
+
+    const result = filterEvents(events, { ...emptyFilters, searchQuery: "half marathon" });
+    expect(result.map((e) => e.title)).toEqual(["Bay Run"]);
+  });
+
+  it("still matches events that have no divisions recorded", () => {
+    const events = [{ ...baseEvents[0], title: "Bay Run", categories: undefined } as UserEvent];
+
+    expect(filterEvents(events, { ...emptyFilters, searchQuery: "bay" })).toHaveLength(1);
+    expect(filterEvents(events, { ...emptyFilters, searchQuery: "10K" })).toHaveLength(0);
+  });
+
   it("filters by state", () => {
     const result = filterEvents(baseEvents, { ...emptyFilters, states: ["vic"] });
     expect(result).toHaveLength(1);

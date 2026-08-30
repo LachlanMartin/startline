@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserSession } from "@/lib/amplify-server";
 import { validateUsername } from "@/lib/username-validation";
+import { containsProfanity } from "@/lib/profanity";
 import { getOrganiserRatings } from "@/lib/reviews";
 import { GENDER_OPTIONS } from "@/lib/registration-form";
 import { z } from "zod";
@@ -149,7 +150,15 @@ export async function PUT(req: Request) {
   const body = parsed.data;
   const data: Record<string, unknown> = {};
 
-  if ("name" in body) data.name = normalizeOptionalString(body.name);
+  if ("name" in body) {
+    const name = normalizeOptionalString(body.name);
+    // The display name renders on the public profile alongside the username,
+    // so it gets the same filter rather than being a way around it.
+    if (name && containsProfanity(name)) {
+      return badRequest("That display name isn't allowed. Please choose another.");
+    }
+    data.name = name;
+  }
 
   if ("username" in body) {
     const username = body.username?.trim()?.toLowerCase() || null;

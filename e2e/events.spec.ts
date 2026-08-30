@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { argosScreenshot } from "@argos-ci/playwright";
 import { goToHomepage } from "./helpers";
 
@@ -29,17 +29,62 @@ test.describe("events page", () => {
     await expect(page.getByText("Where", { exact: true })).toBeVisible();
   });
 
+  // The toggle renders twice, once per breakpoint, and only one is ever
+  // visible. Select on visibility rather than DOM order so the tests don't
+  // depend on which breakpoint's filter bar happens to render first.
+  const viewToggle = (page: Page, mode: "map" | "list") =>
+    page.getByTestId(`view-mode-${mode}`).filter({ visible: true });
+
+  test("selected map card offers a More info link through to the event", async ({ page }) => {
+    await page.goto("/events?view=map");
+    await page.waitForLoadState("networkidle");
+
+    const moreInfo = page.getByTestId("event-more-info").filter({ visible: true });
+    // In map mode a card selects rather than navigates, so the link only
+    // appears once a card is chosen.
+    await expect(moreInfo).toHaveCount(0);
+
+    const card = page.locator("div.cursor-pointer").filter({ visible: true }).first();
+    await card.click();
+    await expect(moreInfo).toHaveCount(1);
+
+    await moreInfo.first().click();
+    await expect(page).toHaveURL(/\/events\/[^?]+$/);
+  });
+
+  test("offers other events beneath a set of results", async ({ page }) => {
+    await page.goto("/events?view=list&type=running");
+    await page.waitForLoadState("networkidle");
+
+    // The filtered results come first, then a row of alternatives. The block
+    // renders once per breakpoint with only one visible, so select on that.
+    await expect(page.getByText("Other events you may like").filter({ visible: true }))
+      .toBeVisible({ timeout: 10000 });
+    const cards = page.locator('a[href^="/events/"]');
+    expect(await cards.count()).toBeGreaterThan(5);
+  });
+
+  test("omits the other-events row when every event is already listed", async ({ page }) => {
+    await page.goto("/events?view=list");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator('a[href^="/events/"]').first()).toBeVisible({ timeout: 10000 });
+
+    // Nothing is left over to suggest, so the row is not rendered at all.
+    await expect(page.getByText("Other events you may like").filter({ visible: true }))
+      .toHaveCount(0);
+  });
+
   test("list/map view toggle is present", async ({ page }) => {
     await page.goto("/events");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByTestId("view-mode-list").first()).toBeVisible();
-    await expect(page.getByTestId("view-mode-map").first()).toBeVisible();
+    await expect(viewToggle(page, "list")).toBeVisible();
+    await expect(viewToggle(page, "map")).toBeVisible();
   });
 
   test("switching to map mode shows map container", async ({ page }) => {
     await page.goto("/events");
     await page.waitForLoadState("networkidle");
-    await page.getByTestId("view-mode-map").first().click();
+    await viewToggle(page, "map").click();
     await expect(page.getByTestId("events-map")).toBeVisible();
   });
 
@@ -48,7 +93,7 @@ test.describe("events page", () => {
     await context.setGeolocation({ latitude: -33.8688, longitude: 151.2093, accuracy: 5 });
     await page.goto("/events");
     await page.waitForLoadState("networkidle");
-    await page.getByTestId("view-mode-map").first().click();
+    await viewToggle(page, "map").click();
     await expect(page.getByTestId("events-map")).toBeVisible();
   });
 });

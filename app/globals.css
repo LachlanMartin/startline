@@ -83,6 +83,16 @@ html {
   outline-offset: 2px;
 }
 
+/* Search fields draw focus on the surrounding bar instead of an inner outline,
+   which boxed the text mid-typing. This has to stay unlayered: Tailwind's
+   utilities live in @layer utilities, and unlayered rules win over layered ones
+   regardless of specificity, so a `focus:outline-none` class cannot override
+   the rule above. The bar's own focus-within border keeps the field visible to
+   keyboard users. */
+.search-field:focus-visible {
+  outline: none;
+}
+
 /* Hide browser native password reveal — conflicts with custom Eye icon */
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
