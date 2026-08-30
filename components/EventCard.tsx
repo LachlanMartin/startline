@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Clock, Users } from "lucide-react";
+import { MapPin, Clock, Users, ArrowRight } from "lucide-react";
 import type { UserEvent } from "@/types";
 import { EVENT_TYPE_LABELS, STATE_LABELS } from "@/types";
 import { cn, formatShortDate, formatTime, formatCompetitionFormat, stripHtml } from "@/lib/utils";
@@ -64,7 +64,13 @@ export default function EventCard({ event, className, cardClassName, onSelect, s
         <div className="space-y-1.5 mb-3">
           <div className="flex items-center gap-2 font-headline text-[10px] font-medium uppercase tracking-widest text-muted">
             <MapPin className="w-3 h-3 text-primary flex-shrink-0" />
-            <span className="truncate">{event.city}, {STATE_LABELS[event.state]}</span>
+            {/* Suburb, city, state — "St Kilda, Melbourne, VIC". The suburb
+                lives in the venue, which is the optional field organisers fill
+                with "Bondi Beach" or "St Kilda", so it is dropped when blank.
+                Matches the label the event form shows on its own map. */}
+            <span className="truncate">
+              {[event.location, event.city, STATE_LABELS[event.state]].filter(Boolean).join(", ")}
+            </span>
             {event.distance && (
               <span data-testid="event-distance" className="ml-auto flex-shrink-0 text-primary font-bold">{event.distance} away</span>
             )}
@@ -96,11 +102,42 @@ export default function EventCard({ event, className, cardClassName, onSelect, s
           </p>
         )}
 
-        {event.fromPrice !== null && (
-          <span className="mt-auto pt-1 font-headline text-sm font-bold">
-            <span className="text-light">From </span>
-            <span className="text-primary">${event.fromPrice}</span>
-          </span>
+        {/* Price and the More info link share the bottom row. The row carries
+            the mt-auto so it anchors to the card's foot whether or not either
+            half is present.
+
+            In map mode the link stays in the layout at all times and only its
+            visibility changes, so selecting a card cannot shift the price by
+            even a pixel. */}
+        {(event.fromPrice !== null || onSelect) && (
+          <div className="mt-auto pt-1 flex items-center gap-3">
+            {event.fromPrice !== null && (
+              <span className="font-headline text-sm font-bold">
+                <span className="text-light">From </span>
+                <span className="text-primary">${event.fromPrice}</span>
+              </span>
+            )}
+
+            {/* In map mode the card selects rather than navigates, so a selected
+                card needs its own way through to the event. stopPropagation
+                keeps the click off the card's select handler, which would
+                otherwise toggle the selection off on the way out. */}
+            {onSelect && (
+              <Link
+                href={`/events/${event.id}`}
+                onClick={(e) => e.stopPropagation()}
+                data-testid="event-more-info"
+                aria-hidden={!selected}
+                tabIndex={selected ? undefined : -1}
+                className={cn(
+                  "ml-auto flex-shrink-0 flex items-center gap-1.5 bg-primary hover:bg-primary-light active:bg-primary-dark text-dark font-headline text-[10px] font-black uppercase tracking-widest rounded-full px-3.5 py-1.5 transition-colors",
+                  !selected && "invisible pointer-events-none",
+                )}
+              >
+                More info <ArrowRight className="w-3 h-3" />
+              </Link>
+            )}
+          </div>
         )}
       </div>
     </div>

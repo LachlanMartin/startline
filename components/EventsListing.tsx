@@ -12,6 +12,7 @@ import {
   PRICE_RANGE_MIN, PRICE_RANGE_MAX,
 } from "@/types";
 import { filterEvents, sortEvents } from "@/lib/utils";
+import { selectionLabel } from "@/lib/divisions";
 import { toUserEvents } from "@/lib/user-events";
 import { eventDistance, formatDistance, DEFAULT_RADIUS_KM } from "@/lib/distance";
 import { getEventCoords } from "@/lib/australia-coords";
@@ -19,7 +20,11 @@ import { useAuthContext } from "@/context/AuthContext";
 import EventMap from "@/components/EventMap";
 import type { EventMapHandle } from "@/components/EventMap";
 import EventCard from "@/components/EventCard";
-import SuburbAutocomplete from "@/components/ui/SuburbAutocomplete";
+import EventLocationAutocomplete from "@/components/ui/EventLocationAutocomplete";
+import EventAutocomplete from "@/components/ui/EventAutocomplete";
+
+/** Cards in the "Other events you may like" row under a set of results. */
+const OTHER_EVENTS_LIMIT = 6;
 
 const DISCIPLINE_OPTIONS = EVENT_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }));
 const STATE_CHIP_OPTIONS  = STATE_OPTIONS.map((o) => ({ value: o.value, label: o.shortLabel }));
@@ -144,7 +149,18 @@ function EventsListingInner() {
   }, [status]);
 
   const searchParams = useSearchParams();
-  const [whatQuery,     setWhatQuery]     = useState(searchParams.get("what")  ?? "");
+  // A category or division arriving as ?type=/?division=, or picked from the
+  // dropdown. Kept apart from whatQuery because the field shows a readable
+  // label ("Running - 10km") while the filtering uses the raw values.
+  const initialType = searchParams.get("type");
+  const initialDivision = searchParams.get("division");
+  const [selection, setSelection] = useState<{ discipline: string; division: string | null } | null>(
+    initialType ? { discipline: initialType, division: initialDivision } : null);
+  const [whatQuery,     setWhatQuery]     = useState(
+    searchParams.get("what")
+    ?? (initialType
+      ? selectionLabel(EVENT_TYPE_LABELS[initialType as EventType] ?? initialType, initialDivision)
+      : ""));
   const [whereQuery,    setWhereQuery]    = useState(searchParams.get("where") ?? "");
   const [searchOrigin,  setSearchOrigin]  = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding,   setIsGeocoding]   = useState(false);
@@ -248,11 +264,13 @@ function EventsListingInner() {
     levels:      levelFilters,
     priceRange,
     dateRange:   dateFilter,
-    searchQuery: whatQuery,
+    // With a category picked, the discipline filter does the work and the
+    // division (if any) is the keyword; the field's label is not a search term.
+    searchQuery: selection ? (selection.division ?? "") : whatQuery,
     originLat:   searchOrigin?.lat,
     originLng:   searchOrigin?.lng,
     maxDistance: searchOrigin ? DEFAULT_RADIUS_KM : undefined,
-  }), [typeFilters, stateFilters, formatFilters, levelFilters, priceRange, dateFilter, whatQuery, searchOrigin]);
+  }), [typeFilters, stateFilters, formatFilters, levelFilters, priceRange, dateFilter, whatQuery, selection, searchOrigin]);
 
   const displayEvents = useMemo(() => {
     // Geocoded search drops the hard radius cap — results are still sorted
@@ -282,8 +300,28 @@ function EventsListingInner() {
     return results;
   }, [allEvents, filterState, whereQuery, sortBy, searchOrigin]);
 
+  // Typing again abandons the picked category: the text is no longer its label.
+  const handleWhatChange = useCallback((text: string) => {
+    setWhatQuery(text);
+    setSelection(null);
+  }, [setSelection]);
+
+  // Picking a category or division from the dropdown filters in place rather
+  // than navigating, so the listing does not reload underneath the user. The
+  // field shows the readable label while the filtering uses the raw values.
+  //
+  // Unlike the hero there is no Find Events Now button to wait for, so the
+  // filter applies straight away — the listing has always updated live.
+  const applySelection = useCallback(
+    (sel: { discipline: string; division: string | null; label: string }) => {
+      setSelection({ discipline: sel.discipline, division: sel.division });
+      setWhatQuery(sel.label);
+      setTypeFilters([sel.discipline as EventType]);
+      setMobileSearch(false);
+    }, [setSelection]);
+
   function clearFilters() {
-    setWhatQuery(""); clearWhere();
+    setWhatQuery(""); setSelection(null); clearWhere();
     setTypeFilters([]); setStateFilters([]); setFormatFilters([]); setLevelFilters([]);
     setPriceRange(null); setDateFilter("all");
   }
@@ -364,40 +402,51 @@ function EventsListingInner() {
 
   const desktopHeader = (
     <div className="hidden lg:block px-4 pt-4 pb-2 border-b border-dark-lighter bg-dark-darker flex-shrink-0">
-      <div className="flex items-center gap-2">
-        <div className="flex flex-1 items-stretch bg-dark rounded-xl overflow-hidden border border-dark-lighter">
-          {/* Icons are siblings of the label+input stack, not children of the
-              input row, so they centre against the full height of the field
-              instead of sitting on the input's baseline. Labels wrap the text
-              stack so the field label is part of the clickable area. */}
-          <div className="flex-1 px-3.5 py-2.5 border-r border-dark-lighter min-w-0 flex items-center gap-1.5">
-            <label className="flex-1 min-w-0 cursor-text">
-              <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</span>
-              <input type="text" placeholder="Event name, type or keyword" value={whatQuery}
-                onChange={(e) => setWhatQuery(e.target.value)}
-                className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none" />
-            </label>
-            {whatQuery && <button type="button" onClick={() => setWhatQuery("")} aria-label="Clear event search" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
+      {/* Matches the homepage hero bar: pill rounding, an inset divider rather
+          than a full-height border, and a grey outline. Map/List moved to the
+          filter row below, so the bar spans the full width. */}
+      <div className="flex flex-1 items-stretch gap-2">
+        {/* Two rounded bubbles. Each field owns a fully closed outline, so a
+            focused field's green ring curves right round and meets itself
+            rather than running open into the divider.
+
+            Icons are siblings of the label+input stack, not children of the
+            input row, so they centre against the full height of the field
+            instead of sitting on the input's baseline. Labels wrap the text
+            stack so the field label is part of the clickable area. */}
+        <div className="flex-1 px-5 py-2.5 min-w-0 flex items-center gap-1.5 bg-dark border border-dark-lighter rounded-3xl focus-within:border-primary transition-colors">
+          <div className="flex-1 min-w-0">
+            <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Event</span>
+            <EventAutocomplete
+              value={whatQuery}
+              onChange={handleWhatChange}
+              onSelectCategory={applySelection}
+              where={whereQuery}
+              placeholder="Event name, type or keyword"
+              className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none"
+            />
           </div>
-          <div className="flex-1 px-3.5 py-2.5 min-w-0 flex items-center gap-1.5">
-            <div className="flex-1 min-w-0">
-              <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Where</span>
-              <SuburbAutocomplete
-                value={whereQuery}
-                onChange={setWhereQuery}
-                onSelect={(label) => handleWhereSearch(label)}
-                onEnter={() => handleWhereSearch()}
-                placeholder="State, city, or suburb"
-                className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none"
-              />
-            </div>
-            {isGeocoding
-              ? <Loader2 data-testid="geocoding-spinner" className="w-3.5 h-3.5 text-muted animate-spin flex-shrink-0" />
-              : <button type="button" onClick={locateMe} aria-label="Use my location" title="Use my location" className="text-muted hover:text-primary flex-shrink-0"><Locate className="w-3.5 h-3.5" /></button>}
-            {whereQuery && <button type="button" onClick={clearWhere} aria-label="Clear where" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
-          </div>
+          {whatQuery && <button type="button" onClick={() => { setWhatQuery(""); setSelection(null); }} aria-label="Clear event search" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
         </div>
-        {viewToggle}
+
+        <div className="flex-1 px-5 py-2.5 min-w-0 flex items-center gap-1.5 bg-dark border border-dark-lighter rounded-3xl focus-within:border-primary transition-colors">
+          <div className="flex-1 min-w-0">
+            <span className="font-headline text-[10px] font-black uppercase tracking-widest text-primary block mb-0.5">Where</span>
+            <EventLocationAutocomplete
+              value={whereQuery}
+              onChange={setWhereQuery}
+              filter={selection}
+              onSelect={(label) => handleWhereSearch(label)}
+              onEnter={() => handleWhereSearch()}
+              placeholder="State, city, or suburb"
+              className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:ring-0 focus:outline-none"
+            />
+          </div>
+          {isGeocoding
+            ? <Loader2 data-testid="geocoding-spinner" className="w-3.5 h-3.5 text-muted animate-spin flex-shrink-0" />
+            : <button type="button" onClick={locateMe} aria-label="Use my location" title="Use my location" className="text-muted hover:text-primary flex-shrink-0"><Locate className="w-3.5 h-3.5" /></button>}
+          {whereQuery && <button type="button" onClick={clearWhere} aria-label="Clear where" className="text-muted hover:text-light flex-shrink-0"><X className="w-3.5 h-3.5" /></button>}
+        </div>
       </div>
     </div>
   );
@@ -406,23 +455,30 @@ function EventsListingInner() {
     <div className="lg:hidden px-4 pt-3 pb-2 border-b border-dark-lighter flex-shrink-0">
       {mobileSearch ? (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 bg-dark rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-2 bg-dark rounded-2xl px-4 py-2.5 border border-dark-lighter focus-within:border-primary transition-colors">
             <Search className="w-4 h-4 text-muted flex-shrink-0" />
-            <input autoFocus type="text" placeholder="Event name, type or keyword" value={whatQuery}
-              onChange={(e) => setWhatQuery(e.target.value)}
-              className="flex-1 bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none" />
-            {whatQuery && <button onClick={() => setWhatQuery("")} className="text-muted"><X className="w-4 h-4" /></button>}
+            <EventAutocomplete
+              value={whatQuery}
+              onChange={handleWhatChange}
+              onSelectCategory={applySelection}
+              where={whereQuery}
+              autoFocus
+              placeholder="Event name, type or keyword"
+              className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none"
+            />
+            {whatQuery && <button onClick={() => { setWhatQuery(""); setSelection(null); }} aria-label="Clear event search" className="text-muted flex-shrink-0"><X className="w-4 h-4" /></button>}
           </div>
-          <div className="flex items-center gap-2 bg-dark rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-2 bg-dark rounded-2xl px-4 py-2.5 border border-dark-lighter focus-within:border-primary transition-colors">
             <MapPin className="w-4 h-4 text-muted flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <SuburbAutocomplete
+              <EventLocationAutocomplete
                 value={whereQuery}
                 onChange={setWhereQuery}
+                filter={selection}
                 onSelect={(label) => handleWhereSearch(label)}
                 onEnter={() => handleWhereSearch()}
                 placeholder="City or state"
-                className="w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none"
+                className="search-field w-full bg-transparent text-light font-headline text-sm placeholder:text-muted/40 border-0 focus:outline-none"
               />
             </div>
             {isGeocoding
@@ -433,15 +489,12 @@ function EventsListingInner() {
           <button onClick={() => setMobileSearch(false)} className="text-center font-headline text-xs uppercase tracking-widest text-muted py-1">Done</button>
         </div>
       ) : (
-        <div className="flex items-center gap-2">
-          <button onClick={() => setMobileSearch(true)} className="flex-1 flex items-center gap-3 bg-dark rounded-xl px-4 h-11 text-left min-w-0">
-            <Search className="w-4 h-4 text-muted flex-shrink-0" />
-            <span className="flex-1 font-headline text-sm text-muted/60 truncate">
-              {whatQuery || whereQuery ? [whatQuery, whereQuery].filter(Boolean).join(" · ") : "Search events…"}
-            </span>
-          </button>
-          {viewToggle}
-        </div>
+        <button onClick={() => setMobileSearch(true)} className="w-full flex items-center gap-3 bg-dark rounded-2xl border border-dark-lighter px-4 h-11 text-left min-w-0">
+          <Search className="w-4 h-4 text-muted flex-shrink-0" />
+          <span className="flex-1 font-headline text-sm text-muted/60 truncate">
+            {whatQuery || whereQuery ? [whatQuery, whereQuery].filter(Boolean).join(" · ") : "Search events…"}
+          </span>
+        </button>
       )}
     </div>
   );
@@ -590,17 +643,25 @@ function EventsListingInner() {
       </button>
 
       {activeChips.length > 0 && (
-        <button onClick={clearFilters} className="ml-auto font-headline text-xs font-medium uppercase tracking-widest text-muted hover:text-light transition-colors">
+        <button onClick={clearFilters} className="font-headline text-xs font-medium uppercase tracking-widest text-muted hover:text-light transition-colors">
           Clear All
         </button>
       )}
+
+      {/* Pushed right so Map/List anchors the end of the row whether or not
+          Clear All is showing. */}
+      <div className="ml-auto">{viewToggle}</div>
     </div>
   );
 
   const filterSubNav = (
     <div ref={subNavRef} className="flex-shrink-0">
       {mobileFilterBar}
-      <div className="hidden lg:flex border-b border-dark-lighter bg-dark-darker px-3 lg:px-6 py-2 items-center gap-1 overflow-x-auto">
+      {/* Map/List sits with the filters. The filters get their own scrolling
+          container so the toggle stays pinned right instead of scrolling away
+          with them on a narrow desktop window. */}
+      <div className="hidden lg:flex border-b border-dark-lighter bg-dark-darker px-3 lg:px-6 py-2 items-center gap-2">
+      <div className="flex flex-1 items-center gap-1 overflow-x-auto min-w-0">
       <FilterTrigger label={sortLabel} active={sortBy !== "date"}
         isOpen={openDropdown === "sort"} onToggle={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
         panelClassName="w-48" icon={<ArrowUpDown className="w-3.5 h-3.5" />}
@@ -634,6 +695,8 @@ function EventsListingInner() {
       {hasActiveFilters && (
         <button onClick={clearFilters} className="ml-1 flex-shrink-0 font-headline text-xs font-medium uppercase tracking-widest text-muted hover:text-light transition-colors">Clear All</button>
       )}
+      </div>
+      {viewToggle}
       </div>
     </div>
   );
@@ -699,24 +762,107 @@ function EventsListingInner() {
     </div>
   ) : null;
 
-  const emptyState = (
-    <div className="p-10 text-center">
-      <p className="font-headline text-2xl font-black italic tracking-tighter text-light mb-4">No events found.</p>
+  // With nothing matching, fall back to the whole upcoming listing rather than
+  // a dead end. Computed from the events already loaded, so it costs no extra
+  // request.
+  const suggestions = useMemo(() => {
+    if (displayEvents.length > 0 || allEvents.length === 0) return null;
+
+    const NO_FILTERS: FilterState = {
+      types: [], states: [], formats: [], levels: [],
+      priceRange: null, dateRange: "all", searchQuery: "",
+    };
+    const upcoming = sortEvents(filterEvents(allEvents, NO_FILTERS), "date");
+    return upcoming.length > 0 ? upcoming : null;
+  }, [displayEvents.length, allEvents]);
+
+  /**
+   * Events to offer alongside a set of results. Ranked by what they share with
+   * the current search — same discipline, then same place — so the row reads as
+   * a genuine suggestion rather than an arbitrary tail of the listing.
+   */
+  const otherEvents = useMemo(() => {
+    if (displayEvents.length === 0 || allEvents.length === 0) return [];
+
+    const NO_FILTERS: FilterState = {
+      types: [], states: [], formats: [], levels: [],
+      priceRange: null, dateRange: "all", searchQuery: "",
+    };
+    const shown = new Set(displayEvents.map((e) => e.id));
+    const rest = sortEvents(filterEvents(allEvents, NO_FILTERS), "date")
+      .filter((e) => !shown.has(e.id));
+
+    const types = new Set(displayEvents.map((e) => e.type));
+    const cities = new Set(displayEvents.map((e) => e.city.toLowerCase()));
+    const affinity = (e: UserEvent) =>
+      (types.has(e.type) ? 2 : 0) + (cities.has(e.city.toLowerCase()) ? 1 : 0);
+
+    return [...rest]
+      .sort((a, b) => affinity(b) - affinity(a))
+      .slice(0, OTHER_EVENTS_LIMIT);
+  }, [displayEvents, allEvents]);
+
+  /** "Other events you may like", shown under a set of results. */
+  const otherEventsBlock = (size: "lg" | "sm") => (
+    otherEvents.length > 0 ? (
+      <div className={`mt-8 pt-6 border-t border-dark-lighter ${size === "sm" ? "px-1" : ""}`}>
+        <p className="font-headline text-[10px] font-black uppercase tracking-widest text-muted-dark mb-3">
+          Other events you may like
+        </p>
+        <div
+          className={size === "lg" ? "grid gap-4 sm:gap-5" : "grid grid-cols-1 lg:grid-cols-2 gap-2"}
+          style={size === "lg" ? { gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" } : undefined}
+        >
+          {otherEvents.map((event) => (
+            <EventCard key={event.id} event={event} className="w-full" />
+          ))}
+        </div>
+      </div>
+    ) : null
+  );
+
+  /** Shared "nothing matched" block, sized for the full grid or the map list. */
+  const noResults = (size: "lg" | "sm") => (
+    <div className={size === "lg" ? "p-10 text-center" : "p-8 text-center"}>
+      <p className={`font-headline font-black italic tracking-tighter text-light mb-2 ${size === "lg" ? "text-2xl" : "text-lg"}`}>
+        No events matched your search.
+      </p>
+      <p className="font-headline text-[13px] text-muted mb-4">
+        Nothing here fits every filter you have set. Try removing one, or take a look at these.
+      </p>
       <button onClick={clearFilters}
-        className="font-headline text-sm font-medium uppercase tracking-widest border border-primary text-primary px-5 py-2.5 hover:bg-primary hover:text-dark transition-colors rounded-full"
+        className={`font-headline font-medium uppercase tracking-widest border border-primary text-primary hover:bg-primary hover:text-dark transition-colors rounded-full ${size === "lg" ? "text-sm px-5 py-2.5" : "text-xs px-4 py-2"}`}
       >Clear Filters</button>
+
+      {suggestions && (
+        <div className="mt-8 text-left">
+          <p className="font-headline text-[10px] font-black uppercase tracking-widest text-muted-dark mb-3">
+            All events
+          </p>
+          <div className={`grid gap-2 ${size === "lg" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"}`}>
+            {suggestions.map((event) => (
+              <EventCard key={event.id} event={event} className="w-full" />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  const emptyState = noResults("lg");
 
   // Full-width results grid — shown for the "List" tab, all breakpoints
   const gridContent = (
     <div className={view === "list" ? "flex-1 overflow-y-auto px-3 lg:px-6 py-4 lg:py-5" : "hidden"}>
       {displayEvents.length === 0 ? emptyState : (
-        <div className="grid gap-4 sm:gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
-          {displayEvents.map((event) => (
-            <EventCard key={event.id} event={event} className="w-full" />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+            {displayEvents.map((event) => (
+              <EventCard key={event.id} event={event} className="w-full" />
+            ))}
+          </div>
+          {otherEventsBlock("lg")}
+        </>
       )}
     </div>
   );
@@ -730,18 +876,16 @@ function EventsListingInner() {
           map left neither usable. The List tab is the list. */}
       <div ref={listRef} className="hidden lg:flex flex-col w-full lg:flex-1 lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-dark-lighter bg-dark-darker overflow-y-auto lg:max-h-none px-4 py-3 lg:py-4">
         {displayEvents.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="font-headline text-lg font-black italic tracking-tighter text-light mb-3">No events found.</p>
-            <button onClick={clearFilters}
-              className="font-headline text-xs font-medium uppercase tracking-widest border border-primary text-primary px-4 py-2 hover:bg-primary hover:text-dark transition-colors rounded-full"
-            >Clear Filters</button>
-          </div>
+          noResults("sm")
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-            {displayEvents.map((event) => (
-              <EventCard key={event.id} event={event} className="w-full" selected={selectedId === event.id} onSelect={() => handleSelect(event.id)} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+              {displayEvents.map((event) => (
+                <EventCard key={event.id} event={event} className="w-full" selected={selectedId === event.id} onSelect={() => handleSelect(event.id)} />
+              ))}
+            </div>
+            {otherEventsBlock("sm")}
+          </>
         )}
       </div>
       <div className="flex-1 relative min-h-[260px] lg:min-h-[320px]">
