@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { argosScreenshot } from "@argos-ci/playwright";
-import { organiserLogin } from "./helpers";
+import { organiserLogin, pickTime, expectOrganiserDashboard } from "./helpers";
 
 test.describe("organiser setup", () => {
   test("requires contact details when creating a profile", async ({ page }) => {
@@ -44,7 +44,7 @@ test.describe("organiser login", () => {
 
     await organiserLogin(page);
 
-    await expect(page.locator("h1")).toContainText("Hi there");
+    await expectOrganiserDashboard(page);
   });
 
   test("landing page renders without sign-in form", async ({ page }) => {
@@ -88,8 +88,7 @@ test.describe("new listing wizard", () => {
     await page.waitForTimeout(500);
     await page.getByText("Pick start date").click();
     await page.getByRole("button", { name: /today/i }).click();
-    const timeInputs3 = page.locator('input[type="time"]');
-    await timeInputs3.first().fill("09:00");
+    await pickTime(page, "Start time", { hour: "9", minute: "00", period: "AM" });
     const addrInput3 = page.getByPlaceholder(/start typing an address/i);
     await addrInput3.fill("1 Test St, Sydney NSW 2000");
     await page.getByRole("button", { name: /continue/i }).click();
@@ -107,8 +106,7 @@ test.describe("new listing wizard", () => {
     await page.waitForTimeout(500);
     await page.getByText("Pick start date").click();
     await page.getByRole("button", { name: /today/i }).click();
-    const timeInputs4 = page.locator('input[type="time"]');
-    await timeInputs4.first().fill("09:00");
+    await pickTime(page, "Start time", { hour: "9", minute: "00", period: "AM" });
     const addrInput4 = page.getByPlaceholder(/start typing an address/i);
     await addrInput4.fill("1 Test St, Sydney NSW 2000");
     await page.getByRole("button", { name: /continue/i }).click();
@@ -137,8 +135,7 @@ test.describe("new listing wizard", () => {
 
     await page.getByText("Pick start date").click();
     await page.getByRole("button", { name: /today/i }).click();
-    const timeInputs = page.locator('input[type="time"]');
-    await timeInputs.first().fill("09:00");
+    await pickTime(page, "Start time", { hour: "9", minute: "00", period: "AM" });
     const addrInput = page.getByPlaceholder(/start typing an address/i);
     await addrInput.fill("1 Test St, Sydney NSW 2000");
     await page.getByRole("button", { name: /continue/i }).click();
@@ -184,8 +181,7 @@ test.describe("organiser dashboard", () => {
 
     await organiserLogin(page);
 
-    await expect(page.locator("h1")).toContainText("Hi there");
-    await expect(page.getByText("All time", { exact: true })).toBeVisible();
+    await expectOrganiserDashboard(page);
     await expect(page.getByText("Followers")).toBeVisible();
     await expect(page.getByText("Revenue (est.)")).toBeVisible();
     await expect(page.getByText(/Trend/i).first()).toBeVisible();

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { organiserLogin, organiserMemberLogin } from "./helpers";
+import { organiserLogin, organiserMemberLogin, expectOrganiserDashboard } from "./helpers";
 
 test.describe("organiser members", () => {
   test("owner sees members page with both members", async ({ page }) => {
@@ -57,6 +57,6 @@ test.describe("organiser members", () => {
 
   test("member (admin) can still reach the dashboard", async ({ page }) => {
     await organiserMemberLogin(page);
-    await expect(page.locator("h1")).toContainText("Hi there");
+    await expectOrganiserDashboard(page);
   });
 });

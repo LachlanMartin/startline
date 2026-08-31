@@ -454,13 +454,13 @@ function WhenStep({ form, update }: { form: FormState; update: (p: Partial<FormS
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
         <Field label="Start time" required>
-          <TimePicker value={form.startTime} onChange={v => update({ startTime: v })} />
+          <TimePicker value={form.startTime} onChange={v => update({ startTime: v })} ariaLabel="Start time" />
           <p className="font-headline text-[10px] uppercase tracking-widest text-light mt-1.5">
             Overall start. Per-wave start times can be set in Tickets & Pricing.
           </p>
         </Field>
         <Field label="Cut-off time" hint="Last finisher">
-          <TimePicker value={form.endTime} onChange={v => update({ endTime: v })} placeholder="Select end time" />
+          <TimePicker value={form.endTime} onChange={v => update({ endTime: v })} placeholder="Select end time" ariaLabel="Cut-off time" />
           {timeInvalid && (
             <p className="font-headline text-[10px] uppercase tracking-widest text-red-400 mt-1.5">
               End time must be after start time.
@@ -670,7 +670,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
                 <div className="font-headline text-[10px] uppercase tracking-widest text-light mb-1.5 flex items-center gap-1.5">
                   <Clock className="w-3 h-3" /> Wave start time <span className="text-light">(optional)</span>
                 </div>
-                <TimePicker value={w.startTime} onChange={v => updateWave(i, { startTime: v })} placeholder="Same as event start" />
+                <TimePicker value={w.startTime} onChange={v => updateWave(i, { startTime: v })} placeholder="Same as event start" ariaLabel="Wave start time" />
               </div>
             </div>
           ))}
