@@ -9,6 +9,7 @@ import type { UserEvent } from "@/types";
 import { getRegisteredEventIds, fetchSavedEventIds } from "@/lib/client-lists";
 import { toUserEvents } from "@/lib/user-events";
 import { REFUND_PROCESS_COPY } from "@/lib/refund-policy";
+import { ADDON_REFUND_NOTICE } from "@/lib/add-on-refunds";
 import { useAuthContext } from "@/context/AuthContext";
 import EventCard from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,26 @@ type RegMeta = {
   outsidePolicy: boolean;
   policyLines: string[];
   daysUntilEvent: number;
+  addOns: RegAddOn[];
+};
+
+/**
+ * Merchandise bought with an entry. Refunded per item and independently of the
+ * entry: no policy percentage, and the organiser decides.
+ */
+type RegAddOn = {
+  id: string;
+  name: string;
+  optionLabel: string;
+  variantLabel: string;
+  imageUrl: string | null;
+  quantity: number;
+  status: string;
+  paidCents: number;
+  refundAmountCents: number;
+  refundDeclinedAt: string | null;
+  refundDeclineReason: string | null;
+  canRequestRefund: boolean;
 };
 
 const money = (cents: number) => `A$${(cents / 100).toFixed(2)}`;
@@ -144,10 +165,12 @@ function RegisteredCard({
   event,
   meta,
   onRequestRefund,
+  onRequestAddOnRefund,
 }: {
   event: UserEvent;
   meta?: RegMeta;
   onRequestRefund: (meta: RegMeta) => void;
+  onRequestAddOnRefund: (meta: RegMeta, addOn: RegAddOn) => void;
 }) {
   const refundRequested = meta?.status === "REFUND_REQUESTED";
   const refunded = meta?.status === "REFUNDED";
@@ -178,6 +201,58 @@ function RegisteredCard({
           </p>
         </div>
       </div>
+      {meta && meta.addOns.length > 0 && (
+        <div className="mt-1.5 rounded-xl border border-dark-lighter px-4 py-3">
+          <p className="font-headline text-[9.5px] font-bold uppercase tracking-widest text-muted-dark leading-none mb-2">
+            Extras
+          </p>
+          <div className="space-y-2">
+            {meta.addOns.map((addOn) => {
+              const label = addOn.variantLabel
+                ? `${addOn.name} (${addOn.variantLabel})`
+                : addOn.name;
+              return (
+                <div key={addOn.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[12.5px] text-light truncate">
+                      {addOn.quantity} x {label}
+                    </p>
+                    {addOn.refundDeclinedAt && addOn.status === "PURCHASED" && (
+                      <p className="text-[11px] text-muted-dark mt-0.5">
+                        Refund declined
+                        {addOn.refundDeclineReason ? `: ${addOn.refundDeclineReason}` : ""}
+                      </p>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {addOn.status === "REFUNDED" ? (
+                      <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted">
+                        Refunded {money(addOn.refundAmountCents)}
+                      </span>
+                    ) : addOn.status === "REFUND_REQUESTED" ? (
+                      <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-amber-300">
+                        Refund requested
+                      </span>
+                    ) : addOn.canRequestRefund ? (
+                      <button
+                        type="button"
+                        onClick={() => onRequestAddOnRefund(meta, addOn)}
+                        className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted-dark hover:text-red-300 transition-colors"
+                      >
+                        Request refund
+                      </button>
+                    ) : (
+                      <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted-dark">
+                        {money(addOn.paidCents)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {meta && (
         <div className="mt-1.5 flex justify-end">
           {refunded ? (
@@ -297,6 +372,48 @@ export default function ActivityPage() {
   const [refundTarget, setRefundTarget] = useState<{ meta: RegMeta; title: string } | null>(null);
   const [refunding, setRefunding] = useState(false);
   const [refundError, setRefundError] = useState("");
+  const [addOnRefundTarget, setAddOnRefundTarget] = useState<{
+    meta: RegMeta;
+    addOn: RegAddOn;
+    title: string;
+  } | null>(null);
+
+  const confirmAddOnRefund = async () => {
+    if (!addOnRefundTarget) return;
+    setRefunding(true);
+    setRefundError("");
+    try {
+      const { meta, addOn } = addOnRefundTarget;
+      const res = await fetch(
+        `/api/user/registrations/${meta.id}/add-ons/${addOn.id}/refund-request`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRefundError(data.error ?? "Could not send that request.");
+        return;
+      }
+      // Reflect it immediately; the organiser decides from here.
+      setRegMeta((prev) => {
+        const current = prev[String(meta.eventId)];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [String(meta.eventId)]: {
+            ...current,
+            addOns: current.addOns.map((a) =>
+              a.id === addOn.id
+                ? { ...a, status: "REFUND_REQUESTED", canRequestRefund: false }
+                : a,
+            ),
+          },
+        };
+      });
+      setAddOnRefundTarget(null);
+    } finally {
+      setRefunding(false);
+    }
+  };
 
   const confirmRefund = async () => {
     if (!refundTarget) return;
@@ -379,6 +496,7 @@ export default function ActivityPage() {
               refundPercent: r.refundPercent ?? 0,
               outsidePolicy: r.outsidePolicy ?? false,
               policyLines: r.policyLines ?? [],
+              addOns: Array.isArray(r.addOns) ? r.addOns : [],
               daysUntilEvent: r.daysUntilEvent ?? 0,
             };
             regIds.push(r.eventId);
@@ -521,6 +639,10 @@ export default function ActivityPage() {
                       setRefundError("");
                       setRefundTarget({ meta, title: event.title });
                     }}
+                    onRequestAddOnRefund={(meta, addOn) => {
+                      setRefundError("");
+                      setAddOnRefundTarget({ meta, addOn, title: event.title });
+                    }}
                   />
                 ))
               : savedEvents.map((event) => (
@@ -592,6 +714,56 @@ export default function ActivityPage() {
                 : refundTarget?.meta.outsidePolicy
                   ? "Ask anyway"
                   : `Request ${money(refundTarget?.meta.refundAmountCents ?? 0)}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add-on refunds are a different transaction from an entry refund: no
+          policy percentage, no effect on the start list, and the organiser
+          decides. The copy says exactly that and nothing more. */}
+      <Dialog
+        open={!!addOnRefundTarget}
+        onOpenChange={(open) => { if (!open) setAddOnRefundTarget(null); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request a refund for this item</DialogTitle>
+            <DialogDescription>
+              {addOnRefundTarget?.title}. Your entry is not affected.
+            </DialogDescription>
+          </DialogHeader>
+
+          {addOnRefundTarget && (
+            <div className="space-y-3">
+              <div className="rounded-md bg-dark px-4 py-3">
+                <p className="font-headline text-[20px] font-black italic tracking-tighter text-primary">
+                  {money(addOnRefundTarget.addOn.refundAmountCents)} back
+                </p>
+                <p className="text-[13px] text-muted leading-relaxed mt-1">
+                  {addOnRefundTarget.addOn.quantity} x{" "}
+                  {addOnRefundTarget.addOn.variantLabel
+                    ? `${addOnRefundTarget.addOn.name} (${addOnRefundTarget.addOn.variantLabel})`
+                    : addOnRefundTarget.addOn.name}
+                  , which you paid {money(addOnRefundTarget.addOn.paidCents)} for.
+                </p>
+              </div>
+
+              <p className="text-[12px] text-muted-dark leading-relaxed">
+                {ADDON_REFUND_NOTICE} Your race entry, start wave and bib stay exactly as they are.
+              </p>
+            </div>
+          )}
+
+          {refundError && <p className="text-[13px] text-red-300">{refundError}</p>}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAddOnRefundTarget(null)}>
+              Keep it
+            </Button>
+            <Button onClick={confirmAddOnRefund} disabled={refunding}>
+              {refunding
+                ? "Requesting…"
+                : `Request ${money(addOnRefundTarget?.addOn.refundAmountCents ?? 0)}`}
             </Button>
           </DialogFooter>
         </DialogContent>

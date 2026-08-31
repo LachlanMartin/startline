@@ -8,6 +8,7 @@ import {
   refundAmountCents,
   refundPercentFor,
 } from "@/lib/refund-policy";
+import { addOnRefundAmountCents, canRequestAddOnRefund } from "@/lib/add-on-refunds";
 
 /** GET — confirmed registrations for the signed-in athlete (wave + bib for Activity). */
 export async function GET() {
@@ -38,6 +39,26 @@ export async function GET() {
       refundPercent: true,
       refundAmountCents: true,
       refundOutsidePolicy: true,
+      // Merchandise on this entry, so Activity can offer a per-item refund.
+      addOns: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          nameSnapshot: true,
+          optionLabelSnapshot: true,
+          variantLabelSnapshot: true,
+          imageUrlSnapshot: true,
+          quantity: true,
+          amountCents: true,
+          platformFeeCents: true,
+          feeStructure: true,
+          status: true,
+          refundRequestedAt: true,
+          refundAmountCents: true,
+          refundDeclinedAt: true,
+          refundDeclineReason: true,
+        },
+      },
       event: {
         select: {
           id: true,
@@ -76,6 +97,28 @@ export async function GET() {
         policyLines: describeTiers(tiers),
         daysUntilEvent: days,
         event: r.event,
+        // Add-on money is deliberately NOT folded into paidCents above: an entry
+        // refund does not refund merchandise, so the two totals stay apart.
+        addOns: r.addOns.map((a) => ({
+          id: a.id,
+          name: a.nameSnapshot,
+          optionLabel: a.optionLabelSnapshot,
+          variantLabel: a.variantLabelSnapshot,
+          imageUrl: a.imageUrlSnapshot,
+          quantity: a.quantity,
+          status: a.status,
+          paidCents:
+            a.amountCents + (a.feeStructure === "athlete" ? a.platformFeeCents : 0),
+          refundAmountCents: a.refundAmountCents ?? addOnRefundAmountCents(a),
+          refundRequestedAt: a.refundRequestedAt,
+          refundDeclinedAt: a.refundDeclinedAt,
+          refundDeclineReason: a.refundDeclineReason,
+          canRequestRefund: canRequestAddOnRefund({
+            item: a,
+            eventDate: r.event.eventDate,
+            today,
+          }).ok,
+        })),
       };
     }),
   });
