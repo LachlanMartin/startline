@@ -4,6 +4,11 @@ import { getAdminSession } from "@/lib/amplify-server";
 import { getStripe } from "@/lib/stripe";
 import { writeAuditLog } from "@/lib/audit";
 import { idParams } from "@/lib/schemas";
+import {
+  buildRefundParams,
+  entryRefundAmountCents,
+  isOutsidePolicyRefund,
+} from "@/lib/stripe-refunds";
 
 export async function POST(
   _req: NextRequest,
@@ -82,16 +87,19 @@ export async function POST(
       return NextResponse.json({ ok: true, method: "free" });
     }
 
-    // Honour the snapshot taken when the athlete asked. A full refund sends no
-    // amount so Stripe returns the whole charge (ticket price plus the Startline
-    // fee); a partial tier refunds exactly what was quoted. A registration with no
-    // snapshot predates the structured policy, so it falls back to the whole charge.
-    const paidCents = registration.amountCents + registration.platformFeeCents;
-    const snapshot = registration.refundAmountCents;
-    const isPartial = snapshot != null && snapshot > 0 && snapshot < paidCents;
+    // Honour the snapshot taken when the athlete asked, clamped to what THIS
+    // entry paid. That means the entry ALONE: add-on money lives on
+    // RegistrationAddOn rows and is refunded separately, so this keeps its
+    // original meaning now that merchandise exists.
+    //
+    // The amount is always explicit. An amountless refund returns the entire
+    // charge, and one PaymentIntent covers every participant in a group booking,
+    // so that would refund the whole family (and their merchandise) over one
+    // athlete's request.
+    const refundCents = entryRefundAmountCents(registration);
 
     // Checked before touching Stripe so a refused request costs nothing.
-    if (snapshot === 0) {
+    if (isOutsidePolicyRefund(registration)) {
       return NextResponse.json(
         { error: "This request is outside the event's refund policy. Refund a different amount manually in Stripe if it is being granted as a goodwill exception." },
         { status: 409 },
@@ -116,12 +124,17 @@ export async function POST(
     }
 
     const refund = await stripe.refunds.create(
-      isPartial ? { charge: chargeId, amount: snapshot } : { charge: chargeId },
+      ...buildRefundParams({
+        chargeId,
+        amountCents: refundCents,
+        // Retrying a failed request must not refund the athlete twice.
+        idempotencyKey: `entry-refund-${registration.id}`,
+      }),
     );
 
     await prisma.registration.update({ where: { id }, data: { status: "REFUNDED" } });
 
-    await notifyAthlete(snapshot ?? paidCents);
+    await notifyAthlete(refundCents);
 
     writeAuditLog({
       adminId: session.sub,
