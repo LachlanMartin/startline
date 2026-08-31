@@ -6,8 +6,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   User, LogOut, Building2, Shield, Plus, Settings, Bell,
-  CheckCircle2, XCircle, Menu, X, ChevronDown, Users, UserCircle,
+  Check, TriangleAlert, Menu, X, ChevronDown, ChevronRight, Users, UserCircle,
+  UserRound, RefreshCw,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 
@@ -43,10 +45,15 @@ function timeAgo(dateStr: string) {
   return `${days}d ago`;
 }
 
-const NOTIF_ICON: Record<Notification["type"], React.ReactNode> = {
-  EVENT_APPROVED:   <CheckCircle2 className="w-4 h-4 text-lime-400" />,
-  EVENT_REJECTED:   <XCircle      className="w-4 h-4 text-red-400"  />,
-  NEW_REGISTRATION: <User         className="w-4 h-4 text-blue-400" />,
+/* Three deliberately different silhouettes - a tick, a triangle, a person - so
+   the type is readable from shape alone at 16px and doesn't depend on colour.
+   (A check-in-a-circle and a cross-in-a-circle are the same outline; side by
+   side in a list they just read as two circles.) Tints mirror STATUS_STYLE on
+   the organiser dashboard: brand green published, red rejected, neutral info. */
+const NOTIF_STYLE: Record<Notification["type"], { Icon: LucideIcon; tone: string }> = {
+  EVENT_APPROVED:   { Icon: Check,         tone: "bg-primary/10 text-primary"    },
+  EVENT_REJECTED:   { Icon: TriangleAlert, tone: "bg-red-400/10 text-red-300"    },
+  NEW_REGISTRATION: { Icon: UserRound,     tone: "bg-white/[0.06] text-white/70" },
 };
 
 export default function OrganiserNavBar() {
@@ -66,6 +73,10 @@ export default function OrganiserNavBar() {
   const [notifOpen,    setNotifOpen]    = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount,  setUnreadCount]  = useState(0);
+  // Opening the panel marks everything read server-side, which would instantly
+  // strip the highlight off the items you came to look at. Freeze the ids that
+  // were unread at open time so they stay marked "new" for this viewing.
+  const [freshIds,     setFreshIds]     = useState<Set<string>>(new Set());
 
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef  = useRef<HTMLDivElement>(null);
@@ -145,8 +156,10 @@ export default function OrganiserNavBar() {
   };
 
   const openNotifPanel = () => {
+    const opening = !notifOpen;
     setNotifOpen(o => !o);
     setIsUserOpen(false);
+    if (opening) setFreshIds(new Set(notifications.filter(n => !n.read).map(n => n.id)));
     if (unreadCount > 0) {
       fetch("/api/organiser/notifications", {
         method: "PATCH",
@@ -213,39 +226,59 @@ export default function OrganiserNavBar() {
                 )}
               </button>
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-1 w-80 bg-dark-darker border border-primary/40 rounded-xl shadow-2xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-                    <span className="font-headline text-[12px] font-bold uppercase tracking-widest text-white/60">Notifications</span>
+                <div className="absolute right-0 top-full mt-2 w-[min(22rem,calc(100vw-1.5rem))] bg-dark-darker border border-primary/40 rounded-xl shadow-2xl overflow-hidden animate-fade-in">
+                  <div className="flex items-center justify-between pl-3.5 pr-2 py-2 border-b border-white/[0.06]">
+                    <span className="flex items-center gap-2 font-headline text-[11px] font-bold uppercase tracking-[0.2em] text-white/45">
+                      Notifications
+                      {notifications.length > 0 && (
+                        <span className="text-[10px] tracking-widest text-white/25">{notifications.length}</span>
+                      )}
+                    </span>
                     {notifications.length > 0 && (
-                      <button onClick={() => fetchNotifications()} className="font-headline text-[10px] uppercase tracking-widest text-white/30 hover:text-white/60">Refresh</button>
+                      <button onClick={() => fetchNotifications()} aria-label="Refresh notifications" title="Refresh"
+                        className="chip-sm flex items-center justify-center w-7 h-7 rounded-md text-white/30 hover:text-primary hover:bg-white/[0.06] transition-colors">
+                        <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.2} />
+                      </button>
                     )}
                   </div>
-                  <div className="max-h-[380px] overflow-y-auto">
+                  <div className="scroll-slim max-h-[min(26rem,60vh)] overflow-y-auto overscroll-contain p-2 space-y-1.5">
                     {notifications.length === 0 ? (
-                      <div className="px-4 py-8 text-center">
-                        <Bell className="w-6 h-6 text-white/20 mx-auto mb-2" />
-                        <div className="font-headline text-[12px] uppercase tracking-widest text-white/30">No notifications yet</div>
+                      <div className="px-4 py-10 text-center">
+                        <Bell className="w-6 h-6 text-white/15 mx-auto mb-2.5" strokeWidth={1.8} />
+                        <div className="font-headline text-[11px] uppercase tracking-[0.2em] text-white/30">No notifications yet</div>
                       </div>
                     ) : (
-                      notifications.map(n => (
-                        <div key={n.id} className={`flex items-start gap-3 px-4 py-3 border-b border-white/5 last:border-0 ${!n.read ? "bg-white/5" : ""}`}>
-                          <div className="mt-0.5 shrink-0">{NOTIF_ICON[n.type]}</div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <span className="font-headline text-[12px] font-bold text-white leading-snug">{n.title}</span>
-                              {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-1" />}
+                      notifications.map(n => {
+                        const { Icon, tone } = NOTIF_STYLE[n.type];
+                        const isFresh = !n.read || freshIds.has(n.id);
+                        const href    = n.eventId ? `/organiser/events/${n.eventId}/dashboard` : null;
+                        const rowClass = `group flex items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
+                          isFresh ? "bg-primary/[0.07] border-primary/25" : "bg-dark border-dark-lighter"
+                        }${href ? (isFresh ? " hover:border-primary/50" : " hover:border-white/25") : ""}`;
+                        const inner = (
+                          <>
+                            <span className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-lg ${tone}`}>
+                              <Icon className="w-4 h-4" strokeWidth={2.5} />
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-headline text-[12.5px] font-bold text-white leading-snug">{n.title}</div>
+                              <p className="text-[11.5px] text-white/50 leading-relaxed mt-0.5 line-clamp-2">{n.body}</p>
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="font-headline text-[10px] uppercase tracking-widest text-white/25">{timeAgo(n.createdAt)}</span>
+                                {isFresh && <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-primary/80">New</span>}
+                              </div>
                             </div>
-                            <p className="text-[11px] text-white/50 mt-0.5 leading-relaxed line-clamp-2">{n.body}</p>
-                            <div className="flex items-center justify-between mt-1.5">
-                              <span className="font-headline text-[10px] uppercase tracking-widest text-white/30">{timeAgo(n.createdAt)}</span>
-                              {n.eventId && (
-                                <Link href={`/organiser/events/${n.eventId}/dashboard`} onClick={() => setNotifOpen(false)}
-                                  className="font-headline text-[10px] uppercase tracking-widest text-primary/70 hover:text-primary">View event →</Link>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))
+                            {href && (
+                              <ChevronRight className="self-center shrink-0 w-4 h-4 text-white/20 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-150" strokeWidth={2.2} />
+                            )}
+                          </>
+                        );
+                        return href ? (
+                          <Link key={n.id} href={href} onClick={() => setNotifOpen(false)} className={rowClass}>{inner}</Link>
+                        ) : (
+                          <div key={n.id} className={rowClass}>{inner}</div>
+                        );
+                      })
                     )}
                   </div>
                 </div>
