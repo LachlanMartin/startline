@@ -88,7 +88,7 @@ importers:
         version: 0.469.0(react@19.2.8)
       mapbox-gl:
         specifier: ^3.25.0
-        version: 3.27.0
+        version: 3.29.0
       next:
         specifier: ^15.5.23
         version: 15.5.23(@babel/core@7.29.7)(@playwright/test@1.60.0)(@types/node@22.19.19)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -109,7 +109,7 @@ importers:
         version: 19.2.8(react@19.2.8)
       react-map-gl:
         specifier: ^8.1.1
-        version: 8.1.2(mapbox-gl@3.27.0)(maplibre-gl@5.24.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 8.1.2(mapbox-gl@3.29.0)(maplibre-gl@5.24.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       recharts:
         specifier: ^3.10.1
         version: 3.10.1(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-is@16.13.1)(react@19.2.8)(redux@5.0.1)
@@ -3959,8 +3959,8 @@ packages:
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
-  mapbox-gl@3.27.0:
-    resolution: {integrity: sha512-K8W9LTTjFEJsg9qsnJbKk+zbXrmSqa+nU1EiFXez5gQ0T0RMtylZUelgg1/RE6vCUMvHX0gaYfWU9g2mTWuA0g==}
+  mapbox-gl@3.29.0:
+    resolution: {integrity: sha512-Fnh1WLsZMfihwRZY5scp456iQuZo9G97tTpb26bf/Ejsi/L7O+4dE9+I03VoOor2ul3DEOp6F2P3273omyVsNw==}
 
   maplibre-gl@5.24.0:
     resolution: {integrity: sha512-ALyFxgtd5R+65UqZ/++lOqwWcC0SNho9c27fYSyLmG7AfnAul2o46F05aDJGPbFU57wos9dgcIySHs0Xe6ia3A==}
@@ -7345,12 +7345,12 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
 
-  '@vis.gl/react-mapbox@8.1.2(mapbox-gl@3.27.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@vis.gl/react-mapbox@8.1.2(mapbox-gl@3.29.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
     optionalDependencies:
-      mapbox-gl: 3.27.0
+      mapbox-gl: 3.29.0
 
   '@vis.gl/react-maplibre@8.1.2(maplibre-gl@5.24.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
@@ -9259,7 +9259,7 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  mapbox-gl@3.27.0: {}
+  mapbox-gl@3.29.0: {}
 
   maplibre-gl@5.24.0:
     dependencies:
@@ -9735,14 +9735,14 @@ snapshots:
 
   react-is@16.13.1: {}
 
-  react-map-gl@8.1.2(mapbox-gl@3.27.0)(maplibre-gl@5.24.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  react-map-gl@8.1.2(mapbox-gl@3.29.0)(maplibre-gl@5.24.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
-      '@vis.gl/react-mapbox': 8.1.2(mapbox-gl@3.27.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@vis.gl/react-mapbox': 8.1.2(mapbox-gl@3.29.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@vis.gl/react-maplibre': 8.1.2(maplibre-gl@5.24.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
     optionalDependencies:
-      mapbox-gl: 3.27.0
+      mapbox-gl: 3.29.0
       maplibre-gl: 5.24.0
 
   react-redux@9.3.0(@types/react@19.2.18)(react@19.2.8)(redux@5.0.1):
