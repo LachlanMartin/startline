@@ -25,6 +25,7 @@ import { parseCsvTable } from "@/lib/registration-csv";
 import { REFUND_PROCESS_COPY } from "@/lib/refund-policy";
 import WaveAllocationBoard from "@/components/organiser/WaveAllocationBoard";
 import WaveResultsBoard from "@/components/organiser/WaveResultsBoard";
+import AddOnsTab, { type RegistrationAddOnView } from "@/components/organiser/AddOnsTab";
 import {
   DEFAULT_EXPORT_COLUMN_KEYS,
   EXPORT_COLUMNS,
@@ -184,6 +185,9 @@ interface Registration {
   resultPlacement: string | null;
   isPersonalBest: boolean;
   isTopResult: boolean;
+  /** Merchandise on this entry. `amount` above stays the entry alone. */
+  addOns?: RegistrationAddOnView[];
+  addOnAmount?: number;
 }
 
 interface StartWave extends WaveDef {
@@ -192,7 +196,7 @@ interface StartWave extends WaveDef {
 }
 
 interface PageData {
-  event: { id: string; title: string; startWaves: StartWave[] };
+  event: { id: string; title: string; startWaves: StartWave[]; feeStructure?: string };
   registrations: Registration[];
 }
 
@@ -247,7 +251,7 @@ export default function RaceManagementPanel({ eventId }: { eventId: string }) {
   const [notifyMsg, setNotifyMsg] = useState("");
 
   // Splits the page into before-race setup (waves, bibs) and after-race results.
-  const [activeTab, setActiveTab] = useState<"setup" | "results" | "refunds">("setup");
+  const [activeTab, setActiveTab] = useState<"setup" | "results" | "addons" | "refunds">("setup");
 
   const load = useCallback((opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
@@ -676,6 +680,10 @@ export default function RaceManagementPanel({ eventId }: { eventId: string }) {
     .filter((r) => r.status === "REFUND_REQUESTED" || r.status === "REFUNDED")
     .sort((a, b) => Number(a.status !== "REFUND_REQUESTED") - Number(b.status !== "REFUND_REQUESTED"));
   const refundPending = registrations.filter((r) => r.status === "REFUND_REQUESTED").length;
+  const addOnRefundPending = registrations.reduce(
+    (sum, r) => sum + (r.addOns ?? []).filter((a) => a.status === "REFUND_REQUESTED").length,
+    0,
+  );
 
   const openNotify = () => { setNotifyMsg(""); setNotifyOpen(true); };
 
@@ -685,10 +693,12 @@ export default function RaceManagementPanel({ eventId }: { eventId: string }) {
           {([
             { id: "setup", label: "Before race" },
             { id: "results", label: "After race" },
+            { id: "addons", label: "Add-ons" },
             { id: "refunds", label: "Refunds" },
           ] as const).map((t) => {
             const on = activeTab === t.id;
-            const badge = t.id === "refunds" ? refundPending : 0;
+            const badge =
+              t.id === "refunds" ? refundPending : t.id === "addons" ? addOnRefundPending : 0;
             return (
               <button
                 key={t.id}
@@ -855,6 +865,15 @@ export default function RaceManagementPanel({ eventId }: { eventId: string }) {
               />
             </CardContent>
           </Card>
+        )}
+
+        {activeTab === "addons" && (
+          <AddOnsTab
+            eventId={id}
+            registrations={registrations}
+            feeStructure={data?.event?.feeStructure === "organiser" ? "organiser" : "athlete"}
+            onRefetch={() => load({ silent: true })}
+          />
         )}
 
         {activeTab === "refunds" && (

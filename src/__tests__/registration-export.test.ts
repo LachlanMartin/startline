@@ -162,3 +162,102 @@ describe("excel column projection", () => {
     expect(excelCellValues(row, keys)).toEqual(["42", "Alex Turner", "Wave A"]);
   });
 });
+
+// ─── Paid add-ons in exports ─────────────────────────────────────────────────
+
+const tee = {
+  nameSnapshot: "Event tee",
+  variantLabelSnapshot: "M",
+  quantity: 2,
+  amountCents: 5000,
+  platformFeeCents: 198,
+  feeStructure: "athlete",
+  status: "PURCHASED",
+};
+
+describe("toExportRow — add-ons", () => {
+  it("is empty for an entry that bought nothing", () => {
+    const row = toExportRow(base());
+    expect(row.addOns).toBe("");
+    expect(row.addOnsPaidAud).toBe("0.00");
+  });
+
+  it("lists items with a hyphen and a quantity", () => {
+    const row = toExportRow(base({ addOns: [tee] }));
+    expect(row.addOns).toBe("Event tee - M x2");
+    expect(row.addOns).not.toContain("—");
+  });
+
+  it("joins several items with a semicolon so a CSV cell stays one field", () => {
+    const row = toExportRow(
+      base({
+        addOns: [tee, { ...tee, nameSnapshot: "Cap", variantLabelSnapshot: "", quantity: 1 }],
+      }),
+    );
+    expect(row.addOns).toBe("Event tee - M x2; Cap x1");
+  });
+
+  it("totals what the athlete paid, fee included when they paid it", () => {
+    expect(toExportRow(base({ addOns: [tee] })).addOnsPaidAud).toBe("51.98");
+  });
+
+  it("excludes the fee the organiser absorbed", () => {
+    const row = toExportRow(base({ addOns: [{ ...tee, feeStructure: "organiser" }] }));
+    expect(row.addOnsPaidAud).toBe("50.00");
+  });
+
+  // A refunded shirt is history, not something to pack or to bill for.
+  it("drops refunded items from both the list and the total", () => {
+    const row = toExportRow(base({ addOns: [{ ...tee, status: "REFUNDED" }] }));
+    expect(row.addOns).toBe("");
+    expect(row.addOnsPaidAud).toBe("0.00");
+  });
+
+  // Until the organiser decides, the item is still the athlete's.
+  it("keeps items with a refund still pending", () => {
+    const row = toExportRow(base({ addOns: [{ ...tee, status: "REFUND_REQUESTED" }] }));
+    expect(row.addOns).toBe("Event tee - M x2");
+  });
+
+  it("drops items that were never fulfilled", () => {
+    expect(toExportRow(base({ addOns: [{ ...tee, status: "CANCELLED" }] })).addOns).toBe("");
+  });
+
+  // The money rule: paidAud stays the entry alone.
+  it("never folds add-on money into the entry's paid column", () => {
+    const row = toExportRow(base({ addOns: [tee] }));
+    expect(row.paidAud).toBe(toExportRow(base()).paidAud);
+  });
+});
+
+describe("export columns — add-ons", () => {
+  it("offers both add-on columns for selection", () => {
+    expect(parseExportColumns("addOns,addOnsPaidAud")).toEqual(["name", "addOns", "addOnsPaidAud"]);
+  });
+
+  it("flows into the Excel headers and cells automatically", () => {
+    expect(excelHeadersFor(["addOns", "addOnsPaidAud"])).toEqual(["Add-ons", "Add-ons paid (AUD)"]);
+    const row = toExportRow(base({ addOns: [tee] }));
+    expect(excelCellValues(row, ["addOns", "addOnsPaidAud"])).toEqual(["Event tee - M x2", "51.98"]);
+  });
+
+  it("survives a CSV round trip as a single field", () => {
+    const rows = mapAndSortExportRows([base({ addOns: [tee] })]);
+    // A filtered CSV always leads with registrationId, so the chosen columns follow it.
+    const csv = exportRowsToCsv(rows, ["name", "addOns"]);
+    const parsed = parseCsvTable(csv);
+    expect(parsed.header).toEqual(["registrationid", "name", "addons"]);
+    expect(parsed.rows[0][2]).toBe("Event tee - M x2");
+  });
+
+  // The default CSV writes a fixed column list rather than reading the selection,
+  // so a new column has to be added there too or it silently vanishes.
+  it("includes add-ons in the default full CSV", () => {
+    const rows = mapAndSortExportRows([base({ addOns: [tee] })]);
+    const parsed = parseCsvTable(exportRowsToCsv(rows, null));
+    const index = parsed.header.indexOf("addons");
+    expect(index).toBeGreaterThan(-1);
+    expect(parsed.rows[0][index]).toBe("Event tee - M x2");
+    expect(parsed.rows[0][parsed.header.indexOf("addonspaidaud")]).toBe("51.98");
+  });
+});

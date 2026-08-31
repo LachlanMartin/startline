@@ -23,6 +23,16 @@ export type ExportRegistrationInput = {
   resultDistance: string | null;
   resultTime: string | null;
   resultPlacement: string | null;
+  /** Merchandise bought with this entry. Absent on callers that do not load it. */
+  addOns?: {
+    nameSnapshot: string;
+    variantLabelSnapshot: string;
+    quantity: number;
+    amountCents: number;
+    platformFeeCents: number;
+    feeStructure: string;
+    status: string;
+  }[];
 };
 
 export type ExportRegistrationRow = {
@@ -49,6 +59,10 @@ export type ExportRegistrationRow = {
   resultDistance: string;
   resultTime: string;
   resultPlacement: string;
+  /** "Event tee - M x2; Cap - One size x1", or "" when nothing was bought. */
+  addOns: string;
+  /** What the athlete paid for merchandise, entry excluded. */
+  addOnsPaidAud: string;
 };
 
 /** Selectable organiser export fields (Excel + filtered CSV). */
@@ -72,6 +86,8 @@ export const EXPORT_COLUMNS = [
   { key: "resultDistance", label: "Result distance", width: 14, required: false },
   { key: "resultTime", label: "Result time", width: 10, required: false },
   { key: "resultPlacement", label: "Result placement", width: 14, required: false },
+  { key: "addOns", label: "Add-ons", width: 28, required: false },
+  { key: "addOnsPaidAud", label: "Add-ons paid (AUD)", width: 16, required: false },
 ] as const;
 
 export type ExportColumnKey = (typeof EXPORT_COLUMNS)[number]["key"];
@@ -104,6 +120,8 @@ const CELL_GETTERS: Record<ExportColumnKey, (r: ExportRegistrationRow) => string
   resultDistance: (r) => r.resultDistance,
   resultTime: (r) => r.resultTime,
   resultPlacement: (r) => r.resultPlacement,
+  addOns: (r) => r.addOns,
+  addOnsPaidAud: (r) => r.addOnsPaidAud,
 };
 
 /** Machine CSV: key → header (age omitted; status uses raw enum). */
@@ -123,6 +141,8 @@ const MACHINE_CSV_FIELD: Partial<Record<ExportColumnKey, { header: string; get: 
   emergencyContact: { header: "emergencyContact", get: (r) => r.emergencyContact },
   emergencyPhone: { header: "emergencyPhone", get: (r) => r.emergencyPhone },
   medicalNotes: { header: "medicalNotes", get: (r) => r.medicalNotes },
+  addOns: { header: "addOns", get: (r) => r.addOns },
+  addOnsPaidAud: { header: "addOnsPaidAud", get: (r) => r.addOnsPaidAud },
   resultDistance: { header: "distance", get: (r) => r.resultDistance },
   resultTime: { header: "time", get: (r) => r.resultTime },
   resultPlacement: { header: "placement", get: (r) => r.resultPlacement },
@@ -149,6 +169,8 @@ export const MACHINE_CSV_HEADERS = [
   "distance",
   "time",
   "placement",
+  "addOns",
+  "addOnsPaidAud",
 ] as const;
 
 /** Parse `columns=bib,name,email` query; empty/invalid → all columns. Name is always kept. */
@@ -224,6 +246,39 @@ export function compareExportRows(a: ExportRegistrationRow, b: ExportRegistratio
   return a.name.localeCompare(b.name);
 }
 
+/**
+ * Add-on statuses that represent goods the organiser still has to hand over.
+ * A refunded item stays in the database as history but must not appear on a
+ * picking list or count toward what the athlete paid.
+ */
+const EXPORTED_ADDON_STATUSES = new Set(["PURCHASED", "REFUND_REQUESTED"]);
+
+type ExportAddOn = NonNullable<ExportRegistrationInput["addOns"]>[number];
+
+function liveAddOns(addOns: ExportRegistrationInput["addOns"]): ExportAddOn[] {
+  return (addOns ?? []).filter((a) => EXPORTED_ADDON_STATUSES.has(a.status));
+}
+
+/** "Event tee - M x2; Cap - One size x1". Hyphens, so it survives a CSV cleanly. */
+export function formatAddOnsCell(addOns: ExportRegistrationInput["addOns"]): string {
+  return liveAddOns(addOns)
+    .map((a) => {
+      const label = a.variantLabelSnapshot
+        ? `${a.nameSnapshot} - ${a.variantLabelSnapshot}`
+        : a.nameSnapshot;
+      return `${label} x${a.quantity}`;
+    })
+    .join("; ");
+}
+
+/** What the athlete paid for merchandise on this entry, in dollars. */
+export function addOnsPaidCents(addOns: ExportRegistrationInput["addOns"]): number {
+  return liveAddOns(addOns).reduce(
+    (sum, a) => sum + a.amountCents + (a.feeStructure === "athlete" ? a.platformFeeCents : 0),
+    0,
+  );
+}
+
 export function toExportRow(r: ExportRegistrationInput): ExportRegistrationRow {
   const age =
     r.dateOfBirth && calcAgeFromIsoDate(r.dateOfBirth) > 0
@@ -254,6 +309,9 @@ export function toExportRow(r: ExportRegistrationInput): ExportRegistrationRow {
     resultDistance: r.resultDistance ?? "",
     resultTime: r.resultTime ?? "",
     resultPlacement: r.resultPlacement ?? "",
+    addOns: formatAddOnsCell(r.addOns),
+    // Kept separate from paidAud, which stays the entry alone.
+    addOnsPaidAud: (addOnsPaidCents(r.addOns) / 100).toFixed(2),
   };
 }
 
@@ -303,6 +361,8 @@ export function exportRowsToCsv(
         r.resultDistance,
         r.resultTime,
         r.resultPlacement,
+        r.addOns,
+        r.addOnsPaidAud,
       ].map((c) => escapeCsvCell(String(c)));
       lines.push(cells.join(","));
     }
