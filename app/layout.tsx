@@ -1,6 +1,7 @@
 ﻿import type { Metadata, Viewport } from "next";
 import { Inter, Chakra_Petch } from "next/font/google";
 import NativeLinkHandler from "@/components/NativeLinkHandler";
+import RouteHistoryTracker from "@/components/RouteHistoryTracker";
 import "./globals.css";
 
 const inter = Inter({
@@ -108,6 +109,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} ${chakraPetch.variable}`}>
       <body className="bg-dark-darker text-light font-sans antialiased">
         <NativeLinkHandler />
+        <RouteHistoryTracker />
         {children}
       </body>
     </html>

@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { hasInAppHistory } from "@/components/RouteHistoryTracker";
 
-// Stays an ordinary link to /events so new-tab, middle-click and the no-JS path
-// still work. A plain click inside the app steps back to wherever the listing was
-// opened from instead: the organiser's page, search results, a home carousel.
+// Stays an ordinary link to /events, so a direct visit, a new tab, middle click
+// and the no-JS path all land on the listing. When the visitor reached this page
+// from somewhere else on the site, the click steps back there instead: the
+// organiser's page, search results, a home carousel.
 export default function BackToEventsLink() {
   const router = useRouter();
 
@@ -15,7 +17,7 @@ export default function BackToEventsLink() {
       href="/events"
       onClick={e => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        if (window.history.length <= 1) return;
+        if (!hasInAppHistory()) return;
         e.preventDefault();
         router.back();
       }}
