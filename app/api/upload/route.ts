@@ -4,6 +4,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { getOrganiserSession, getAdminSession, getUserSession } from "@/lib/amplify-server";
 import { matchesMagicBytes } from "@/lib/upload-magic-bytes";
+import { rateLimit } from "@/lib/rate-limit";
 
 // Prefer local disk in development — staging/prod S3 buckets often aren't
 // reachable from a laptop, and .env may still contain AWS keys.
@@ -13,12 +14,40 @@ const useS3 =
     : process.env.UPLOAD_TO_S3 === "true" &&
       !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY);
 
+// Per-upload-type size ceilings. Images were previously unbounded, which the
+// add-on catalogue turns into an exposed surface: one image per product, edited
+// freely after publish. A 5 MB photo is already far larger than anything the
+// site renders.
+const TYPE_MAX_BYTES: Record<string, number> = {
+  logo: 5 * 1024 * 1024,
+  cover: 5 * 1024 * 1024,
+  photo: 5 * 1024 * 1024,
+  avatar: 5 * 1024 * 1024,
+  document: 15 * 1024 * 1024,
+  video: 100 * 1024 * 1024,
+};
+
+function describeLimit(bytes: number): string {
+  return `${Math.round(bytes / (1024 * 1024))} MB`;
+}
+
 export async function POST(req: NextRequest) {
   const session =
     (await getOrganiserSession()) ??
     (await getAdminSession()) ??
     (await getUserSession());
   if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+
+  // Keyed on the authenticated identity rather than the IP: an organiser filling
+  // in a catalogue uploads several images in a row legitimately, but nobody needs
+  // to do it sixty times a minute.
+  const blocked = await rateLimit(req, {
+    prefix: "upload",
+    limit: 30,
+    windowSeconds: 60,
+    identifier: session.sub,
+  });
+  if (blocked) return blocked;
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
@@ -40,8 +69,13 @@ export async function POST(req: NextRequest) {
   if (!TYPE_MIMES[type]?.includes(file.type)) {
     return NextResponse.json({ error: "File type not allowed for this upload." }, { status: 400 });
   }
-  if (type === "document" && file.size > 15 * 1024 * 1024) {
-    return NextResponse.json({ error: "PDF must be 15 MB or smaller." }, { status: 400 });
+  const maxBytes = TYPE_MAX_BYTES[type];
+  if (maxBytes && file.size > maxBytes) {
+    const noun = type === "document" ? "PDF" : type === "video" ? "Video" : "Image";
+    return NextResponse.json(
+      { error: `${noun} must be ${describeLimit(maxBytes)} or smaller.` },
+      { status: 400 },
+    );
   }
 
   const mimeExt: Record<string, string> = {
