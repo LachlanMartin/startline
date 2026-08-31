@@ -50,6 +50,7 @@ export interface PublicEvent {
   waves: unknown;
   extras: string | null;
   refundPolicy: string | null;
+  refundTiers: unknown;
   coverImageUrl: string | null;
   photos: string[];
   informationPdfs: InformationPdf[];

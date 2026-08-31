@@ -14,6 +14,7 @@ import ReviewPayStep, { type ReviewRow } from "./ReviewPayStep";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import { useAuthContext } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { daysUntil, describeTiers, parseTiers, refundAmountCents } from "@/lib/refund-policy";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 const BOT_CHECK_HOSTS = ["startlineau.com", "www.startlineau.com", "staging.startlineau.com"];
@@ -53,6 +54,7 @@ interface EventData {
   state: string;
   waves: Wave[];
   feeStructure: string;
+  refundTiers: unknown;
   registrationType: string;
   coverImageUrl: string | null;
   organiser: { id: string; orgName: string | null; logoUrl: string | null };
@@ -316,6 +318,16 @@ function RegisterContent() {
   const subtotal = tierLines.reduce((sum, t) => sum + t.price * t.qty, 0);
   const total = subtotal + feeTotal;
   const tierSummary = tierLines.map((t) => (t.qty > 1 ? `${t.qty} × ${t.label}` : t.label)).join(", ");
+
+  // Refund position at the moment of paying, in dollars rather than in principle.
+  const refundTiers = parseTiers(event?.refundTiers);
+  const refundLines = describeTiers(refundTiers);
+  const daysToEvent = event ? daysUntil(event.eventDate, new Date().toISOString().slice(0, 10)) : 0;
+  const refundIfCancelledNow = refundAmountCents(refundTiers, Math.round(total * 100), daysToEvent) / 100;
+  const refundHeadline =
+    refundIfCancelledNow > 0
+      ? `Cancel today and you get ${money(refundIfCancelledNow)} of ${money(total)} back. The amount drops as the event gets closer.`
+      : `This event's policy does not cover a refund at this date, so treat this entry as final.`;
 
   const isMulti = participants.length > 1;
   const sharedContactActive = isMulti && useSharedContact;
@@ -967,6 +979,8 @@ function RegisterContent() {
                   eventId={eventId}
                   reviewRows={reviewRows}
                   confirmAmountLabel={money(total)}
+                  refundLines={refundLines}
+                  refundHeadline={refundHeadline}
                   onBack={() => {
                     setError("");
                     setClientSecret("");

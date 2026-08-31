@@ -168,6 +168,12 @@ model Event {
   inclusions        String?
   extras            String?
   activations       String?
+  // Refund policy. refundTiers is the structured source of truth: an array of
+  // { daysBefore, percent } read through lib/refund-policy.ts, which is what the
+  // athlete's quoted amount is computed from. refundPolicy is now free-text
+  // exceptions and notes only — it used to hold the whole policy as concatenated
+  // preset labels, which nothing downstream could reason about.
+  refundTiers       Json?
   refundPolicy      String?
   registrationType  String  @default("startline")
   feeStructure      String  @default("athlete")
@@ -368,6 +374,15 @@ model Registration {
   status                RegistrationStatus @default(CONFIRMED)
   stripePaymentIntentId String?
 
+  // Refund snapshot, written when the athlete asks. Frozen at request time so the
+  // amount quoted to the athlete cannot drift as the event draws closer, and so
+  // the admin refunds exactly what was promised. outsidePolicy marks a
+  // discretionary request the policy returns nothing for.
+  refundPercent     Int?
+  refundAmountCents Int?
+  refundRequestedAt DateTime?
+  refundOutsidePolicy Boolean @default(false)
+
   // Set when the athlete confirms attendance via the check-in QR.
   checkedInAt DateTime?
 
@@ -486,6 +501,9 @@ enum UserNotificationType {
   WAVE_UPDATE
   ORGANISER_EVENT_LIVE
   ORGANISER_REFUND_REQUEST
+  // Sent to the athlete once an admin has actually processed their refund, so the
+  // loop closes instead of leaving them wondering.
+  REFUND_PROCESSED
 }
 
 model WaitlistSubscriber {

@@ -6,6 +6,7 @@ import { config as loadEnvLocal } from "dotenv";
 loadEnvLocal({ path: ".env.local", override: true });
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { DEFAULT_REFUND_TIERS } from "../lib/refund-policy";
 import {
   CognitoIdentityProviderClient,
   AdminCreateUserCommand,
@@ -507,7 +508,8 @@ async function main() {
     ],
     inclusions: "Event t-shirt, finisher medal, post-event party, online score tracking",
     extras: "Prize pool: 8,000 — Awarded to podium finishers per division", activations: "Vendor expo Friday evening.",
-    refundPolicy: "Full refund 30+ days out. 50% refund 14–30 days. Deferrals accepted. Free transfer to another athlete until 7 August 2026.",
+    refundTiers: [{ daysBefore: 30, percent: 100 }, { daysBefore: 14, percent: 50 }],
+    refundPolicy: "Free transfer to another athlete until 7 August 2026.",
     registrationType: "startline", feeStructure: "athlete",
     coverImageUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80",
     photos: [
@@ -561,7 +563,8 @@ async function main() {
       venue: "Kokoda Track Memorial Walkway", city: "Scoresby", state: "vic", ...seedCoords("Scoresby", "vic"),
       format: "individual", level: "open", categories: ["Open Male", "Open Female", "Masters 40+"],
       cap: 150, minAge: 16, waves: [{ label: "General Entry", date: "2026-07-01", price: "75", qty: 150 }],
-      inclusions: "Race entry, finisher medal, recovery snack bag", refundPolicy: "Flexible",
+      inclusions: "Race entry, finisher medal, recovery snack bag",
+      refundTiers: [{ daysBefore: 21, percent: 100 }, { daysBefore: 7, percent: 50 }],
       registrationType: "startline", feeStructure: "athlete",
       coverImageUrl: DISCIPLINE_COVERS.hybrid,
     },
@@ -589,7 +592,8 @@ async function main() {
       venue: "Yering Station", city: "Yering", state: "vic", ...seedCoords("Yering", "vic"),
       format: "individual", level: "open", categories: ["5K", "10K", "Half Marathon"],
       cap: 500, waves: [{ label: "5K Entry", price: "45" }, { label: "10K Entry", price: "55" }, { label: "Half Marathon", price: "75" }],
-      registrationType: "startline", feeStructure: "athlete", refundPolicy: "Firm",
+      registrationType: "startline", feeStructure: "athlete",
+      refundTiers: [{ daysBefore: 60, percent: 100 }],
       rejectionReason: "Event date has already passed.", reviewedAt: new Date("2026-04-01T09:00:00Z"),
       coverImageUrl: DISCIPLINE_COVERS.running,
     },
@@ -638,6 +642,9 @@ async function main() {
         photos: DISCIPLINE_PHOTOS[e.discipline] ?? [], description: e.description, eventDate: e.eventDate, startTime: e.startTime, endTime: e.endTime,
         venue: e.venue, city: e.city, state: e.state, ...seedCoords(e.city, e.state, "coords" in e ? e.coords : undefined), format: e.format, level: e.level, categories: e.categories,
         cap: e.cap, waves: e.waves, registrationType: "startline", feeStructure: "athlete",
+        // Bulk events share the default policy so every seeded event quotes the
+        // athlete a real refund amount rather than falling through to nothing.
+        refundTiers: DEFAULT_REFUND_TIERS,
         coverImageUrl: "coverImageUrl" in e && e.coverImageUrl
           ? e.coverImageUrl
           : DISCIPLINE_COVERS[e.discipline] ?? null,

@@ -17,6 +17,9 @@ interface Registration {
   category: string | null;
   waveLabel: string | null;
   amountCents: number;
+  refundAmountCents: number | null;
+  refundPercent: number | null;
+  refundOutsidePolicy: boolean;
   platformFeeCents: number;
   feeStructure: string;
   status: RegStatus;
@@ -107,6 +110,15 @@ function RegistrationRow({
                 +{formatAud(reg.platformFeeCents)} fee
               </span>
             )}
+            {/* What the event's policy owes on this entry, frozen when the athlete asked,
+                so the admin is not working it out by hand before hitting Refund. */}
+            {reg.status === "REFUND_REQUESTED" && (
+              <span className="font-headline text-[11px] uppercase tracking-widest text-amber-300">
+                {reg.refundOutsidePolicy
+                  ? "Outside policy"
+                  : `Refund due ${formatAud(reg.refundAmountCents ?? 0)}${reg.refundPercent != null ? ` (${reg.refundPercent}%)` : ""}`}
+              </span>
+            )}
           </div>
 
           <div className="font-headline text-[11px] uppercase tracking-widest text-muted-dark mb-1">
@@ -132,7 +144,10 @@ function RegistrationRow({
           )}
         </div>
 
-        {reg.status === "CONFIRMED" && (
+        {/* Refund-requested entries need the action most: the athlete has already
+            asked. The API has always accepted both, but the button only rendered on
+            CONFIRMED, so requests had nowhere to be actioned from. */}
+        {(reg.status === "CONFIRMED" || reg.status === "REFUND_REQUESTED") && (
           <div className="shrink-0 ml-auto pl-2 flex items-center gap-2">
             {confirming && (
               <span className="font-headline text-[11px] text-amber-300 uppercase tracking-widest">

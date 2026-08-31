@@ -22,6 +22,7 @@ import { assignAthletesToWaves, unassignedReason, type WaveDef } from "@/lib/wav
 import { parseFinishToMinutes, formatFinishMinutes, calcAgeFromIsoDate } from "@/lib/registration-form";
 import { isValidRaceTime, normaliseRaceTime } from "@/lib/race-results";
 import { parseCsvTable } from "@/lib/registration-csv";
+import { REFUND_PROCESS_COPY } from "@/lib/refund-policy";
 import WaveAllocationBoard from "@/components/organiser/WaveAllocationBoard";
 import WaveResultsBoard from "@/components/organiser/WaveResultsBoard";
 import {
@@ -173,6 +174,10 @@ interface Registration {
   medicalNotes: string | null;
   status: "CONFIRMED" | "REFUND_REQUESTED" | "REFUNDED" | "CANCELLED";
   amount: number;
+  refundAmountCents: number | null;
+  refundPercent: number | null;
+  refundRequestedAt: string | null;
+  refundOutsidePolicy: boolean;
   createdAt: string;
   resultDistance: string | null;
   resultTime: string | null;
@@ -861,8 +866,8 @@ export default function RaceManagementPanel({ eventId }: { eventId: string }) {
                 </div>
                 <p className="text-[13px] text-muted leading-relaxed max-w-[600px]">
                   Athletes who asked for a refund. They come out of wave assignment automatically and free up
-                  their spot. Startline and the athlete&apos;s payment provider handle the money side. This list
-                  is for your visibility.
+                  their spot. Refund due is worked out from your event&apos;s policy at the moment they asked,
+                  and is fixed from then on. {REFUND_PROCESS_COPY} This list is for your visibility.
                 </p>
               </CardContent>
             </Card>
@@ -881,7 +886,7 @@ export default function RaceManagementPanel({ eventId }: { eventId: string }) {
                     <table className="w-full min-w-[640px] border-collapse">
                       <thead>
                         <tr className="border-b border-white/5">
-                          {["Athlete", "Was in wave", "Paid", "Status"].map((h) => (
+                          {["Athlete", "Was in wave", "Paid", "Refund due", "Requested", "Status"].map((h) => (
                             <th key={h} className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted-dark text-left px-3 py-3">
                               {h}
                             </th>
@@ -898,6 +903,24 @@ export default function RaceManagementPanel({ eventId }: { eventId: string }) {
                             <td className="px-3 py-3 font-headline text-[12px] text-muted-light">{r.wave ?? "-"}</td>
                             <td className="px-3 py-3 font-headline text-[13px] font-black italic text-white whitespace-nowrap">
                               ${r.amount.toFixed(2)}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <span className="font-headline text-[13px] font-black italic text-white">
+                                ${((r.refundAmountCents ?? 0) / 100).toFixed(2)}
+                              </span>
+                              {r.refundPercent != null && !r.refundOutsidePolicy && (
+                                <span className="font-headline text-[11px] text-muted-dark ml-1.5">{r.refundPercent}%</span>
+                              )}
+                              {r.refundOutsidePolicy && (
+                                <div className="font-headline text-[10px] uppercase tracking-widest text-amber-300 mt-0.5">
+                                  Outside policy
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 font-headline text-[12px] text-muted-light whitespace-nowrap">
+                              {r.refundRequestedAt
+                                ? new Date(r.refundRequestedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })
+                                : "-"}
                             </td>
                             <td className="px-3 py-3">
                               <Badge className={`border ${STATUS_STYLE[r.status]}`}>{STATUS_LABEL[r.status]}</Badge>

@@ -67,6 +67,7 @@ terraform/modules/environment/lambda/email-sender.zip
 # dev server logs
 .dev-server.log
 .dev-server-err.log
+.dev-run.log
 .playwright-cli/
 
 # opencode internal state

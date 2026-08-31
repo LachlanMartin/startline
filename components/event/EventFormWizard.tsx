@@ -11,6 +11,8 @@ import {
   AlignLeft, Trophy, FileText,
 } from "lucide-react";
 import { encodePrizePool, parsePrizePool, normalisePrizeAmount } from "@/lib/prize-pool";
+import { formatDivisionLabel } from "@/lib/divisions";
+import { DEFAULT_REFUND_TIERS, REFUND_PRESETS, describeTiers, matchRefundPreset, parseTiers, tiersAreValid, type RefundTier } from "@/lib/refund-policy";
 import AddressAutocomplete  from "@/components/ui/AddressAutocomplete";
 import SuburbAutocomplete   from "@/components/ui/SuburbAutocomplete";
 import LocationPreviewMap   from "@/components/organiser/LocationPreviewMap";
@@ -30,7 +32,7 @@ const STEPS = [
 const STEP_ERRORS: Record<number, string> = {
   0: "Event name, format, discipline, intensity level, participant cap and minimum age are required.",
   1: "Date, start time, street address, city and state are required.",
-  2: "Registration platform, at least one ticket category with a price, and refund policy are required.",
+  2: "Registration platform, a name and price for every ticket category, and refund policy are required.",
   3: "A cover image and full description are required.",
 };
 
@@ -71,6 +73,7 @@ interface FormState {
   prizeMoney: boolean;
   prizeMoneyAmount: string;
   prizeMoneyDetails: string;
+  refundTiers: RefundTier[];
   refundPolicy: string;
   registrationType: "startline" | "external";
   feeStructure: "athlete" | "organiser";
@@ -89,7 +92,7 @@ const INITIAL: FormState = {
   venue: "", address: "", city: "", state: "", latitude: null, longitude: null,
   waves: [{ label: "", price: "", closes: "", startTime: "" }],
   prizeMoney: false, prizeMoneyAmount: "", prizeMoneyDetails: "",
-  refundPolicy: "",
+  refundTiers: DEFAULT_REFUND_TIERS, refundPolicy: "",
   registrationType: "startline", feeStructure: "athlete", registrationUrl: "",
   coverImage: null, coverImageUrl: "",
   informationPdfs: [],
@@ -198,7 +201,7 @@ function RichTextEditor({ value, onChange }: { value: string; onChange: (html: s
    ══════════════════════════════════════════════════════════════ */
 const DISCIPLINES: { v: Discipline; l: string; d: string }[] = [
   { v: "crossfit",  l: "CrossFit",  d: "Functional fitness comp"    },
-  { v: "running",   l: "Running",   d: "5K · 10K · Half · Marathon" },
+  { v: "running",   l: "Running",   d: "5km · 10km · Half · Marathon" },
   { v: "hybrid",    l: "Hybrid",    d: "Multi-discipline / OCR"     },
   { v: "cycling",   l: "Cycling",   d: "Road · Criterium · Gravel"  },
   { v: "swimming",  l: "Swimming",  d: "Pool · Open water events"   },
@@ -294,13 +297,13 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
               <button key={c} type="button" onClick={() => toggle(c)}
                 className={`font-headline text-[11px] font-bold uppercase tracking-widest px-3 py-2 rounded-md border transition-colors
                   ${form.categories.includes(c) ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-light hover:border-primary/40 hover:text-light"}`}>
-                {form.categories.includes(c) && <Check className="w-3 h-3 inline mr-1" />}{c}
+                {form.categories.includes(c) && <Check className="w-3 h-3 inline mr-1" />}{formatDivisionLabel(c)}
               </button>
             ))}
             {form.categories.filter(c => !(DISCIPLINE_CATS[form.discipline as Discipline] ?? []).includes(c)).map(c => (
               <button key={c} type="button" onClick={() => toggle(c)}
                 className="font-headline text-[11px] font-bold uppercase tracking-widest px-3 py-2 rounded-md border border-primary bg-primary/10 text-primary">
-                <Check className="w-3 h-3 inline mr-1" />{c}
+                <Check className="w-3 h-3 inline mr-1" />{formatDivisionLabel(c)}
               </button>
             ))}
             {showCustomCat ? (
@@ -519,15 +522,15 @@ function WhenStep({ form, update }: { form: FormState; update: (p: Partial<FormS
 /* ═══════════════════════════════════════════════════════════════
    STEP 3 — TICKETS & PRICING
    ══════════════════════════════════════════════════════════════ */
-const REFUND_PRESETS: { v: string; l: string }[] = [
-  { v: "no-refunds", l: "No refunds"              },
-  { v: "full-30",    l: "Full refund 30+ days out" },
-  { v: "half-14",    l: "50% refund 14–30 days"    },
-  { v: "deferrals",  l: "Deferrals accepted"        },
-];
-
-function refundPresetToText(v: string): string {
-  return REFUND_PRESETS.find(r => r.v === v)?.l ?? v;
+/**
+ * A ticket category needs a name and a price before the event can be published.
+ * The free toggle writes "0", and a hand-typed "0.00" means the same thing, so
+ * anything that parses to a number at or above zero counts as priced. A bare "."
+ * or an empty box does not.
+ */
+function waveIsComplete(w: { label: string; price: string }): boolean {
+  const price = parseFloat(w.price);
+  return w.label.trim().length > 0 && Number.isFinite(price) && price >= 0;
 }
 
 const STARTLINE_PCT  = 0.0395;
@@ -542,27 +545,11 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
   const removeWave = (i: number) => update({ waves: form.waves.filter((_, j) => j !== i) });
   const addWave    = () => update({ waves: [...form.waves, { label: "", price: "", closes: "", startTime: "" }] });
 
-  const [refundSelected, setRefundSelected] = useState<string[]>(() =>
-    REFUND_PRESETS.filter(r => form.refundPolicy.includes(r.l)).map(r => r.v)
-  );
-  const [refundCustom, setRefundCustom] = useState(() => {
-    let text = form.refundPolicy;
-    REFUND_PRESETS.forEach(r => { text = text.replace(r.l, "").replace(/^[.,\s]+|[.,\s]+$/g, ""); });
-    return text.trim();
-  });
-
-  const buildRefundPolicy = (selected: string[], custom: string) =>
-    [...selected.map(refundPresetToText), ...(custom.trim() ? [custom.trim()] : [])].join(". ");
-
-  const toggleRefund = (v: string) => {
-    const next = refundSelected.includes(v) ? refundSelected.filter(x => x !== v) : [...refundSelected, v];
-    setRefundSelected(next);
-    update({ refundPolicy: buildRefundPolicy(next, refundCustom) });
-  };
-  const handleRefundCustom = (text: string) => {
-    setRefundCustom(text);
-    update({ refundPolicy: buildRefundPolicy(refundSelected, text) });
-  };
+  // One policy, picked from a list. An event saved before the presets existed can
+  // carry bespoke tiers, so it keeps a "Custom" card of its own rather than being
+  // snapped onto whichever preset happens to be closest.
+  const activePreset = matchRefundPreset(form.refundTiers);
+  const isCustom     = activePreset === null;
 
   return (
     <div>
@@ -587,27 +574,9 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
         </div>
 
         {form.registrationType === "startline" && (
-          <div className="mt-3 space-y-2">
-            <div className="flex items-center justify-between mt-1">
-              <div className="font-headline text-[10px] uppercase tracking-widest text-light">Fee structure</div>
-              <div className="font-headline text-[10px] uppercase tracking-widest text-light">Startline fee: 3.95% + A$1.45 per ticket</div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {([
-                { value: "athlete",   title: "Athlete pays the fee",       sub: "Startline's fee added on top at checkout" },
-                { value: "organiser", title: "Organiser absorbs the fee",  sub: "Fee deducted from your payout"            },
-              ] as const).map(({ value, title, sub }) => {
-                const active = form.feeStructure === value;
-                return (
-                  <button key={value} type="button" onClick={() => update({ feeStructure: value })}
-                    className={`flex flex-col items-start gap-1 rounded-xl border-2 px-5 py-4 text-left transition-colors
-                      ${active ? "border-primary bg-primary/10" : "border-dark-lighter bg-dark-light hover:border-primary/40"}`}>
-                    <div className={`font-headline text-[13px] font-bold uppercase tracking-widest ${active ? "text-primary" : "text-light"}`}>{title}</div>
-                    <div className="font-headline text-[10px] uppercase tracking-widest text-light">{sub}</div>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="mt-3 flex items-center justify-between">
+            <div className="font-headline text-[10px] uppercase tracking-widest text-light">Athlete pays the fee at checkout</div>
+            <div className="font-headline text-[10px] uppercase tracking-widest text-light">Startline fee: 3.95% + A$1.45 per ticket</div>
           </div>
         )}
 
@@ -626,14 +595,17 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
         <div className="space-y-3">
           {form.waves.map((w, i) => (
             <div key={i} className="bg-dark-light border border-dark-lighter rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-md bg-dark-lighter flex items-center justify-center font-headline font-black italic text-primary text-[13px] shrink-0">
+              <div className="flex items-end gap-3">
+                <div className="w-7 h-7 mb-[10px] rounded-md bg-dark-lighter flex items-center justify-center font-headline font-black italic text-primary text-[13px] shrink-0">
                   {i + 1}
                 </div>
-                <input value={w.label} onChange={e => updateWave(i, { label: e.target.value })}
-                  placeholder="General admission" className={`${inputCls} flex-1`} />
-                <button onClick={() => removeWave(i)}
-                  className="w-9 h-9 rounded text-light hover:text-primary hover:bg-white/5 flex items-center justify-center transition-colors shrink-0">
+                <div className="flex-1 min-w-0">
+                  <div className="font-headline text-[10px] uppercase tracking-widest text-light mb-1.5">Category name<span className="text-primary font-black text-[15px] leading-none ml-1">*</span></div>
+                  <input value={w.label} onChange={e => updateWave(i, { label: e.target.value })}
+                    placeholder="General admission" className={inputCls} aria-label="Ticket category name" />
+                </div>
+                <button onClick={() => removeWave(i)} aria-label="Remove this ticket category"
+                  className="w-9 h-9 mb-1.5 rounded text-light hover:text-primary hover:bg-white/5 flex items-center justify-center transition-colors shrink-0">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -642,7 +614,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <div className="font-headline text-[10px] uppercase tracking-widest text-light">Price (A$)</div>
+                    <div className="font-headline text-[10px] uppercase tracking-widest text-light">Price (A$)<span className="text-primary font-black text-[15px] leading-none ml-1">*</span></div>
                     <label className="flex items-center gap-1.5 cursor-pointer select-none">
                       <span className="font-headline text-[10px] uppercase tracking-widest text-light">Free</span>
                       <div onClick={() => updateWave(i, { price: w.price === "0" ? "" : "0" })}
@@ -688,7 +660,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
                   })()}
                 </div>
                 <div>
-                  <div className="font-headline text-[10px] uppercase tracking-widest text-light mb-1.5">Category closes</div>
+                  <div className="font-headline text-[10px] uppercase tracking-widest text-light mb-1.5">Category closes <span className="text-light">(optional)</span></div>
                   <DatePicker value={w.closes} onChange={v => updateWave(i, { closes: v })} placeholder="Optional close date" disablePast={false} maxDate={form.endDate || form.date} />
                 </div>
               </div>
@@ -759,20 +731,34 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
 
       {/* Refund policy */}
       <Field label="Refund & transfer policy" required>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {REFUND_PRESETS.map(({ v, l }) => {
-            const active = refundSelected.includes(v);
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {REFUND_PRESETS.map(preset => {
+            const active = activePreset?.id === preset.id;
             return (
-              <button key={v} type="button" onClick={() => toggleRefund(v)}
-                className={`font-headline text-[11px] font-bold uppercase tracking-widest px-3 py-2.5 rounded-md border transition-colors flex items-center gap-1.5
-                  ${active ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-light hover:border-primary/40 hover:text-light"}`}>
-                {active && <Check className="w-3 h-3" />}{l}
+              <button key={preset.id} type="button" onClick={() => update({ refundTiers: preset.tiers })}
+                className={`flex flex-col items-start gap-1 rounded-xl border-2 px-5 py-4 text-left transition-colors
+                  ${active ? "border-primary bg-primary/10" : "border-dark-lighter bg-dark-light hover:border-primary/40"}`}
+              >
+                <div className={`font-headline text-[13px] font-bold uppercase tracking-widest ${active ? "text-primary" : "text-light"}`}>{preset.label}</div>
+                {/* The athlete-facing wording, so what you pick is what they read. */}
+                <div className="text-[11.5px] text-light leading-relaxed">{describeTiers(preset.tiers).join(" ")}</div>
               </button>
             );
           })}
+          {isCustom && (
+            <div className="flex flex-col items-start gap-1 rounded-xl border-2 border-primary bg-primary/10 px-5 py-4 sm:col-span-2">
+              <div className="font-headline text-[13px] font-bold uppercase tracking-widest text-primary">Custom policy</div>
+              <div className="text-[11.5px] text-light leading-relaxed">{describeTiers(form.refundTiers).join(" ")}</div>
+              <button type="button" onClick={() => update({ refundTiers: DEFAULT_REFUND_TIERS })}
+                className="font-headline text-[10px] font-bold uppercase tracking-widest text-light hover:text-primary transition-colors mt-1">
+                Replace with a standard policy
+              </button>
+            </div>
+          )}
         </div>
-        <textarea rows={2} value={refundCustom} onChange={e => handleRefundCustom(e.target.value)}
-          placeholder="Additional details, deferral windows, exceptions…" className={textareaCls} />
+
+        <textarea rows={2} value={form.refundPolicy} onChange={e => update({ refundPolicy: e.target.value })}
+          placeholder="Exceptions or extra notes, e.g. transfers to another athlete…" className={`${textareaCls} mt-4`} />
       </Field>
     </div>
   );
@@ -983,7 +969,7 @@ function ReviewStep({ form, setStep, confirmed, onConfirm }: {
     { k: "Venue",          v: `${form.venue || "—"}, ${form.city || "—"}, ${form.state ? form.state.toUpperCase() : "—"}`, step: 1 },
     { k: "Tickets",        v: `${form.waves.length} categor${form.waves.length !== 1 ? "ies" : "y"}, from ${form.waves[0]?.price === "0" ? "Free" : form.waves[0]?.price ? `A$${form.waves[0].price}` : "—"}`, step: 2 },
     { k: "Registration",   v: form.registrationType === "startline" ? "Startline" : form.registrationUrl || "—",  step: 2 },
-    { k: "Refund policy",  v: form.refundPolicy || "—",                                                            step: 2 },
+    { k: "Refund policy",  v: describeTiers(form.refundTiers).join(" "),                   step: 2 },
     { k: "Prize money",    v: form.prizeMoney ? (normalisePrizeAmount(form.prizeMoneyAmount) ? `$${normalisePrizeAmount(form.prizeMoneyAmount)} prize pool` : "Yes") : "No", step: 2 },
     { k: "Cover image",    v: form.coverImage || form.coverImageUrl ? "Uploaded" : "No image",                    step: 3 },
     { k: "Info PDFs",      v: (() => { const n = form.informationPdfs.length; return n ? `${n} PDF${n !== 1 ? "s" : ""}` : "None"; })(), step: 3 },
@@ -1386,7 +1372,7 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                         <div className="flex flex-wrap gap-1.5">
                           {form.categories.map(c => (
                             <span key={c} className="font-headline text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/30 bg-primary/10 px-2 py-1 rounded-md">
-                              {c}
+                              {formatDivisionLabel(c)}
                             </span>
                           ))}
                         </div>
@@ -1417,12 +1403,15 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                   </div>
                 </div>
 
-                {form.refundPolicy.trim() && (
-                  <div className="bg-dark rounded-xl p-5 sm:p-6">
-                    <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-light mb-2">Refund &amp; Transfer Policy</h3>
-                    <p className="text-sm font-medium text-light leading-relaxed">{form.refundPolicy}</p>
-                  </div>
-                )}
+                <div className="bg-dark rounded-xl p-5 sm:p-6">
+                  <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-light mb-2">Refund &amp; Transfer Policy</h3>
+                  {describeTiers(form.refundTiers).map((line, i) => (
+                    <p key={i} className="text-sm font-medium text-light leading-relaxed">{line}</p>
+                  ))}
+                  {form.refundPolicy.trim() && (
+                    <p className="text-sm font-medium text-muted leading-relaxed mt-2">{form.refundPolicy}</p>
+                  )}
+                </div>
               </div>
 
             </div>
@@ -1509,6 +1498,7 @@ export default function EventFormWizard({
           prizeMoney:        !!parsePrizePool(e.extras),
           prizeMoneyAmount:  parsePrizePool(e.extras)?.amount ?? "",
           prizeMoneyDetails: parsePrizePool(e.extras)?.details ?? "",
+          refundTiers:       parseTiers(e.refundTiers),
           refundPolicy:      e.refundPolicy   ?? "",
           registrationType:  e.registrationType === "external" ? "external" : "startline",
           feeStructure:      e.feeStructure   === "organiser"  ? "organiser" : "athlete",
@@ -1545,9 +1535,11 @@ export default function EventFormWizard({
       !!(form.startTime && form.endTime && form.endTime <= form.startTime);
     if (s === 2) return !(
       form.waves.length > 0 &&
-      (form.waves[0]?.price === "0" || !!form.waves[0]?.price) &&
+      // Every category, not just the first. Each one carries the same required
+      // stars, and a second category left half-filled used to pass this check.
+      form.waves.every(waveIsComplete) &&
       (form.registrationType === "startline" || !!form.registrationUrl.trim()) &&
-      !!form.refundPolicy.trim()
+      tiersAreValid(form.refundTiers)
     );
     if (s === 3) return !((form.coverImage || form.coverImageUrl) && stripHtml(form.description).length > 0);
     if (s === 4) return !confirmed;
@@ -1625,6 +1617,7 @@ export default function EventFormWizard({
         inclusions:        originalFields.current.inclusions ?? null,
         activations:       originalFields.current.activations ?? null,
         extras:            form.prizeMoney ? encodePrizePool(form.prizeMoneyAmount, form.prizeMoneyDetails) : (originalFields.current.extras ?? null),
+        refundTiers:       form.refundTiers,
         refundPolicy:      form.refundPolicy,
         registrationType:  form.registrationType,
         feeStructure:      form.feeStructure,

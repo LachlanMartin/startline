@@ -52,6 +52,7 @@ export async function POST(
         inclusions: source.inclusions,
         extras: source.extras,
         activations: source.activations,
+        refundTiers: source.refundTiers ?? [],
         refundPolicy: source.refundPolicy,
         registrationType: source.registrationType,
         feeStructure: source.feeStructure,
