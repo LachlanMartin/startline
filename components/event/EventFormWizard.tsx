@@ -793,8 +793,16 @@ function GalleryFileThumb({ file, onRemove }: { file: File; onRemove: () => void
 }
 
 function MediaStep({ form, update }: { form: FormState; update: (p: Partial<FormState>) => void }) {
-  const coverSrc = form.coverImage ? URL.createObjectURL(form.coverImage) : form.coverImageUrl;
-  useEffect(() => () => { if (coverSrc?.startsWith("blob:")) URL.revokeObjectURL(coverSrc); }, [coverSrc]);
+  // Keyed on the file rather than on the URL, matching the preview panels below.
+  // Minting the object URL during render produced a fresh one on every keystroke,
+  // so the cleanup kept revoking the URL the committed <img> was still loading and
+  // the cover went blank as soon as the step re-rendered.
+  const [coverSrc, setCoverSrc] = useState<string | null>(null);
+  useEffect(() => {
+    const url = form.coverImage ? URL.createObjectURL(form.coverImage) : form.coverImageUrl || null;
+    startTransition(() => setCoverSrc(url));
+    return () => { if (url?.startsWith("blob:")) URL.revokeObjectURL(url); };
+  }, [form.coverImage, form.coverImageUrl]);
 
   const galleryCount = form.photoUrls.length + form.photos.length;
   const addGalleryFiles = (list: FileList | null) => {
