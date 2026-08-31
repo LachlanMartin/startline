@@ -72,6 +72,32 @@ body {
   background: var(--color-primary);
 }
 
+/* Slim scrollbar for compact scroll panels (notification lists, dropdowns)
+   where the 8px global bar eats the padding. Unlayered on purpose: the rules
+   above are unlayered too, and a layered rule always loses to an unlayered one
+   regardless of specificity. */
+.scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.scroll-slim::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroll-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+
+.scroll-slim::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;

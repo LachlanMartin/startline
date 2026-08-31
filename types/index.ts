@@ -59,6 +59,7 @@ export interface UserEvent {
   cap?: number | null;
   minAge?: number | null;
   refundPolicy?: string;
+  refundTiers?: unknown;
   image: string;
   registrationUrl: string | null;
   registrationType: string;

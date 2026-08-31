@@ -61,6 +61,7 @@ export function toUserEvent(event: PublicEvent): UserEvent {
     cap: event.cap,
     minAge: event.minAge,
     refundPolicy: event.refundPolicy?.trim() || undefined,
+    refundTiers: event.refundTiers,
     // Never fall back to the organiser logo — a logo stretched to 16:9 repeated
     // across every coverless card reads as broken. Use the placeholder instead.
     image: event.coverImageUrl || "/images/placeholder-event.svg",

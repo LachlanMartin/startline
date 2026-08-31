@@ -61,8 +61,8 @@ export default function LocationPreviewMap({
     return (
       <div className={containerClass} data-testid="location-preview-empty">
         <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-2 px-6 text-center">
-          <MapPin className="w-5 h-5 text-muted" />
-          <p className="font-headline text-[11px] uppercase tracking-widest text-muted">
+          <MapPin className="w-5 h-5 text-light" />
+          <p className="font-headline text-[11px] uppercase tracking-widest text-light">
             Select an address above to preview the location
           </p>
         </div>
@@ -74,7 +74,7 @@ export default function LocationPreviewMap({
     return (
       <div className={containerClass}>
         <div className="flex h-full min-h-[220px] items-center justify-center px-6 text-center">
-          <p className="font-headline text-[11px] uppercase tracking-widest text-muted">
+          <p className="font-headline text-[11px] uppercase tracking-widest text-light">
             Add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to preview the map
           </p>
         </div>
@@ -86,7 +86,7 @@ export default function LocationPreviewMap({
     return (
       <div className={containerClass}>
         <div className="flex h-full min-h-[220px] items-center justify-center">
-          <p className="font-headline text-[11px] uppercase tracking-widest text-muted">
+          <p className="font-headline text-[11px] uppercase tracking-widest text-light">
             Loading map...
           </p>
         </div>

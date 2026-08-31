@@ -75,3 +75,55 @@ export async function resetRegistration(
   });
   expect(patchRes.ok()).toBeTruthy();
 }
+
+/**
+ * Pick a time from the shared TimePicker popover.
+ *
+ * The wizard used a native `input[type="time"]` that tests drove with .fill().
+ * It is now a custom popover (the OS panel ignored the design system), so there
+ * is no input to fill: open the trigger, choose from three listboxes, confirm.
+ *
+ * `name` is the trigger's accessible name, e.g. "Start time".
+ */
+export async function pickTime(
+  page: Page,
+  name: string,
+  time: { hour: string; minute: string; period: "AM" | "PM" },
+): Promise<void> {
+  // Close anything already open. The date picker stays open in "pick end date"
+  // mode after a start date is chosen, and its calendar overlays this field, so
+  // the click would never land. Popover triggers toggle, so clicking the open
+  // one shuts it.
+  for (const open of await page
+    .locator('button[aria-haspopup="dialog"][aria-expanded="true"]')
+    .all()) {
+    await open.click();
+  }
+
+  const trigger = page.getByRole("button", { name, exact: true });
+  const panel = page.getByRole("dialog", { name: /choose a time/i });
+
+  await trigger.click();
+  await expect(panel).toBeVisible();
+
+  await panel.getByRole("listbox", { name: "Hour" })
+    .getByRole("option", { name: time.hour, exact: true }).click();
+  await panel.getByRole("listbox", { name: "Minute" })
+    .getByRole("option", { name: time.minute, exact: true }).click();
+  await panel.getByRole("listbox", { name: "AM or PM" })
+    .getByRole("option", { name: time.period, exact: true }).click();
+
+  await panel.getByRole("button", { name: /^done$/i }).click();
+  await expect(panel).toBeHidden();
+}
+
+/**
+ * The organiser dashboard has landed. It used to be asserted with an <h1>
+ * greeting that the header tidy-up removed, so anchor on the metric strip and
+ * the primary action instead - both are load-bearing UI, not decoration.
+ */
+export async function expectOrganiserDashboard(page: Page): Promise<void> {
+  await expect(page).toHaveURL(/\/organiser\/dashboard/);
+  await expect(page.getByText("All time", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /add listing/i })).toBeVisible();
+}

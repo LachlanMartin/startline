@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { organiserLogin } from "./helpers";
+import { organiserLogin, pickTime } from "./helpers";
 
 test.describe("new listing wizard", () => {
   test("loads the new listing page with 5 steps", async ({ page }) => {
@@ -42,9 +42,7 @@ test.describe("new listing wizard", () => {
     await page.getByText("Pick start date").click();
     await page.getByRole("button", { name: /today/i }).click();
     await page.getByRole("button", { name: /\d{4}/i }).first().click();
-    // Set start time using native time input
-    const timeInputs = page.locator('input[type="time"]');
-    await timeInputs.first().fill("09:00");
+    await pickTime(page, "Start time", { hour: "9", minute: "00", period: "AM" });
 
     // Type into address autocomplete
     const addrInput = page.getByPlaceholder(/start typing an address/i);
@@ -71,9 +69,8 @@ test.describe("new listing wizard", () => {
     await page.getByRole("button", { name: /continue/i }).click();
     await expect(page.getByText(/when and where/i).first()).toBeVisible();
 
-    const timeInputs = page.locator('input[type="time"]');
-    await timeInputs.nth(0).fill("10:00");
-    await timeInputs.nth(1).fill("09:00");
+    await pickTime(page, "Start time",   { hour: "10", minute: "00", period: "AM" });
+    await pickTime(page, "Cut-off time", { hour: "9",  minute: "00", period: "AM" });
 
     await expect(page.getByText(/end time must be after start time/i)).toBeVisible();
   });
@@ -94,9 +91,7 @@ test.describe("new listing wizard", () => {
     await page.getByRole("button", { name: /today/i }).click();
     await page.getByRole("button", { name: /\d{4}/i }).first().click();
 
-    // Set start time using native time input
-    const timeInputs = page.locator('input[type="time"]');
-    await timeInputs.first().fill("09:00");
+    await pickTime(page, "Start time", { hour: "9", minute: "00", period: "AM" });
 
     // Address with autocomplete (also fills city + state on selection)
     const addrInput = page.getByPlaceholder(/start typing an address/i);
@@ -167,7 +162,7 @@ test.describe("new listing wizard", () => {
     expect(scrollY).toBeGreaterThan(0);
     // Regression: overflow-x on html/body used to disable position:sticky
     // site-wide, so the rail scrolled out of view.
-    const rail = await page.locator("div.sticky.top-16").boundingBox();
+    const rail = await page.locator("div.sticky.top-14").boundingBox();
     expect(rail).not.toBeNull();
     expect(rail!.y).toBeGreaterThanOrEqual(0);
   });

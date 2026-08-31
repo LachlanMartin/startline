@@ -176,7 +176,7 @@ export default function NavBar() {
             {/* Desktop: unauthenticated */}
             {status !== "authenticated" && (
               <button onClick={() => setIsSignInOpen(true)} disabled={status === "loading"}
-                className="hidden md:inline-flex items-center justify-center h-11 px-3 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-white/60 border border-white/10 hover:border-primary hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-default">
+                className="hidden md:inline-flex items-center justify-center h-11 px-3 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-white border border-white/30 hover:border-primary hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-default">
                 SIGN IN
               </button>
             )}
@@ -307,7 +307,7 @@ export default function NavBar() {
                   </button>
                 ) : (
                   <button onClick={() => { setIsMenuOpen(false); setIsSignInOpen(true); }} disabled={status === "loading"}
-                    className="w-full h-10 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-white/60 border border-white/10 hover:border-primary hover:text-primary transition-colors disabled:opacity-30">
+                    className="w-full h-10 rounded-lg font-headline text-[12px] font-bold uppercase tracking-widest text-white border border-white/30 hover:border-primary hover:text-primary transition-colors disabled:opacity-30">
                     SIGN IN
                   </button>
                 )}

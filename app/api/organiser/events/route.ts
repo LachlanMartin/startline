@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
         inclusions:       body.inclusions        ?? null,
         extras:           body.extras            ?? null,
         activations:      body.activations       ?? null,
+        refundTiers:      body.refundTiers       ?? [],
         refundPolicy:     body.refundPolicy      ?? null,
         registrationType,
         feeStructure:     body.feeStructure      ?? "athlete",

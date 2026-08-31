@@ -23,6 +23,10 @@ interface ReviewPayStepProps {
   eventId: string;
   reviewRows: ReviewRow[];
   confirmAmountLabel: string;
+  /** This event's actual refund policy, so terms are concrete rather than boilerplate. */
+  refundLines: string[];
+  /** What cancelling right now would return, e.g. "Cancel today and you get A$134.55 back." */
+  refundHeadline: string;
   onBack: () => void;
   onConfirmed: (paymentIntentId: string) => void;
   onError: (msg: string) => void;
@@ -68,6 +72,8 @@ function ReviewPayForm({
   eventId,
   reviewRows,
   confirmAmountLabel,
+  refundLines,
+  refundHeadline,
   onBack,
   onConfirmed,
   onError,
@@ -138,6 +144,11 @@ function ReviewPayForm({
           <PaymentElement />
         </div>
 
+        {/* What cancelling would return, stated before they pay rather than buried in terms. */}
+        <div className="rounded-[12px] border border-dark-lighter bg-dark px-4 py-3 mb-4">
+          <p className="text-[12.5px] text-light leading-relaxed">{refundHeadline}</p>
+        </div>
+
         {/* Terms */}
         <div className="flex items-start gap-3">
           <button
@@ -183,7 +194,11 @@ function ReviewPayForm({
             </div>
             <div className="px-4 py-3 max-h-40 overflow-y-auto text-muted text-[12px] leading-relaxed space-y-2">
               <p>Event terms and conditions are set by the organiser. By registering you agree to participate in accordance with the organiser&apos;s rules and the Startline platform guidelines.</p>
-              <p>Entries are subject to the organiser&apos;s refund and transfer policy. Ensure the details you have provided are accurate before paying.</p>
+              <div>
+                <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Refund policy</p>
+                {refundLines.map((line, i) => <p key={i}>{line}</p>)}
+              </div>
+              <p>Ensure the details you have provided are accurate before paying.</p>
             </div>
           </div>
         )}

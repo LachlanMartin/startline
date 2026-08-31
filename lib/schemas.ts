@@ -42,6 +42,22 @@ export const eventPayloadSchema = z
     inclusions: z.string().max(10000).nullable().optional(),
     extras: z.string().max(10000).nullable().optional(),
     activations: z.string().max(10000).nullable().optional(),
+    // Structured refund policy. Rules must not overlap, which is what stops the
+    // contradictory policies the old free-text field allowed.
+    refundTiers: z
+      .array(
+        z.object({
+          daysBefore: z.number().int().min(0).max(999),
+          percent: z.number().int().min(0).max(100),
+        }),
+      )
+      .max(10)
+      .refine(
+        (tiers) => new Set(tiers.map((t) => t.daysBefore)).size === tiers.length,
+        { message: "Two refund rules cannot cover the same day." },
+      )
+      .nullable()
+      .optional(),
     refundPolicy: z.string().max(10000).nullable().optional(),
     registrationType: z.enum(["startline", "external"]).optional(),
     feeStructure: z.enum(["athlete", "organiser"]).optional(),

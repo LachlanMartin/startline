@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, RefreshCw, UserCheck } from "lucide-react";
+import { Bell, RefreshCw, UserCheck, Flag, Megaphone, Undo2, Banknote } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { UserEvent } from "@/types";
 import { getRegisteredEventIds, fetchSavedEventIds } from "@/lib/client-lists";
 import { toUserEvents } from "@/lib/user-events";
+import { REFUND_PROCESS_COPY } from "@/lib/refund-policy";
 import { useAuthContext } from "@/context/AuthContext";
 import EventCard from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
@@ -26,8 +28,22 @@ type FollowingOrganiser = {
   registrations: number;
 };
 
-type RegStatus = "CONFIRMED" | "REFUND_REQUESTED";
-type RegMeta = { id: string; eventId: string; status: RegStatus; wave: string | null; bibNumber: string | null };
+type RegStatus = "CONFIRMED" | "REFUND_REQUESTED" | "REFUNDED";
+type RegMeta = {
+  id: string;
+  eventId: string;
+  status: RegStatus;
+  wave: string | null;
+  bibNumber: string | null;
+  paidCents: number;
+  refundAmountCents: number;
+  refundPercent: number;
+  outsidePolicy: boolean;
+  policyLines: string[];
+  daysUntilEvent: number;
+};
+
+const money = (cents: number) => `A$${(cents / 100).toFixed(2)}`;
 
 type UserNotif = {
   id: string;
@@ -38,6 +54,19 @@ type UserNotif = {
   read: boolean;
   createdAt: string;
 };
+
+/* One Bell on every row told you nothing about what had happened. Each type now
+   gets its own silhouette - start flag, megaphone, return arrow, banknote - so
+   the kind of update is readable before you read the text. Mirrors the organiser
+   nav's notification tiles. */
+const USER_NOTIF_STYLE: Record<string, { Icon: LucideIcon; tone: string }> = {
+  WAVE_UPDATE:              { Icon: Flag,      tone: "bg-white/[0.06] text-light"   },
+  ORGANISER_EVENT_LIVE:     { Icon: Megaphone, tone: "bg-primary/10 text-primary"   },
+  ORGANISER_REFUND_REQUEST: { Icon: Undo2,     tone: "bg-amber-400/10 text-amber-300" },
+  REFUND_PROCESSED:         { Icon: Banknote,  tone: "bg-primary/10 text-primary"   },
+};
+
+const FALLBACK_NOTIF_STYLE = { Icon: Bell, tone: "bg-white/[0.06] text-muted" };
 
 function NotificationsPanel({
   notifs,
@@ -69,8 +98,8 @@ function NotificationsPanel({
           </button>
         )}
       </div>
-      <div className="space-y-2">
-        {notifs.slice(0, 5).map((n) => {
+      <div className="scroll-slim space-y-2 max-h-[22rem] overflow-y-auto overscroll-contain pr-1">
+        {notifs.map((n) => {
           const href =
             n.type === "ORGANISER_EVENT_LIVE" && n.eventId
               ? `/events/${n.eventId}`
@@ -78,9 +107,12 @@ function NotificationsPanel({
           const className = `flex items-start gap-3 rounded-xl border px-4 py-3 ${
             n.read ? "bg-dark border-dark-lighter" : "bg-primary/[0.07] border-primary/25"
           }${href ? " hover:border-primary/40 transition-colors" : ""}`;
+          const { Icon, tone } = USER_NOTIF_STYLE[n.type ?? ""] ?? FALLBACK_NOTIF_STYLE;
           const inner = (
             <>
-              <Bell className={`w-4 h-4 shrink-0 mt-0.5 ${n.read ? "text-muted-dark" : "text-primary"}`} strokeWidth={2.2} />
+              <span className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-lg ${tone}`}>
+                <Icon className="w-4 h-4" strokeWidth={2.5} />
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="font-headline text-[13px] font-bold text-light">{n.title}</p>
                 <p className="text-[12.5px] text-muted leading-relaxed mt-0.5">{n.body}</p>
@@ -118,6 +150,7 @@ function RegisteredCard({
   onRequestRefund: (meta: RegMeta) => void;
 }) {
   const refundRequested = meta?.status === "REFUND_REQUESTED";
+  const refunded = meta?.status === "REFUNDED";
   return (
     <div className="flex flex-col">
       <EventCard
@@ -147,9 +180,13 @@ function RegisteredCard({
       </div>
       {meta && (
         <div className="mt-1.5 flex justify-end">
-          {refundRequested ? (
+          {refunded ? (
+            <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted">
+              Refunded {money(meta.refundAmountCents)}
+            </span>
+          ) : refundRequested ? (
             <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-amber-300">
-              Refund requested
+              Refund requested{meta.refundAmountCents > 0 ? ` · ${money(meta.refundAmountCents)}` : ""}
             </span>
           ) : (
             <button
@@ -275,9 +312,17 @@ export default function ActivityPage() {
         return;
       }
       const { eventId } = refundTarget.meta;
+      // Take the server's frozen snapshot rather than keeping the local estimate,
+      // so the card shows exactly what was recorded against the entry.
       setRegMeta((prev) => ({
         ...prev,
-        [eventId]: { ...prev[eventId], status: "REFUND_REQUESTED" },
+        [eventId]: {
+          ...prev[eventId],
+          status: "REFUND_REQUESTED",
+          refundAmountCents: json.refundAmountCents ?? prev[eventId]?.refundAmountCents ?? 0,
+          refundPercent: json.refundPercent ?? prev[eventId]?.refundPercent ?? 0,
+          outsidePolicy: json.outsidePolicy ?? prev[eventId]?.outsidePolicy ?? false,
+        },
       }));
       setRefundTarget(null);
     } catch {
@@ -322,19 +367,19 @@ export default function ActivityPage() {
         if (regData?.registrations) {
           const meta: Record<string, RegMeta> = {};
           const regIds: string[] = [];
-          for (const r of regData.registrations as {
-            id: string;
-            eventId: string;
-            status: RegStatus;
-            wave: string | null;
-            bibNumber: string | null;
-          }[]) {
+          for (const r of regData.registrations as RegMeta[]) {
             meta[r.eventId] = {
               id: r.id,
               eventId: r.eventId,
               status: r.status,
               wave: r.wave,
               bibNumber: r.bibNumber,
+              paidCents: r.paidCents ?? 0,
+              refundAmountCents: r.refundAmountCents ?? 0,
+              refundPercent: r.refundPercent ?? 0,
+              outsidePolicy: r.outsidePolicy ?? false,
+              policyLines: r.policyLines ?? [],
+              daysUntilEvent: r.daysUntilEvent ?? 0,
             };
             regIds.push(r.eventId);
           }
@@ -490,15 +535,63 @@ export default function ActivityPage() {
           <DialogHeader>
             <DialogTitle>Request a refund</DialogTitle>
             <DialogDescription>
-              Ask the organiser of {refundTarget?.title} to refund your entry. You&apos;ll come out of the
-              start list while it&apos;s reviewed. The organiser and Startline handle the refund itself.
+              {refundTarget?.title}. You will come out of the start list and free your spot.
             </DialogDescription>
           </DialogHeader>
+
+          {refundTarget && (
+            <div className="space-y-3">
+              {/* The number first. This is what the athlete is actually deciding on. */}
+              <div className="rounded-md bg-dark px-4 py-3">
+                {refundTarget.meta.outsidePolicy ? (
+                  <>
+                    <p className="font-headline text-[13px] font-bold uppercase tracking-widest text-amber-300">
+                      No refund at this date
+                    </p>
+                    <p className="text-[13px] text-muted leading-relaxed mt-1">
+                      The event is {refundTarget.meta.daysUntilEvent} day
+                      {refundTarget.meta.daysUntilEvent === 1 ? "" : "s"} away, which falls outside this
+                      event&apos;s policy. You can still ask the organiser to consider it, and they will see
+                      it is a discretionary request.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-headline text-[20px] font-black italic tracking-tighter text-primary">
+                      {money(refundTarget.meta.refundAmountCents)} back
+                    </p>
+                    <p className="text-[13px] text-muted leading-relaxed mt-1">
+                      You paid {money(refundTarget.meta.paidCents)}. The event is{" "}
+                      {refundTarget.meta.daysUntilEvent} day
+                      {refundTarget.meta.daysUntilEvent === 1 ? "" : "s"} away, so this event&apos;s policy
+                      returns {refundTarget.meta.refundPercent}%.
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <div>
+                <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted-dark mb-1">
+                  This event&apos;s policy
+                </p>
+                {refundTarget.meta.policyLines.map((line, i) => (
+                  <p key={i} className="text-[12px] text-muted leading-relaxed">{line}</p>
+                ))}
+              </div>
+
+              <p className="text-[12px] text-muted-dark leading-relaxed">{REFUND_PROCESS_COPY}</p>
+            </div>
+          )}
+
           {refundError && <p className="text-[13px] text-red-300">{refundError}</p>}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setRefundTarget(null)}>Keep my spot</Button>
             <Button onClick={confirmRefund} disabled={refunding}>
-              {refunding ? "Requesting…" : "Request refund"}
+              {refunding
+                ? "Requesting…"
+                : refundTarget?.meta.outsidePolicy
+                  ? "Ask anyway"
+                  : `Request ${money(refundTarget?.meta.refundAmountCents ?? 0)}`}
             </Button>
           </DialogFooter>
         </DialogContent>

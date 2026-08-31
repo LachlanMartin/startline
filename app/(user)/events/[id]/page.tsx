@@ -6,6 +6,7 @@ import { MapPin, Calendar, ExternalLink, Trophy, Clock, Ticket, FileText, ArrowL
 import { getAllEvents, getPublicEventById } from "@/lib/events";
 import { todayIso } from "@/lib/event-types";
 import { parsePrizePool } from "@/lib/prize-pool";
+import { describeTiers, parseTiers, REFUND_PROCESS_COPY } from "@/lib/refund-policy";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { toUserEvent } from "@/lib/user-events";
 import { STATE_LABELS } from "@/types";
@@ -371,12 +372,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               </div>
             )}
 
-            {event.refundPolicy && (
-              <div className="bg-dark rounded-xl p-5 sm:p-6">
-                <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-muted mb-2">Refund &amp; Transfer Policy</h3>
-                <p className="text-sm font-medium text-muted leading-relaxed">{event.refundPolicy}</p>
-              </div>
-            )}
+            <div className="bg-dark rounded-xl p-5 sm:p-6">
+              <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-muted mb-2">Refund &amp; Transfer Policy</h3>
+              <ul className="space-y-1">
+                {describeTiers(parseTiers(event.refundTiers)).map((line, i) => (
+                  <li key={i} className="text-sm font-medium text-muted leading-relaxed">{line}</li>
+                ))}
+              </ul>
+              {event.refundPolicy && (
+                <p className="text-sm font-medium text-muted leading-relaxed mt-2">{event.refundPolicy}</p>
+              )}
+              <p className="text-[13px] text-muted-dark leading-relaxed mt-3">{REFUND_PROCESS_COPY}</p>
+            </div>
 
           </div>
         </div>

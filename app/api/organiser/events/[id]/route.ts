@@ -119,6 +119,7 @@ export async function PATCH(
         inclusions:        data.inclusions        ?? undefined,
         extras:            data.extras            ?? undefined,
         activations:       data.activations       ?? undefined,
+        refundTiers:       data.refundTiers       ?? undefined,
         refundPolicy:      data.refundPolicy      ?? undefined,
         registrationType:  data.registrationType  ?? undefined,
         feeStructure:      data.feeStructure      ?? undefined,
