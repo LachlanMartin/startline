@@ -18,6 +18,11 @@ import {
   assertGuestEmailsVerifiedForCheckout,
 } from "@/lib/guest-email-verification";
 import { getCapacityError, hasCappedWave } from "@/lib/registration-capacity";
+import { priceAddOnSelection } from "@/lib/add-on-pricing";
+import { getStockError, requestedByVariant } from "@/lib/add-on-stock";
+import { catalogueVariantsForEvent, heldByVariant, stockByVariant } from "@/lib/add-on-catalogue";
+import { addOnsEnabled, MAX_ADDON_LINES, MAX_ADDON_QUANTITY } from "@/lib/add-ons";
+import { encodeAddOnsMetadata, assertMetadataBudget } from "@/lib/stripe-webhook";
 import { assertTurnstile } from "@/lib/turnstile";
 import { z } from "zod";
 
@@ -38,8 +43,17 @@ const participantSchema = z.object({
   waveLabel: z.string().max(255).optional(),
 });
 
+// Ids and quantities only. The client never sends a price, exactly as with
+// tickets: everything is re-priced server-side from the catalogue.
+const addOnLineSchema = z.object({
+  participantIndex: z.number().int().min(0).max(99),
+  variantId: z.string().min(1).max(255),
+  quantity: z.number().int().min(1).max(MAX_ADDON_QUANTITY),
+});
+
 const checkoutSchema = z.object({
   eventId: z.string().max(255).optional(),
+  addOns: z.array(addOnLineSchema).max(MAX_ADDON_LINES).optional(),
   waveLabel: z.string().max(255).optional(),
   groupRegistration: z.boolean().optional(),
   emergencyContact: z.object({ name: z.string(), phone: z.string() }).optional(),
@@ -243,6 +257,91 @@ export async function POST(req: NextRequest) {
       platformFeeCents += f;
     }
 
+    // ── Paid add-ons ────────────────────────────────────────────────────────
+    // Priced from the catalogue by id, never from anything the client sent, and
+    // through the same lib/add-on-pricing entry point the webhook uses. The two
+    // must agree to the cent or the webhook cancels this order after taking the
+    // money, so there is exactly one way to price a basket and this is it.
+    const requestedAddOns = body.addOns ?? [];
+    if (requestedAddOns.length > 0 && !addOnsEnabled()) {
+      return NextResponse.json(
+        { error: "Add-ons are not available right now. Please continue without them." },
+        { status: 503 },
+      );
+    }
+
+    const addOnCatalogue =
+      requestedAddOns.length > 0 ? await catalogueVariantsForEvent(eventId) : [];
+    const addOnPricing = priceAddOnSelection(requestedAddOns, addOnCatalogue, event.feeStructure);
+
+    if (addOnPricing.unresolved.length > 0) {
+      return NextResponse.json(
+        { error: "One of the extras you selected is no longer available. Please review your order." },
+        { status: 409 },
+      );
+    }
+
+    // Every line must belong to a participant in this order, or the webhook has
+    // nowhere to hang the purchase.
+    if (addOnPricing.lines.some((line) => line.participantIndex >= participantCount)) {
+      return NextResponse.json({ error: "Invalid extras selection." }, { status: 400 });
+    }
+
+    // A retired product cannot be newly bought, even though it still prices for
+    // payments already in flight.
+    if (addOnPricing.lines.length > 0) {
+      const buyable = await prisma.eventAddOnVariant.findMany({
+        where: {
+          eventId,
+          active: true,
+          addOn: { active: true },
+          id: { in: addOnPricing.lines.map((l) => l.variantId) },
+        },
+        select: { id: true },
+      });
+      const buyableIds = new Set(buyable.map((v) => v.id));
+      if (addOnPricing.lines.some((line) => !buyableIds.has(line.variantId))) {
+        return NextResponse.json(
+          { error: "One of the extras you selected is no longer on sale. Please review your order." },
+          { status: 409 },
+        );
+      }
+
+      // Advisory stock check: rejects the order before a card is touched. The
+      // authoritative one runs inside the webhook's transaction, where a line
+      // that lost the race is dropped and refunded rather than cancelling the
+      // athlete's entry.
+      const [held, stock] = await Promise.all([
+        heldByVariant(eventId),
+        stockByVariant(eventId),
+      ]);
+      // Stock is counted per variant, not per participant, so roll the basket up
+      // first: a family buying three of the last two shirts must be refused.
+      const wanted = requestedByVariant(addOnPricing.lines);
+      const byVariant = new Map<string, { name: string; variantLabel: string }>();
+      for (const line of addOnPricing.lines) {
+        if (!byVariant.has(line.variantId)) {
+          byVariant.set(line.variantId, { name: line.name, variantLabel: line.variantLabel });
+        }
+      }
+      const stockError = getStockError(
+        [...byVariant.entries()].map(([variantId, labels]) => ({
+          variantId,
+          name: labels.name,
+          variantLabel: labels.variantLabel,
+          stock: stock[variantId] ?? 0,
+          held: held[variantId] ?? 0,
+          requested: wanted[variantId] ?? 0,
+        })),
+      );
+      if (stockError) {
+        return NextResponse.json({ error: stockError }, { status: 409 });
+      }
+    }
+
+    totalCents += addOnPricing.totals.chargedCents;
+    platformFeeCents += addOnPricing.totals.platformFeeCents;
+
     const participantsForPayment =
       groupRegistration && sharedEmergencyContact
         ? applySharedEmergencyContact(participants, sharedEmergencyContact)
@@ -271,6 +370,37 @@ export async function POST(req: NextRequest) {
     // connected account, so the charge lands on the platform account with no
     // application fee.
     const useConnect = Boolean(event.organiser.stripeAccountId) && !isDirectCharge;
+
+    // Add-on lines travel as variant codes so the webhook can resolve them even
+    // if the organiser reorders or retires the catalogue while this payment is in
+    // flight. Built and checked before the Stripe call so a metadata overflow
+    // fails here, cleanly, rather than as an opaque 400 under a card form.
+    const metadata: Record<string, string> = {
+      eventId,
+      // Legacy single-tier fields (first ticket's tier); per-ticket truth
+      // lives in participantN.wav + wavePricing.
+      waveLabel: resolvedWaveLabels[0],
+      wavePricing: JSON.stringify(wavePricing),
+      userName: athleteName,
+      userEmail: athleteEmail,
+      organiserId: event.organiser.id,
+      userId: userSession?.sub ?? "",
+      ticketPriceCents: String(primaryWave.p),
+      platformFeeCents: String(platformFeeCents),
+      platformFeeCentsPerTicket: String(primaryWave.f),
+      feeStructure: event.feeStructure,
+      groupRegistration: groupRegistration ? "true" : "false",
+      ...participantMetadata,
+      ...encodeAddOnsMetadata(
+        addOnPricing.lines.map((line) => ({
+          participantIndex: line.participantIndex,
+          code: line.code,
+          quantity: line.quantity,
+        })),
+      ),
+    };
+    assertMetadataBudget(metadata);
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalCents,
       currency: "aud",
@@ -283,30 +413,17 @@ export async function POST(req: NextRequest) {
             transfer_data: { destination: event.organiser.stripeAccountId as string },
           }
         : {}),
-      metadata: {
-        eventId,
-        // Legacy single-tier fields (first ticket's tier); per-ticket truth
-        // lives in participantN.wav + wavePricing.
-        waveLabel: resolvedWaveLabels[0],
-        wavePricing: JSON.stringify(wavePricing),
-        userName: athleteName,
-        userEmail: athleteEmail,
-        organiserId: event.organiser.id,
-        userId: userSession?.sub ?? "",
-        ticketPriceCents: String(primaryWave.p),
-        platformFeeCents: String(platformFeeCents),
-        platformFeeCentsPerTicket: String(primaryWave.f),
-        feeStructure: event.feeStructure,
-        groupRegistration: groupRegistration ? "true" : "false",
-        ...participantMetadata,
-      },
+      metadata,
     });
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
+      // The authoritative total. The client displays this rather than its own
+      // arithmetic, so it can never show a figure the server disagrees with.
       amount: totalCents / 100,
       platformFee: platformFeeCents / 100,
+      addOnAmount: addOnPricing.totals.chargedCents / 100,
       participantCount,
     });
   } catch (err) {

@@ -18,6 +18,8 @@ export interface RegistrationConfirmationEmailProps {
   registrationFee: string
   serviceFee: string
   total: string
+  /** Merchandise bought with the entry. Omitted entirely when there is none. */
+  addOns?: { label: string; amount: string }[]
   userEmail: string
 }
 
@@ -50,6 +52,7 @@ export function RegistrationConfirmationEmail({
   registrationFee,
   serviceFee,
   total,
+  addOns = [],
   userEmail,
 }: RegistrationConfirmationEmailProps) {
   return (
@@ -261,6 +264,47 @@ export function RegistrationConfirmationEmail({
                 </table>
               </td>
             </tr>
+            {addOns.map((addOn) => (
+              <tr key={addOn.label}>
+                <td
+                  style={{
+                    padding: '13px 22px',
+                    borderBottom: `1px solid ${colors.border}`,
+                  }}
+                >
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <p
+                            style={{
+                              margin: '0',
+                              fontFamily: fonts.body,
+                              fontSize: '14px',
+                              color: colors.text,
+                            }}
+                          >
+                            {addOn.label}
+                          </p>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <p
+                            style={{
+                              margin: '0',
+                              fontFamily: fonts.body,
+                              fontSize: '14px',
+                              color: colors.text,
+                            }}
+                          >
+                            {addOn.amount}
+                          </p>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            ))}
             <tr>
               <td
                 style={{

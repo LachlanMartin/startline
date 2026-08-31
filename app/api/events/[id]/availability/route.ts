@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { idParams } from "@/lib/schemas";
+import { catalogueForEvent } from "@/lib/add-on-catalogue";
+import { addOnsEnabled } from "@/lib/add-ons";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,11 @@ export async function GET(
 
   const waves = (event.waves as { label: string; qty?: number }[] | null) ?? [];
 
+  // Add-ons the athlete can actually buy, with derived remaining stock so the
+  // quantity steppers cap themselves. Advisory only: checkout re-checks before
+  // charging, and the webhook re-checks authoritatively before confirming.
+  const addOns = addOnsEnabled() ? await catalogueForEvent(id, { activeOnly: true }) : [];
+
   return NextResponse.json({
     cap: event.cap,
     confirmed,
@@ -53,6 +60,19 @@ export async function GET(
       label: w.label,
       qty: typeof w.qty === "number" ? w.qty : null,
       confirmed: confirmedByWave[w.label] ?? 0,
+    })),
+    addOns: addOns.map((addOn) => ({
+      id: addOn.id,
+      name: addOn.name,
+      description: addOn.description,
+      priceCents: addOn.priceCents,
+      imageUrl: addOn.imageUrl,
+      optionLabel: addOn.optionLabel,
+      variants: addOn.variants.map((v) => ({
+        id: v.id,
+        label: v.label,
+        remaining: v.remaining,
+      })),
     })),
   });
 }
