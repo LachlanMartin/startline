@@ -2,16 +2,38 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getOrganiserSession, getAdminSession, getUserSession } from "@/lib/amplify-server";
 import { matchesMagicBytes } from "@/lib/upload-magic-bytes";
+import { s3, S3_BUCKET, S3_PUBLIC_BASE_URL } from "@/lib/s3";
 
-// Prefer local disk in development — staging/prod S3 buckets often aren't
-// reachable from a laptop, and .env may still contain AWS keys.
+// The bucket is the switch, not the presence of AWS keys: Amplify's compute role
+// exports keys into the runtime whether or not uploads are configured, and the
+// old gate read that as "S3 is ready". Local disk still serves a laptop and the
+// Docker image, which keep public/uploads writable.
 const useS3 =
-  process.env.NODE_ENV === "production"
-    ? !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
-    : process.env.UPLOAD_TO_S3 === "true" &&
-      !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY);
+  !!S3_BUCKET &&
+  (process.env.NODE_ENV === "production" || process.env.UPLOAD_TO_S3 === "true");
+
+if (!useS3 && process.env.NODE_ENV === "production") {
+  console.warn(
+    "Uploads: no bucket configured (UPLOADS_BUCKET or AWS_S3_BUCKET), falling back to public/uploads. A host with a read-only filesystem will reject every upload."
+  );
+}
+
+// The bucket is private and readable only through CloudFront, so without a CDN
+// base the upload succeeds and the image 403s wherever it is displayed. That
+// combination is silent, which is what made the original failure hard to place.
+if (
+  useS3 &&
+  process.env.NODE_ENV === "production" &&
+  !process.env.NEXT_PUBLIC_CDN_URL &&
+  !process.env.CDN_URL
+) {
+  console.warn(
+    "Uploads: no CDN base URL (CDN_URL or NEXT_PUBLIC_CDN_URL). Files will be linked directly to the private bucket and will not load."
+  );
+}
 
 export async function POST(req: NextRequest) {
   const session =
@@ -69,8 +91,6 @@ export async function POST(req: NextRequest) {
 
   try {
     if (useS3) {
-      const { PutObjectCommand } = await import("@aws-sdk/client-s3");
-      const { s3, S3_BUCKET } = await import("@/lib/s3");
       const key = `uploads/${session.sub}/${type}/${filename}`;
       await s3.send(
         new PutObjectCommand({
@@ -80,10 +100,7 @@ export async function POST(req: NextRequest) {
           ContentType: file.type,
         })
       );
-      const baseUrl =
-        process.env.NEXT_PUBLIC_CDN_URL ||
-        `https://${S3_BUCKET}.s3.ap-southeast-2.amazonaws.com`;
-      return NextResponse.json({ fileUrl: `${baseUrl}/${key}` });
+      return NextResponse.json({ fileUrl: `${S3_PUBLIC_BASE_URL}/${key}` });
     }
 
     // Local dev: save to public/uploads/
@@ -92,7 +109,9 @@ export async function POST(req: NextRequest) {
     await writeFile(join(dir, filename), buffer);
     return NextResponse.json({ fileUrl: `/uploads/${type}/${filename}` });
   } catch (err) {
-    console.error("Upload failed:", err);
+    // Log enough to tell a misconfigured bucket from a rejected object: the
+    // route used to swallow both into an unqualified 500.
+    console.error("Upload failed:", { type, size: file.size, useS3 }, err);
     return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 500 });
   }
 }
