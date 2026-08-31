@@ -8,6 +8,10 @@ export const checkinParams = z.object({
 });
 export const organiserIdParams = z.object({ organiserId: z.string().min(1).max(255) });
 export const usernameParams = z.object({ username: z.string().min(1).max(100) });
+export const idItemIdParams = z.object({
+  id: z.string().min(1).max(255),
+  itemId: z.string().min(1).max(255),
+});
 export const idAnnouncementIdParams = z.object({
   id: z.string().min(1).max(255),
   announcementId: z.string().min(1).max(255),

@@ -19,6 +19,13 @@ import LocationPreviewMap   from "@/components/organiser/LocationPreviewMap";
 import DatePicker           from "@/components/ui/DatePicker";
 import SelectMenu           from "@/components/ui/SelectMenu";
 import TimePicker           from "@/components/ui/TimePicker";
+import AddOnEditor, { uploadAddOnImages } from "@/components/organiser/AddOnEditor";
+import {
+  type AddOnDraft,
+  draftsFromCatalogue,
+  draftsToPayload,
+  draftValidationError,
+} from "@/lib/add-on-drafts";
 
 /* ── Step definitions ───────────────────────────────────────── */
 const STEPS = [
@@ -538,7 +545,20 @@ const STARTLINE_FLAT = 1.45;
 const STRIPE_PCT     = 0.0175;
 const STRIPE_FLAT    = 0.30;
 
-function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<FormState>) => void }) {
+function TicketsStep({
+  form,
+  update,
+  addOns,
+  setAddOns,
+  showAddOns,
+}: {
+  form: FormState;
+  update: (p: Partial<FormState>) => void;
+  addOns: AddOnDraft[];
+  setAddOns: (next: AddOnDraft[]) => void;
+  /** Organiser portal only: the admin portal has no add-ons route. */
+  showAddOns: boolean;
+}) {
   const updateWave = (i: number, patch: Partial<Wave>) => {
     const waves = [...form.waves]; waves[i] = { ...waves[i], ...patch }; update({ waves });
   };
@@ -680,6 +700,22 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
           </button>
         </div>
       </Field>
+
+      {/* Merchandise sold alongside the entry. Editable at any time, including
+          after the event is published, which is why it saves through its own
+          route rather than the DRAFT-locked event PATCH. */}
+      {showAddOns && (
+        <Field
+          label="Merchandise"
+          hint="Optional extras athletes can buy with their entry, like a tee or a parking pass. You can add, restock or retire these at any time, including after the event goes live."
+        >
+          <AddOnEditor
+            addOns={addOns}
+            onChange={setAddOns}
+            feeStructure={form.feeStructure === "organiser" ? "organiser" : "athlete"}
+          />
+        </Field>
+      )}
 
       {/* Prize money toggle */}
       <div className="border border-dark-lighter rounded-xl overflow-hidden mb-6">
@@ -1460,6 +1496,10 @@ export default function EventFormWizard({
   const [direction,       setDirection]       = useState<"forward" | "back">("forward");
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [eventId,         setEventId]         = useState<string | null>(null);
+  // The add-on catalogue is loaded and saved through its own route, not the
+  // event payload, because it must stay editable after the event is approved.
+  const [addOns,          setAddOns]          = useState<AddOnDraft[]>([]);
+  const showAddOns = apiBase === "/api/organiser";
   const originalFields = useRef<Record<string, unknown>>({});
 
   const update = (patch: Partial<FormState>) => setForm(f => ({ ...f, ...patch }));
@@ -1516,6 +1556,15 @@ export default function EventFormWizard({
       })
       .catch(() => {})
       .finally(() => setLoadingEvent(false));
+
+    if (apiBase === "/api/organiser") {
+      fetch(`${apiBase}/events/${id}/add-ons`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data.addOns)) setAddOns(draftsFromCatalogue(data.addOns));
+        })
+        .catch(() => {});
+    }
   }, [apiBase, eventIdProp]);
 
   const stepHasErrors = (s: number): boolean => {
@@ -1630,6 +1679,13 @@ export default function EventFormWizard({
         ...(!eventId && organiserId ? { organiserId } : {}),
       };
 
+      // Checked before the event save so a bad catalogue cannot leave the event
+      // written and the merchandise silently dropped.
+      if (showAddOns) {
+        const addOnError = draftValidationError(addOns);
+        if (addOnError) { setApiError(addOnError); return false; }
+      }
+
       let res: Response;
       if (eventId) {
         res = await fetch(`${apiBase}/events/${eventId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -1640,6 +1696,37 @@ export default function EventFormWizard({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setApiError(data.error ?? "Something went wrong."); return false; }
       if (asDraft && !eventId && data.id) setEventId(data.id);
+
+      // Add-ons go to their own route, and only once the event has an id: a
+      // brand new event does not exist until the call above returns one.
+      const savedEventId = eventId ?? data.id;
+      if (showAddOns && savedEventId) {
+        try {
+          const withImages = await uploadAddOnImages(addOns);
+          setAddOns(withImages);
+          const addOnRes = await fetch(`${apiBase}/events/${savedEventId}/add-ons`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ addOns: draftsToPayload(withImages) }),
+          });
+          if (!addOnRes.ok) {
+            const addOnData = await addOnRes.json().catch(() => ({}));
+            // The event itself saved. Say so, so the organiser does not redo it.
+            setApiError(
+              (addOnData.error ?? "Could not save your merchandise.") +
+                " Your event details were saved.",
+            );
+            return false;
+          }
+        } catch (err) {
+          setApiError(
+            (err instanceof Error ? err.message : "Could not save your merchandise.") +
+              " Your event details were saved.",
+          );
+          return false;
+        }
+      }
+
       router.push(submitRedirect);
       return true;
     } catch {
@@ -1741,7 +1828,15 @@ export default function EventFormWizard({
 
                 {step === 0 && <BasicsStep  form={form} update={update} />}
                 {step === 1 && <WhenStep    form={form} update={update} />}
-                {step === 2 && <TicketsStep form={form} update={update} />}
+                {step === 2 && (
+                  <TicketsStep
+                    form={form}
+                    update={update}
+                    addOns={addOns}
+                    setAddOns={setAddOns}
+                    showAddOns={showAddOns}
+                  />
+                )}
                 {step === 3 && <MediaStep   key={loadingEvent ? "loading" : (eventId ?? "new")} form={form} update={update} />}
                 {step === 4 && <ReviewStep  form={form} setStep={goTo} confirmed={confirmed} onConfirm={setConfirmed} />}
 
