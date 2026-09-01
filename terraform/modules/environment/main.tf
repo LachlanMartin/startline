@@ -449,6 +449,7 @@ resource "aws_amplify_branch" "this" {
       DATABASE_URL                    = local.database_url
       UPLOADS_BUCKET                  = aws_s3_bucket.uploads.id
       UPLOADS_BUCKET_REGIONAL_DOMAIN  = aws_s3_bucket.uploads.bucket_regional_domain_name
+      CDN_URL                         = var.cdn_custom_domain != null ? "https://${var.cdn_custom_domain}" : "https://${aws_cloudfront_distribution.cdn.domain_name}"
       NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN = var.mapbox_access_token
       NEXT_PUBLIC_TURNSTILE_SITE_KEY  = var.turnstile_site_key
     },
@@ -538,7 +539,7 @@ data "aws_iam_policy_document" "uploads_oac" {
       identifiers = ["cloudfront.amazonaws.com"]
     }
     actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.uploads.arn}/images/*"]
+    resources = ["${aws_s3_bucket.uploads.arn}/uploads/*"]
     condition {
       test     = "StringEquals"
       variable = "AWS:SourceArn"
