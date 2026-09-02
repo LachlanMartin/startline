@@ -5,6 +5,7 @@ import { join } from "path";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getOrganiserSession, getAdminSession, getUserSession } from "@/lib/amplify-server";
 import { matchesMagicBytes } from "@/lib/upload-magic-bytes";
+import { uploadSizeError } from "@/lib/upload-limits";
 import { s3, S3_BUCKET, S3_PUBLIC_BASE_URL } from "@/lib/s3";
 
 // The bucket is the switch, not the presence of AWS keys: Amplify's compute role
@@ -62,8 +63,13 @@ export async function POST(req: NextRequest) {
   if (!TYPE_MIMES[type]?.includes(file.type)) {
     return NextResponse.json({ error: "File type not allowed for this upload." }, { status: 400 });
   }
-  if (type === "document" && file.size > 15 * 1024 * 1024) {
-    return NextResponse.json({ error: "PDF must be 15 MB or smaller." }, { status: 400 });
+
+  // Every type gets a cap, not just PDFs: images used to be unbounded, so a
+  // 60 MB phone photo sailed through here and died against the platform's own
+  // request-size ceiling with an unhelpful status (see issue #300).
+  const sizeError = uploadSizeError(type, file.size);
+  if (sizeError) {
+    return NextResponse.json({ error: sizeError }, { status: 400 });
   }
 
   const mimeExt: Record<string, string> = {

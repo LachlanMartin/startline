@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, startTransition } from "react";
 import { useRouter } from "next/navigation";
+import { fetchAuthSession } from "aws-amplify/auth";
 import Image from "next/image";
 import {
   ArrowLeft, ArrowRight, Check, Plus, Trash2,
@@ -11,6 +12,7 @@ import {
   AlignLeft, Trophy, FileText,
 } from "lucide-react";
 import { encodePrizePool, parsePrizePool, normalisePrizeAmount } from "@/lib/prize-pool";
+import { UPLOAD_LIMITS } from "@/lib/upload-limits";
 import { formatDivisionLabel } from "@/lib/divisions";
 import { DEFAULT_REFUND_TIERS, REFUND_PRESETS, describeTiers, matchRefundPreset, parseTiers, tiersAreValid, type RefundTier } from "@/lib/refund-policy";
 import AddressAutocomplete  from "@/components/ui/AddressAutocomplete";
@@ -769,6 +771,17 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
    ══════════════════════════════════════════════════════════════ */
 const MAX_GALLERY_PHOTOS = 8;
 const MAX_INFO_PDFS = 10;
+// Same caps the /api/upload route enforces. Checking at pick time matters
+// because uploads are deferred to submit: without this, an oversized file is
+// accepted silently and only fails five steps later (issue #300).
+const MAX_PDF_BYTES   = UPLOAD_LIMITS.document.bytes;
+const MAX_IMAGE_BYTES = UPLOAD_LIMITS.cover.bytes;
+const formatMb = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+
+// Shown when an upload or the event save comes back 401. submitToApi refreshes
+// the token first, so landing here means the refresh token itself is gone.
+const SESSION_EXPIRED_MESSAGE =
+  "Your session has expired and nothing was saved. Please sign in again, then retry. Keep this tab open so you don't lose your event details.";
 
 function GalleryThumb({ src, onRemove }: { src: string; onRemove: () => void }) {
   return (
@@ -804,15 +817,40 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
     return () => { if (url?.startsWith("blob:")) URL.revokeObjectURL(url); };
   }, [form.coverImage, form.coverImageUrl]);
 
+  const [coverError,   setCoverError]   = useState("");
+  const [galleryError, setGalleryError] = useState("");
+  const [pdfError,     setPdfError]     = useState("");
+
+  const oversizedMessage = (rejected: File[], maxBytes: number, kind: string) => {
+    const first = rejected[0];
+    const others = rejected.length > 1 ? ` (and ${rejected.length - 1} more)` : "";
+    return `"${first.name}" is ${formatMb(first.size)}${others}. ${kind} must be ${formatMb(maxBytes)} or smaller.`;
+  };
+
+  const pickCover = (file: File | null) => {
+    if (file && file.size > MAX_IMAGE_BYTES) {
+      setCoverError(oversizedMessage([file], MAX_IMAGE_BYTES, "Images"));
+      return;
+    }
+    setCoverError("");
+    update({ coverImage: file });
+  };
+
   const galleryCount = form.photoUrls.length + form.photos.length;
   const addGalleryFiles = (list: FileList | null) => {
-    const files = Array.from(list ?? []).filter(f => f.type.startsWith("image/"));
+    const picked = Array.from(list ?? []).filter(f => f.type.startsWith("image/"));
+    const files = picked.filter(f => f.size <= MAX_IMAGE_BYTES);
+    const rejected = picked.filter(f => f.size > MAX_IMAGE_BYTES);
+    setGalleryError(rejected.length ? oversizedMessage(rejected, MAX_IMAGE_BYTES, "Images") : "");
     const remaining = MAX_GALLERY_PHOTOS - galleryCount;
     if (files.length && remaining > 0) update({ photos: [...form.photos, ...files.slice(0, remaining)] });
   };
 
   const addInfoPdfs = (list: FileList | null) => {
-    const files = Array.from(list ?? []).filter(f => f.type === "application/pdf");
+    const picked = Array.from(list ?? []).filter(f => f.type === "application/pdf");
+    const files = picked.filter(f => f.size <= MAX_PDF_BYTES);
+    const rejected = picked.filter(f => f.size > MAX_PDF_BYTES);
+    setPdfError(rejected.length ? oversizedMessage(rejected, MAX_PDF_BYTES, "PDFs") : "");
     const remaining = MAX_INFO_PDFS - form.informationPdfs.length;
     if (files.length && remaining > 0) {
       update({
@@ -855,8 +893,11 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
             </div>
           )}
           <input type="file" accept="image/*" className="sr-only"
-            onChange={e => update({ coverImage: e.target.files?.[0] ?? null })} />
+            onChange={e => { pickCover(e.target.files?.[0] ?? null); e.target.value = ""; }} />
         </label>
+        {coverError && (
+          <p className="font-headline text-[10px] uppercase tracking-widest text-red-400 mt-1.5">{coverError}</p>
+        )}
       </Field>
 
       <Field label="Gallery photos" hint={`${galleryCount}/${MAX_GALLERY_PHOTOS} · Optional`}>
@@ -878,8 +919,11 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
             </label>
           )}
         </div>
+        {galleryError && (
+          <p className="font-headline text-[10px] uppercase tracking-widest text-red-400 mt-1.5">{galleryError}</p>
+        )}
         <p className="font-headline text-[10px] uppercase tracking-widest text-light mt-2">
-          Shown as a gallery on your event page: venue, atmosphere, past editions.
+          Shown as a gallery on your event page: venue, atmosphere, past editions. Up to 10 MB each.
         </p>
       </Field>
 
@@ -939,6 +983,9 @@ function MediaStep({ form, update }: { form: FormState; update: (p: Partial<Form
               </label>
             )}
           </div>
+        )}
+        {pdfError && (
+          <p className="font-headline text-[10px] uppercase tracking-widest text-red-400 mt-1.5">{pdfError}</p>
         )}
         <p className="font-headline text-[10px] uppercase tracking-widest text-light mt-2">
           Shown as downloads on your event page, up to 15 MB each
@@ -1561,6 +1608,14 @@ export default function EventFormWizard({
     setStep(target);
   };
 
+  // Distinguishes an expired session from a rejected file, and passes the
+  // route's specific reason through instead of a blanket "failed to upload".
+  const uploadErrorText = async (res: Response, fallback: string): Promise<string> => {
+    if (res.status === 401) return SESSION_EXPIRED_MESSAGE;
+    const data: { error?: string } = await res.json().catch(() => ({}));
+    return data.error ? `${fallback} ${data.error}` : `${fallback} Please try again or remove it.`;
+  };
+
   const submitToApi = async (asDraft: boolean, overrideTitle?: string): Promise<boolean> => {
     setSaving(true); setApiError(""); setSubmitErrors([]);
     try {
@@ -1568,13 +1623,22 @@ export default function EventFormWizard({
         setApiError("Select an organiser to create this event for.");
         return false;
       }
+
+      // Cognito access tokens last 60 minutes and nothing refreshes them after
+      // page load, so a wizard session longer than that used to 401 right here
+      // at the end (issue #300). fetchAuthSession refreshes an expired token
+      // from the refresh token and rewrites the cookies the API verifies.
+      // Failure is fine: the e2e bypass has no Cognito session at all, so let
+      // the requests themselves decide.
+      await fetchAuthSession().catch(() => null);
+
       let coverImageUrl: string | null = null;
       if (form.coverImage) {
         const fd = new FormData();
         fd.append("file", form.coverImage);
         fd.append("type", "cover");
         const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-        if (!uploadRes.ok) { setApiError("Cover image upload failed. Please try again or remove the image."); return false; }
+        if (!uploadRes.ok) { setApiError(await uploadErrorText(uploadRes, "Cover image upload failed.")); return false; }
         const { fileUrl } = await uploadRes.json(); coverImageUrl = fileUrl;
       }
 
@@ -1586,7 +1650,7 @@ export default function EventFormWizard({
           fd.append("file", pdf.file);
           fd.append("type", "document");
           const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-          if (!uploadRes.ok) { setApiError(`PDF "${pdf.file.name}" failed to upload. Please try again or remove it.`); return false; }
+          if (!uploadRes.ok) { setApiError(await uploadErrorText(uploadRes, `PDF "${pdf.file.name}" failed to upload.`)); return false; }
           const { fileUrl } = await uploadRes.json(); url = fileUrl;
         }
         if (url) informationPdfs.push({ url, label: pdf.label.trim(), name: pdf.name });
@@ -1598,7 +1662,7 @@ export default function EventFormWizard({
         fd.append("file", photo);
         fd.append("type", "photo");
         const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-        if (!uploadRes.ok) { setApiError(`Gallery photo "${photo.name}" failed to upload. Please try again or remove it.`); return false; }
+        if (!uploadRes.ok) { setApiError(await uploadErrorText(uploadRes, `Gallery photo "${photo.name}" failed to upload.`)); return false; }
         const { fileUrl } = await uploadRes.json(); photoUrls.push(fileUrl);
       }
 
@@ -1646,7 +1710,10 @@ export default function EventFormWizard({
       }
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setApiError(data.error ?? "Something went wrong."); return false; }
+      if (!res.ok) {
+        setApiError(res.status === 401 ? SESSION_EXPIRED_MESSAGE : (data.error ?? "Something went wrong."));
+        return false;
+      }
       if (asDraft && !eventId && data.id) setEventId(data.id);
       router.push(submitRedirect);
       return true;
