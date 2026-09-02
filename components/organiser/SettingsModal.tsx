@@ -268,7 +268,10 @@ function PersonalInfoForm() {
     const fd = new FormData();
     fd.append("file", file); fd.append("type", type);
     const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (!res.ok) throw new Error("Upload failed.");
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Upload failed.");
+    }
     const { fileUrl } = await res.json();
     return fileUrl as string;
   };
@@ -283,7 +286,7 @@ function PersonalInfoForm() {
       if (!res.ok) { setError(data.error ?? "Logo upload failed."); return; }
       patch({ logoUrl: url });
       router.refresh();
-    } catch { setError("Logo upload failed."); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Logo upload failed."); }
     finally { setLogoUploading(false); }
   };
 
@@ -297,7 +300,7 @@ function PersonalInfoForm() {
       if (!res.ok) { setError(data.error ?? "Cover upload failed."); return; }
       patch({ coverImageUrl: url });
       router.refresh();
-    } catch { setError("Cover upload failed."); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Cover upload failed."); }
     finally { setCoverUploading(false); }
   };
 
