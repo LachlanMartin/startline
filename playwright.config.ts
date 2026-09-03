@@ -22,7 +22,11 @@ export default defineConfig({
   webServer: process.env.CI
     ? undefined
     : {
-        command: "NEXT_PUBLIC_COGNITO_USER_POOL_ID=test NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk_test CI=true pnpm dev -p 3000",
+        // cross-env, not a bare `VAR=value` prefix: that syntax is POSIX-only,
+        // so on Windows the shell treats the first assignment as the command
+        // name and the server never starts ("'NEXT_PUBLIC_COGNITO_USER_POOL_ID'
+        // is not recognized as an internal or external command").
+        command: "npx cross-env NEXT_PUBLIC_COGNITO_USER_POOL_ID=test NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk_test CI=true pnpm dev -p 3000",
         url: "http://localhost:3000/admin/login",
         reuseExistingServer: true,
         timeout: 90000,
