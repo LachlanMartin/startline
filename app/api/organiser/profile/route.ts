@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireOrganiser } from "@/lib/organiser-api-auth";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession } from "@/lib/amplify-server";
 import { z } from "zod";
 
 const organiserProfileSchema = z.object({
@@ -24,8 +24,9 @@ const organiserProfileSchema = z.object({
 });
 
 export async function GET() {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   try {
     const organiser = await prisma.organiser.findUnique({
@@ -53,8 +54,9 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   const parsed = organiserProfileSchema.safeParse(await req.json());
   if (!parsed.success) {

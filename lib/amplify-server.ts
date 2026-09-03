@@ -158,8 +158,13 @@ const ACTIVE_ORG_COOKIE = "startline_active_org";
 // Resolves the user's memberships to an active Organiser. If the user manages
 // multiple organisers, the `startline_active_org` cookie (set by the org
 // switcher) picks the active one; otherwise the OWNER membership wins.
-export async function getOrganiserSession(): Promise<OrganiserSession | null> {
-  const cognitoSession = await getServerSession();
+// `cognitoSession` lets a caller that has already verified the tokens (e.g.
+// `requireOrganiser`, which needs to tell "signed out" from "not an organiser")
+// pass them in rather than paying for a second JWT verification per request.
+export async function getOrganiserSession(
+  cognitoSession?: ServerSession | null,
+): Promise<OrganiserSession | null> {
+  cognitoSession ??= await getServerSession();
   if (!cognitoSession) return null;
 
   try {

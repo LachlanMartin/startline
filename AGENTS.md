@@ -165,7 +165,15 @@ Environments:
 | Env | Branch | Build |
 |---|---|---|
 | `prod` | `prod` | Migrate, no seed |
-| `staging` | `main` | Migrate + seed |
+| `staging` | `main` | Migrate, no seed |
+
+Neither environment seeds on deploy. `prisma db seed` truncates every table
+and resets the shared Cognito seed passwords, so it is gated behind the
+`SEED_DATABASE` branch variable (set it to `"true"` in the Amplify console
+for a deliberate reseed, then set it back). The seed itself also refuses any
+non-local `DATABASE_URL` unless `ALLOW_REMOTE_SEED=true`. A failed migration
+now fails the build rather than falling back to `migrate reset --force`,
+which used to drop the database.
 
 `ci.yml` runs lint/typecheck/build/test/e2e on PRs (non-blocking). Deploys via `deploy.yml` to Amplify.
 

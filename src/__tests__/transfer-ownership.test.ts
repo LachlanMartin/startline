@@ -14,6 +14,14 @@ vi.mock("@/lib/amplify-server", () => ({
   getUserSession: mocks.getUserSession,
 }));
 
+// The route reaches the organiser session through requireOrganiser, which
+// separates "signed out" (401) from "signed in but manages no organiser" (403).
+// These tests are about ownership transfer, so the guard just hands back
+// whatever session getOrganiserSession is set to return.
+vi.mock("@/lib/organiser-api-auth", () => ({
+  requireOrganiser: async () => ({ error: null, session: await mocks.getOrganiserSession() }),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   default: {
     organiserMember: {

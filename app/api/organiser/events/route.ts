@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession, getServerSession } from "@/lib/amplify-server";
+import { getServerSession } from "@/lib/amplify-server";
+import { requireOrganiser } from "@/lib/organiser-api-auth";
 import { archivePastEvents } from "@/lib/archive-events";
 import { getEventCoords } from "@/lib/australia-coords";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
@@ -9,8 +10,9 @@ import { rateLimit } from "@/lib/rate-limit";
 import { uniqueSlug } from "@/lib/slugs";
 export async function GET() {
   await archivePastEvents();
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   try {
     const events = await prisma.event.findMany({
@@ -33,8 +35,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   const blocked = await rateLimit(req, {
     prefix: "event-create",

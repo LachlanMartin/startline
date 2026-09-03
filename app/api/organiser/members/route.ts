@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession, getUserSession } from "@/lib/amplify-server";
+import { getUserSession } from "@/lib/amplify-server";
+import { requireOrganiser } from "@/lib/organiser-api-auth";
 import { canAddMember, MAX_ORGS_PER_USER } from "@/lib/organiser-members";
 import { z } from "zod";
 
@@ -9,8 +10,9 @@ const addMemberSchema = z.object({ email: z.string().max(255) });
 // GET /api/organiser/members
 // Lists all members of the active organiser.
 export async function GET() {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   try {
     const members = await prisma.organiserMember.findMany({
@@ -46,8 +48,9 @@ export async function GET() {
 // Body: { email } — adds the user (who must already have a User account) as a MANAGER member.
 // Owner only.
 export async function POST(req: NextRequest) {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
   if (session.role !== "OWNER") {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireOrganiser } from "@/lib/organiser-api-auth";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession } from "@/lib/amplify-server";
 import { z } from "zod";
 
 const markReadSchema = z.object({ ids: z.array(z.string().min(1).max(255)).optional() });
 // GET /api/organiser/notifications
 // Returns the 30 most recent notifications; includes unread count in header
 export async function GET() {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   try {
     const notifications = await prisma.notification.findMany({
@@ -29,8 +30,9 @@ export async function GET() {
 // PATCH /api/organiser/notifications
 // Body: { ids?: string[] } — if ids omitted, marks ALL as read
 export async function PATCH(req: NextRequest) {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   try {
     const parsed = markReadSchema.safeParse(await req.json().catch(() => ({})));

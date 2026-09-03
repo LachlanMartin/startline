@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession, getUserSession } from "@/lib/amplify-server";
+import { getUserSession } from "@/lib/amplify-server";
+import { requireOrganiser } from "@/lib/organiser-api-auth";
 
 // POST /api/organiser/members/leave
 // Removes the current user from the active organiser. The Owner cannot leave
 // while they are the only Owner (transfer ownership first).
 export async function POST(_req: NextRequest) {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   const userSession = await getUserSession();
   if (!userSession) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });

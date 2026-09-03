@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession, getUserSession } from "@/lib/amplify-server";
+import { getUserSession } from "@/lib/amplify-server";
+import { requireOrganiser } from "@/lib/organiser-api-auth";
 import { canTransferOwnership } from "@/lib/organiser-members";
 import { idParams } from "@/lib/schemas";
 
@@ -11,8 +12,9 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
   if (session.role !== "OWNER") {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }

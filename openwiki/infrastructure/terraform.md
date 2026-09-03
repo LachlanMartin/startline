@@ -62,9 +62,17 @@ Startline's infrastructure is fully defined in **Terraform** with a unified stat
 | Environment | Branch | Amplify Build Behavior |
 |---|---|---|
 | `prod` | `prod` | Migrate DB, no seed |
-| `staging` | `main` | Migrate DB + seed |
+| `staging` | `main` | Migrate DB, no seed |
 | PR to `main` | Preview (staging) | Inherits staging resources, auth bypass |
 | PR to `prod` | Preview (prod) | Inherits prod resources, auth bypass |
+
+Neither environment seeds on deploy. `prisma db seed` truncates every table
+and resets the shared Cognito seed passwords, so it is gated behind the
+`SEED_DATABASE` branch variable (set it to `"true"` in the Amplify console
+for a deliberate reseed, then set it back). The seed itself also refuses any
+non-local `DATABASE_URL` unless `ALLOW_REMOTE_SEED=true`. A failed migration
+now fails the build rather than falling back to `migrate reset --force`,
+which used to drop the database.
 
 The `ENV` env var is set per Amplify branch (`prod` → `prod`, `main` → `staging`). PR previews inherit the target branch's `ENV` value. The build spec uses `$ENV` to select the correct Secrets Manager secret.
 

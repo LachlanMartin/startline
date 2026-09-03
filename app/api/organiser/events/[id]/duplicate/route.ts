@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireOrganiser } from "@/lib/organiser-api-auth";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession } from "@/lib/amplify-server";
 import { shiftIsoDate } from "@/lib/duplicate-event";
 import { idParams } from "@/lib/schemas";
 import { uniqueSlug } from "@/lib/slugs";
@@ -10,8 +10,9 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   const parsedParams = idParams.safeParse(await params);
   if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
