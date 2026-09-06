@@ -1,13 +1,30 @@
 -- Reconstructed placeholder.
 --
--- This migration is recorded as applied in existing databases (2026-08-04) but its
--- folder was never committed to git, so Prisma saw the history as corrupt and
--- wanted to reset. Restoring the folder repairs the history without touching data.
+-- The original migration dropped some unused Event logistics columns, but its
+-- folder was never committed to git. It is recorded as applied in databases
+-- created around 2026-08-04, and absent from the migrations directory.
 --
--- It is intentionally a no-op. The migration dropped some unused Event logistics
--- columns, but bagDrop, parking, accessibilityInfo and additionalNotes are all
--- present again in both the current schema and existing databases, so its effect
--- has been superseded. On a fresh database those columns are simply never dropped,
--- which leaves the same end state the schema asks for.
+-- It is intentionally a no-op. bagDrop, parking, accessibilityInfo and
+-- additionalNotes are all present again in both the current schema and existing
+-- databases, so the drop has been superseded. On a fresh database this step now
+-- runs and does nothing, which leaves exactly the end state the schema asks for
+-- (the columns are created by 20260620104428_init and never re-added).
+--
+-- What restoring the folder does and does not fix, verified against prisma
+-- 7.9.1 rather than assumed:
+--
+--   * `migrate deploy` — unaffected either way. It applies pending migrations
+--     and exits 0 whether a recorded migration is missing from the directory or
+--     present with a different checksum. So the missing folder was never what
+--     triggered a deploy-time reset; the database wipes came from `prisma db
+--     seed` running on every staging build (see terraform/main.tf).
+--   * `migrate dev` on a fresh database — fixed. The step exists, so there is
+--     nothing to diverge.
+--   * `migrate dev` on a database that recorded the original — still refuses.
+--     The complaint changes from "applied to the database but missing from the
+--     local migrations directory" to "was modified after it was applied",
+--     because this file's checksum is not the original's. Reset that local
+--     database (./scripts/dev-db.sh, then pnpm prisma:seed) rather than trying
+--     to make the checksum match.
 
 SELECT 1;

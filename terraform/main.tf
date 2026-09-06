@@ -66,6 +66,14 @@ locals {
   #      with no matching user row — which surfaced as "session expired" 401s
   #      when publishing an event. Flip SEED_DATABASE to "true" in the Amplify
   #      console only when a deliberate reseed is wanted.
+  #
+  # ENV defaults through a parameter expansion rather than `[ -n "$ENV" ] ||
+  # export ENV=staging`. && and || are equal precedence and associate left to
+  # right, so that form parsed as `(everything-before-it || export) && rest`:
+  # a failed `pnpm install` fell into the export instead of aborting the build,
+  # which on a prod build retargeted ENV at staging and pulled staging secrets
+  # into .env.production. The doubled $$ escapes the Terraform template so the
+  # shell receives a single ${...}.
   build_spec = <<-EOT
     version: 1
     frontend:
@@ -75,7 +83,7 @@ locals {
             - >
               corepack enable && pnpm install --frozen-lockfile
               && npx prisma generate
-              && [ -n "$ENV" ] || export ENV=staging
+              && export ENV="$${ENV:-staging}"
               && aws secretsmanager get-secret-value
               --secret-id startline/$ENV/app
               --query SecretString --output text
@@ -202,7 +210,18 @@ module "env" {
 
   cognito_deletion_protection = each.value.cognito_deletion_protection
 
-  resend_api_key = local.bootstrap.resend_api_key
+  # Runtime server-side secrets. These land on the Amplify branch environment,
+  # not in Secrets Manager, because the build writes Secrets Manager into
+  # .env.production and the standalone artefact never carries that file. Stripe
+  # is per-environment (live keys on prod, test keys on staging); the rest are
+  # shared. A missing prod key fails the plan in the module rather than silently
+  # clearing the value the console currently holds.
+  resend_api_key        = try(local.bootstrap.resend_api_key, "")
+  resend_from           = try(local.bootstrap.resend_from, "")
+  stripe_secret_key     = try(local.bootstrap["stripe_secret_key_${each.key}"], "")
+  stripe_webhook_secret = try(local.bootstrap["stripe_webhook_secret_${each.key}"], "")
+  abr_guid              = try(local.bootstrap.abr_guid, "")
+
   # NEXT_PUBLIC_SITE_URL has to resolve: event share links, check-in QR codes,
   # email buttons and the organiser sign-up gate are all absolute URLs built
   # from it. staging.startlineau.com is NXDOMAIN, which sent anyone following

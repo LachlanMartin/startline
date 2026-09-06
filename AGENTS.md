@@ -29,6 +29,40 @@ Secrets in AWS Secrets Manager. `.env.local` at repo root (gitignored).
 
 **Setup:** `cp main-checkout/.env.local .env.local` in each worktree. Override `DATABASE_URL` to local Docker (`postgresql://postgres:postgres@localhost:5432/startline?schema=public`) if not using staging RDS.
 
+### Runtime vs build-time variables
+
+`next.config.ts` sets `output: "standalone"` and the Amplify build ships only
+`.next`, so the `.env.production` that preBuild writes from Secrets Manager
+never reaches the server. Secrets Manager therefore covers build time only.
+
+* `NEXT_PUBLIC_*` is fine there, because Next inlines it during `pnpm build`.
+* Anything the server reads at runtime (`STRIPE_SECRET_KEY`,
+  `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`, `RESEND_FROM`,
+  `TURNSTILE_SECRET_KEY`, `GUEST_EMAIL_VERIFICATION_SECRET`, `ABR_GUID`,
+  `DATABASE_URL`, `UPLOADS_BUCKET`, `CDN_URL`) has to be an Amplify **branch**
+  environment variable. Terraform sets those in
+  `terraform/modules/environment/main.tf`.
+
+Terraform owns the whole branch variable map, so a value added by hand in the
+Amplify console is deleted on the next apply. Add new runtime secrets to the
+`startline/ci-bootstrap` secret instead — `stripe_secret_key_prod`,
+`stripe_secret_key_staging`, `stripe_webhook_secret_prod`,
+`stripe_webhook_secret_staging`, `resend_api_key`, `resend_from`, `abr_guid`.
+A prod apply fails its precondition rather than silently clearing a missing one.
+
+## Portals and hostnames
+
+Production splits the three portals across `startlineau.com`,
+`organiser.startlineau.com` and `admin.startlineau.com`. Every other deployment
+(Amplify branch domain, PR previews, local dev) serves all three from one host.
+Cross-portal links must go through `lib/portal-domains.ts` so they stay relative
+on single-host deployments and absolute in production; hardcoding either shape
+breaks one of the two (issue #302).
+
+Cognito cookies are scoped to `.startlineau.com` in `components/AmplifyProvider.tsx`
+so a single sign-in covers all three portals. Host-only cookies left the
+organiser portal permanently signed out in production.
+
 ## Auth (Cognito)
 
 JWT verification in `middleware.ts` via `jose`. Tokens in Cognito-managed cookies. Only Cognito group: `admins`. Authorisation at DB level (Prisma).
@@ -174,6 +208,10 @@ for a deliberate reseed, then set it back). The seed itself also refuses any
 non-local `DATABASE_URL` unless `ALLOW_REMOTE_SEED=true`. A failed migration
 now fails the build rather than falling back to `migrate reset --force`,
 which used to drop the database.
+
+`SEED_DATABASE` is Terraform-managed and pinned to `"false"`, so a console
+flip lasts only until the next `terraform apply` resets it. Do the reseed and
+flip it back in the same sitting.
 
 `ci.yml` runs lint/typecheck/build/test/e2e on PRs (non-blocking). Deploys via `deploy.yml` to Amplify.
 

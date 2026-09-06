@@ -74,7 +74,27 @@ non-local `DATABASE_URL` unless `ALLOW_REMOTE_SEED=true`. A failed migration
 now fails the build rather than falling back to `migrate reset --force`,
 which used to drop the database.
 
+`SEED_DATABASE` is Terraform-managed and pinned to `"false"`, so a console
+flip lasts only until the next `terraform apply` resets it. Do the reseed and
+flip it back in the same sitting.
+
 The `ENV` env var is set per Amplify branch (`prod` → `prod`, `main` → `staging`). PR previews inherit the target branch's `ENV` value. The build spec uses `$ENV` to select the correct Secrets Manager secret.
+
+## Runtime vs build-time variables
+
+The build writes `startline/$ENV/app` into `.env.production`, but the app is
+built with `output: "standalone"` and Amplify ships only `.next`, so that file
+never reaches the running server. Secrets Manager is therefore build-time only:
+`NEXT_PUBLIC_*` works (Next inlines it at build), and anything read at runtime
+must be an Amplify **branch** environment variable set in
+`modules/environment/main.tf`.
+
+Terraform owns the whole branch variable map, so console-added values are
+deleted on the next apply. New runtime secrets belong in the
+`startline/ci-bootstrap` secret: `stripe_secret_key_<env>`,
+`stripe_webhook_secret_<env>`, `resend_api_key`, `resend_from`, `abr_guid`. A
+prod apply fails a precondition rather than silently clearing one that is
+missing.
 
 ## Secrets Management
 
