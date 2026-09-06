@@ -58,7 +58,7 @@ resource "aws_iam_role_policy_attachment" "terraform_ci_admin" {
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
-# ponytail: read-only role for PR workflows — terraform plan and CI checks.
+# Read-only role for PR workflows: terraform plan and CI checks.
 # Uses AWS managed ReadOnlyAccess instead of a custom list to avoid whack-a-mole.
 # Cognito admin is needed for e2e seeding.
 
