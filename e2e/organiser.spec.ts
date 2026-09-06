@@ -47,14 +47,19 @@ test.describe("organiser login", () => {
     await expectOrganiserDashboard(page);
   });
 
-  test("landing page renders without sign-in form", async ({ page }) => {
+  // Owners and managers never reach this page — getOrganiserSession resolves and
+  // the page redirects them to the dashboard. So it renders only for someone the
+  // portal doesn't recognise, and its two exits are sign-up and sign-in. The old
+  // "Go to Dashboard" link was unreachable for the people it was for, and
+  // clicking it bounced off middleware straight back here (issue #302).
+  test("landing page offers sign-up and sign-in to an unrecognised visitor", async ({ page }) => {
     await page.goto("/organiser");
     await page.waitForLoadState("networkidle");
 
     await expect(page.getByRole("heading", { name: /organiser/i })).toBeVisible();
     await expect(page.getByText(/sign up for a free user account/i)).toBeVisible();
     await expect(page.getByRole("link", { name: /get started/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /go to dashboard/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
   });
 });
 

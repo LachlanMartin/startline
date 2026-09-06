@@ -3,7 +3,7 @@ import { requireOrganiser } from "@/lib/organiser-api-auth";
 import prisma from "@/lib/prisma";
 import { shiftIsoDate } from "@/lib/duplicate-event";
 import { idParams } from "@/lib/schemas";
-import { uniqueSlug } from "@/lib/slugs";
+import { withUniqueSlug } from "@/lib/slugs";
 
 /** POST /api/organiser/events/[id]/duplicate — copy listing fields into a new DRAFT (+7 days). */
 export async function POST(
@@ -28,11 +28,12 @@ export async function POST(
     const eventDate = shiftIsoDate(source.eventDate, 7) ?? source.eventDate;
     const endDate = source.endDate ? shiftIsoDate(source.endDate, 7) : null;
 
-    const draft = await prisma.event.create({
+    const draft = await withUniqueSlug(source.title, (slug) =>
+      prisma.event.create({
       data: {
         organiserId: source.organiserId,
         status: "DRAFT",
-        slug: await uniqueSlug(source.title),
+        slug,
         title: source.title,
         discipline: source.discipline,
         description: source.description,
@@ -66,7 +67,8 @@ export async function POST(
         informationPdfs: source.informationPdfs ?? [],
         photos: source.photos ?? [],
       },
-    });
+      }),
+    );
 
     return NextResponse.json({ id: draft.id });
   } catch (err) {

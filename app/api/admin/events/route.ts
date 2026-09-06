@@ -4,7 +4,7 @@ import { getAdminSession } from "@/lib/amplify-server";
 import { getEventCoords } from "@/lib/australia-coords";
 import { writeAuditLog } from "@/lib/audit";
 import { adminEventPayloadSchema, eventPayloadSchema } from "@/lib/schemas";
-import { uniqueSlug } from "@/lib/slugs";
+import { withUniqueSlug } from "@/lib/slugs";
 import { z } from "zod";
 
 const VALID_STATUSES = ["DRAFT", "PENDING", "APPROVED", "REJECTED", "ARCHIVED"] as const;
@@ -122,11 +122,12 @@ export async function POST(req: NextRequest) {
   const eventStatus = submit ? (organiser.verified ? "APPROVED" : "PENDING") : "DRAFT";
 
   try {
-    const event = await prisma.event.create({
+    const event = await withUniqueSlug(body.title ?? "", (slug) =>
+      prisma.event.create({
       data: {
         organiserId:      organiserId,
         status:           eventStatus,
-        slug:             await uniqueSlug(body.title ?? ""),
+        slug,
         title:            body.title ?? "",
         discipline:       body.discipline        ?? "",
         description:      body.description       ?? null,
@@ -159,7 +160,8 @@ export async function POST(req: NextRequest) {
         informationPdfs:  Array.isArray(body.informationPdfs) ? body.informationPdfs : [],
         photos:           Array.isArray(body.photos) ? body.photos : [],
       },
-    });
+      }),
+    );
 
     writeAuditLog({
       adminId: session.sub,

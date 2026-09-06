@@ -164,45 +164,56 @@ const ACTIVE_ORG_COOKIE = "startline_active_org";
 export async function getOrganiserSession(
   cognitoSession?: ServerSession | null,
 ): Promise<OrganiserSession | null> {
-  cognitoSession ??= await getServerSession();
-  if (!cognitoSession) return null;
-
   try {
-    const user = await prisma.user.findUnique({
-      where: { cognitoSub: cognitoSession.sub },
-      include: {
-        memberships: {
-          include: {
-            organiser: {
-              select: { id: true, email: true, status: true, verified: true },
-            },
-          },
-          orderBy: { createdAt: "asc" },
-        },
-      },
-    });
-    if (!user || user.memberships.length === 0) return null;
-
-    const activeId = (await cookies()).get(ACTIVE_ORG_COOKIE)?.value;
-    const picked = pickActiveMembership(
-      user.memberships.map((m) => ({ organiserId: m.organiser.id, role: m.role })),
-      activeId,
-    );
-    const membership =
-      user.memberships.find((m) => m.organiser.id === picked?.organiserId) ??
-      user.memberships[0];
-
-    const organiser = membership.organiser;
-    return {
-      sub:      organiser.id,
-      email:    organiser.email,
-      status:   String(organiser.status),
-      verified: organiser.verified,
-      role:     membership.role,
-    };
+    return await resolveOrganiserSession(cognitoSession);
   } catch {
     return null;
   }
+}
+
+// Same resolution, but a database failure propagates instead of collapsing into
+// the same `null` as "this account manages no organiser". `requireOrganiser`
+// needs the two apart: swallowing them together told every organiser their
+// account wasn't linked to an organiser profile whenever the database was
+// briefly unreachable, which reads exactly like the data loss in issue #302.
+export async function resolveOrganiserSession(
+  cognitoSession?: ServerSession | null,
+): Promise<OrganiserSession | null> {
+  cognitoSession ??= await getServerSession();
+  if (!cognitoSession) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { cognitoSub: cognitoSession.sub },
+    include: {
+      memberships: {
+        include: {
+          organiser: {
+            select: { id: true, email: true, status: true, verified: true },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+  if (!user || user.memberships.length === 0) return null;
+
+  const activeId = (await cookies()).get(ACTIVE_ORG_COOKIE)?.value;
+  const picked = pickActiveMembership(
+    user.memberships.map((m) => ({ organiserId: m.organiser.id, role: m.role })),
+    activeId,
+  );
+  const membership =
+    user.memberships.find((m) => m.organiser.id === picked?.organiserId) ??
+    user.memberships[0];
+
+  const organiser = membership.organiser;
+  return {
+    sub:      organiser.id,
+    email:    organiser.email,
+    status:   String(organiser.status),
+    verified: organiser.verified,
+    role:     membership.role,
+  };
 }
 
 export async function getOrganiserMemberships(): Promise<OrganiserMembership[] | null> {

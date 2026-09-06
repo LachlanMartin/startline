@@ -96,20 +96,26 @@ export async function POST(
       }),
     ]);
 
+    // Awaited, not fired and forgotten: Amplify's compute freezes the container
+    // once the response is returned, so a floating promise is dropped at random
+    // and the organiser never hears that their event was reviewed. Delivery
+    // failures still must not fail the review itself.
     if (action === "approve") {
-      sendEventApprovedEmail(organiserEmail, event.title).catch((err) =>
-        console.error("Failed to send approval email:", err),
-      );
-      notifyOrganiserFollowers({
-        organiserId,
-        eventId: id,
-        eventTitle: event.title,
-        organiserName: event.organiser.orgName,
-        eventDate: event.eventDate || null,
-        city: event.city || null,
-      }).catch((err) => console.error("Follower notify failed:", err));
+      await Promise.all([
+        sendEventApprovedEmail(organiserEmail, event.title).catch((err) =>
+          console.error("Failed to send approval email:", err),
+        ),
+        notifyOrganiserFollowers({
+          organiserId,
+          eventId: id,
+          eventTitle: event.title,
+          organiserName: event.organiser.orgName,
+          eventDate: event.eventDate || null,
+          city: event.city || null,
+        }).catch((err) => console.error("Follower notify failed:", err)),
+      ]);
     } else {
-      sendEventRejectedEmail(organiserEmail, event.title, reason?.trim()).catch((err) =>
+      await sendEventRejectedEmail(organiserEmail, event.title, reason?.trim()).catch((err) =>
         console.error("Failed to send rejection email:", err),
       );
     }

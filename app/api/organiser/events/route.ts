@@ -7,7 +7,7 @@ import { getEventCoords } from "@/lib/australia-coords";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
 import { organiserEventPayloadSchema } from "@/lib/schemas";
 import { rateLimit } from "@/lib/rate-limit";
-import { uniqueSlug } from "@/lib/slugs";
+import { withUniqueSlug } from "@/lib/slugs";
 export async function GET() {
   await archivePastEvents();
   const auth = await requireOrganiser();
@@ -116,11 +116,12 @@ export async function POST(req: NextRequest) {
     : "DRAFT";
 
   try {
-    const event = await prisma.event.create({
+    const event = await withUniqueSlug(body.title ?? "", (slug) =>
+      prisma.event.create({
       data: {
         organiserId,
         status:           eventStatus,
-        slug:             await uniqueSlug(body.title ?? ""),
+        slug,
         title:            body.title ?? "",
         discipline:       body.discipline        ?? "",
         description:      body.description       ?? null,
@@ -153,10 +154,14 @@ export async function POST(req: NextRequest) {
         informationPdfs:  Array.isArray(body.informationPdfs) ? body.informationPdfs : [],
         photos:           Array.isArray(body.photos) ? body.photos : [],
       },
-    });
+      }),
+    );
 
     if (event.status === "APPROVED") {
-      prisma.organiser
+      // Awaited, not fired and forgotten: Amplify's compute freezes the
+      // container once the response is returned, so a floating promise is
+      // dropped at random. A notify failure still must not fail the publish.
+      await prisma.organiser
         .findUnique({ where: { id: event.organiserId }, select: { orgName: true } })
         .then((org) =>
           notifyOrganiserFollowers({

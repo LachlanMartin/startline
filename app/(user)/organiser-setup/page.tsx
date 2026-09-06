@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Check, Building2, ShieldCheck, CreditCard, Users } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
+import { organiserHref } from "@/lib/portal-domains";
 import {
   Skeleton, PageHeaderSkeleton, PageShellSkeleton,
 } from "@/components/ui/skeleton";
@@ -88,7 +89,13 @@ export default function OrganiserSetupPage() {
         throw new Error(data.error ?? "Failed to create organiser profile.");
       }
 
-      router.push("/organiser/dashboard");
+      // In production this page is served from the athlete site and the
+      // dashboard lives on the organiser subdomain, where a relative push lands
+      // on the waitlist instead (issue #302). Elsewhere the two share a host and
+      // the href stays relative, so client-side navigation still applies.
+      const dashboard = organiserHref("/organiser/dashboard", window.location.host);
+      if (dashboard.startsWith("http")) window.location.assign(dashboard);
+      else router.push(dashboard);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
