@@ -22,3 +22,36 @@ export function uploadSizeError(type: string, size: number): string | null {
   if (!limit) return null;
   return size > limit.bytes ? limit.label : null;
 }
+
+// The MIME allowlist per upload type, and the extension each MIME maps to.
+// Shared by /api/upload (which reads the bytes itself) and /api/upload/presign
+// (which signs a direct-to-S3 POST). Keeping one copy matters: the presign
+// route pins Content-Type as a signature condition, so a divergence here would
+// let S3 reject an upload the route had already approved.
+export const TYPE_MIMES: Record<UploadType, string[]> = {
+  logo:     ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  cover:    ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  photo:    ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  avatar:   ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  video:    ["video/mp4", "video/webm", "video/quicktime", "video/avi", "video/ogg"],
+  document: ["application/pdf"],
+};
+
+export const MIME_EXT: Record<string, string> = {
+  "image/jpeg":      "jpg",
+  "image/png":       "png",
+  "image/webp":      "webp",
+  "image/gif":       "gif",
+  "video/mp4":       "mp4",
+  "video/webm":      "webm",
+  "video/quicktime": "mov",
+  "video/avi":       "avi",
+  "video/ogg":       "ogv",
+  "application/pdf": "pdf",
+};
+
+export const UPLOAD_TYPES = Object.keys(TYPE_MIMES) as UploadType[];
+
+export function isUploadType(value: unknown): value is UploadType {
+  return typeof value === "string" && value in TYPE_MIMES;
+}

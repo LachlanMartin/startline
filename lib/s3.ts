@@ -23,3 +23,11 @@ export const S3_PUBLIC_BASE_URL =
 // provider chain picks up the whole set, and falls back to the shared AWS config
 // on a laptop.
 export const s3 = new S3Client({ region: S3_REGION });
+
+// The bucket is the switch, not the presence of AWS keys: Amplify's compute role
+// exports keys into the runtime whether or not uploads are configured, and the
+// old gate read that as "S3 is ready". Local disk still serves a laptop and the
+// Docker image, which keep public/uploads writable.
+export const UPLOADS_USE_S3 =
+  !!S3_BUCKET &&
+  (process.env.NODE_ENV === "production" || process.env.UPLOAD_TO_S3 === "true");

@@ -5,16 +5,15 @@ import { join } from "path";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getOrganiserSession, getAdminSession, getUserSession } from "@/lib/amplify-server";
 import { matchesMagicBytes } from "@/lib/upload-magic-bytes";
-import { uploadSizeError } from "@/lib/upload-limits";
-import { s3, S3_BUCKET, S3_PUBLIC_BASE_URL } from "@/lib/s3";
+import { uploadSizeError, TYPE_MIMES, MIME_EXT, isUploadType } from "@/lib/upload-limits";
+import { s3, S3_BUCKET, S3_PUBLIC_BASE_URL, UPLOADS_USE_S3 } from "@/lib/s3";
 
-// The bucket is the switch, not the presence of AWS keys: Amplify's compute role
-// exports keys into the runtime whether or not uploads are configured, and the
-// old gate read that as "S3 is ready". Local disk still serves a laptop and the
-// Docker image, which keep public/uploads writable.
-const useS3 =
-  !!S3_BUCKET &&
-  (process.env.NODE_ENV === "production" || process.env.UPLOAD_TO_S3 === "true");
+// Large files no longer come through here at all: the browser signs a direct
+// POST to S3 via /api/upload/presign, because Amplify's WEB_COMPUTE runtime
+// rejects a multipart body over about 4.5 MB before this route is reached.
+// This path stays for local dev and the Docker image, where there is no bucket
+// and public/uploads is writable.
+const useS3 = UPLOADS_USE_S3;
 
 if (!useS3 && process.env.NODE_ENV === "production") {
   console.warn(
@@ -48,19 +47,10 @@ export async function POST(req: NextRequest) {
   const type = formData.get("type") as string;
 
   if (!file) return NextResponse.json({ error: "No file provided." }, { status: 400 });
-  if (!["logo", "cover", "photo", "video", "avatar", "document"].includes(type)) {
+  if (!isUploadType(type)) {
     return NextResponse.json({ error: "Invalid upload type." }, { status: 400 });
   }
-
-  const TYPE_MIMES: Record<string, string[]> = {
-    logo: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-    cover: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-    photo: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-    avatar: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-    video: ["video/mp4", "video/webm", "video/quicktime", "video/avi", "video/ogg"],
-    document: ["application/pdf"],
-  };
-  if (!TYPE_MIMES[type]?.includes(file.type)) {
+  if (!TYPE_MIMES[type].includes(file.type)) {
     return NextResponse.json({ error: "File type not allowed for this upload." }, { status: 400 });
   }
 
@@ -72,19 +62,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: sizeError }, { status: 400 });
   }
 
-  const mimeExt: Record<string, string> = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "image/gif": "gif",
-    "video/mp4": "mp4",
-    "video/webm": "webm",
-    "video/quicktime": "mov",
-    "video/avi": "avi",
-    "video/ogg": "ogv",
-    "application/pdf": "pdf",
-  };
-  const ext = mimeExt[file.type] ?? "bin";
+  const ext = MIME_EXT[file.type] ?? "bin";
   const filename = `${randomUUID()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 

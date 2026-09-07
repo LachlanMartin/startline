@@ -20,12 +20,14 @@
     "stripe:validate": "node scripts/validate-stripe-connect.mjs",
     "stripe:lifecycle": "node scripts/validate-stripe-lifecycle.mjs",
     "test:registration": "node scripts/test-registration-payment.mjs",
+    "upload:probe": "node scripts/probe-upload-ceiling.mjs",
     "staging:db:start": "aws rds start-db-instance --db-instance-identifier startline-staging-postgres"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1073.0",
     "@aws-sdk/client-geo-places": "^3.1079.0",
-    "@aws-sdk/client-s3": "^3.1041.0",
+    "@aws-sdk/client-s3": "^3.1127.0",
+    "@aws-sdk/s3-presigned-post": "^3.1127.0",
     "@capacitor/browser": "^8.0.4",
     "@capacitor/core": "^8.4.2",
     "@prisma/adapter-pg": "^7.9.1",

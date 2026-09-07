@@ -40,7 +40,11 @@ const nextConfig: NextConfig = {
             value: [
               "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
               `script-src ${scriptSrc}`,
-              "connect-src 'self' https://js.stripe.com https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com https://cognito-idp.ap-southeast-2.amazonaws.com capacitor:// http://localhost",
+              // The S3 origin is required: uploads POST straight to a presigned
+              // bucket URL rather than through /api/upload, because Amplify's
+              // compute runtime rejects a multipart body over roughly 4.4 MB.
+              // Without it the browser blocks the upload with no server-side trace.
+              "connect-src 'self' https://js.stripe.com https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com https://cognito-idp.ap-southeast-2.amazonaws.com https://*.s3.ap-southeast-2.amazonaws.com https://*.s3.amazonaws.com capacitor:// http://localhost",
               "img-src 'self' data: blob: https://*.tiles.mapbox.com https://api.mapbox.com https:",
               "worker-src blob: 'self'",
               "style-src 'self' 'unsafe-inline' https://api.mapbox.com",
