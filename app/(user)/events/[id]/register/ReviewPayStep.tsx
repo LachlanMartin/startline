@@ -19,20 +19,47 @@ export interface ReviewRow {
 }
 
 interface ReviewPayStepProps {
+  /** Empty on a free order, which has no PaymentIntent behind it. */
   clientSecret: string;
   eventId: string;
+  /**
+   * A free order: nothing is charged, so no card is collected and confirming
+   * writes the registration straight away via onFreeSubmit.
+   */
+  free: boolean;
   reviewRows: ReviewRow[];
-  confirmAmountLabel: string;
+  /** Whole button text, e.g. "Confirm & pay $54.45" or "Confirm registration". */
+  confirmLabel: string;
   /** This event's actual refund policy, so terms are concrete rather than boilerplate. */
   refundLines: string[];
   /** What cancelling right now would return, e.g. "Cancel today and you get A$134.55 back." */
   refundHeadline: string;
   onBack: () => void;
-  onConfirmed: (paymentIntentId: string) => void;
+  onConfirmed: (reference: string) => void;
+  /** Commits a free registration. Resolves to the reference, or null on failure. */
+  onFreeSubmit?: () => Promise<string | null>;
   onError: (msg: string) => void;
 }
 
 export default function ReviewPayStep(props: ReviewPayStepProps) {
+  // A free order never touches Stripe, so it renders outside Elements and does
+  // not care whether Stripe is configured at all.
+  if (props.free) {
+    return (
+      <ReviewForm
+        {...props}
+        ready
+        submit={async () => {
+          if (!props.onFreeSubmit) return false;
+          const reference = await props.onFreeSubmit();
+          if (!reference) return false;
+          props.onConfirmed(reference);
+          return true;
+        }}
+      />
+    );
+  }
+
   const stripe = getStripe();
 
   if (!stripe || !props.clientSecret) {
@@ -62,59 +89,74 @@ export default function ReviewPayStep(props: ReviewPayStepProps) {
 
   return (
     <Elements stripe={stripe} options={options}>
-      <ReviewPayForm {...props} />
+      <StripeReviewForm {...props} />
     </Elements>
   );
 }
 
-function ReviewPayForm({
-  clientSecret,
-  eventId,
-  reviewRows,
-  confirmAmountLabel,
-  refundLines,
-  refundHeadline,
-  onBack,
-  onConfirmed,
-  onError,
-}: ReviewPayStepProps) {
+function StripeReviewForm(props: ReviewPayStepProps) {
   const stripe = useStripe();
   const elements = useElements();
-  const [terms, setTerms] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
-  const handleConfirm = async () => {
-    if (!stripe || !elements || !terms) return;
-    setSubmitting(true);
-    onError("");
+  const submit = async (): Promise<boolean> => {
+    if (!stripe || !elements) return false;
 
     const { error: submitError } = await elements.submit();
     if (submitError) {
-      onError(submitError.message ?? "Payment failed.");
-      setSubmitting(false);
-      return;
+      props.onError(submitError.message ?? "Payment failed.");
+      return false;
     }
 
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
-      clientSecret,
+      clientSecret: props.clientSecret,
       confirmParams: {
-        return_url: `${window.location.origin}/events/${eventId}/register/confirmation`,
+        return_url: `${window.location.origin}/events/${props.eventId}/register/confirmation`,
       },
       redirect: "if_required",
     });
 
     if (error) {
-      onError(error.message ?? "Payment failed.");
-      setSubmitting(false);
-      return;
+      props.onError(error.message ?? "Payment failed.");
+      return false;
     }
     if (paymentIntent && (paymentIntent.status === "succeeded" || paymentIntent.status === "processing")) {
-      onConfirmed(paymentIntent.id);
-      return;
+      props.onConfirmed(paymentIntent.id);
+      return true;
     }
-    setSubmitting(false);
+    return false;
+  };
+
+  return <ReviewForm {...props} ready={!!stripe} submit={submit} />;
+}
+
+/**
+ * The review card itself. Shared by both paths: the only difference is whether
+ * a card is collected, and what confirming does.
+ */
+function ReviewForm({
+  free,
+  ready,
+  submit,
+  reviewRows,
+  confirmLabel,
+  refundLines,
+  refundHeadline,
+  onBack,
+  onError,
+}: ReviewPayStepProps & { ready: boolean; submit: () => Promise<boolean> }) {
+  const [terms, setTerms] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleConfirm = async () => {
+    if (!ready || !terms || submitting) return;
+    setSubmitting(true);
+    onError("");
+    // A truthy result means the confirmation screen is taking over, so the
+    // button stays in its submitting state rather than flicking back.
+    const done = await submit();
+    if (!done) setSubmitting(false);
   };
 
   return (
@@ -136,12 +178,19 @@ function ReviewPayForm({
           ))}
         </div>
 
-        {/* Payment */}
+        {/* Payment. A free event collects no card and says so, so the step does
+            not look broken where the card field would be. */}
         <div className="bg-dark-light border border-dark-lighter rounded-[12px] p-5 mb-5">
           <div className="font-headline text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-4">
-            Payment
+            {free ? "Payment not required" : "Payment"}
           </div>
-          <PaymentElement />
+          {free ? (
+            <p className="text-[12.5px] text-muted leading-relaxed">
+              This event is free. There is nothing to pay, so no card details are needed.
+            </p>
+          ) : (
+            <PaymentElement />
+          )}
         </div>
 
         {/* What cancelling would return, stated before they pay rather than buried in
@@ -203,7 +252,7 @@ function ReviewPayForm({
                   {refundLines.map((line, i) => <p key={i}>{line}</p>)}
                 </div>
               )}
-              <p>Ensure the details you have provided are accurate before paying.</p>
+              <p>Ensure the details you have provided are accurate before {free ? "registering" : "paying"}.</p>
             </div>
           </div>
         )}
@@ -222,13 +271,16 @@ function ReviewPayForm({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={!terms || !stripe || submitting}
+            disabled={!terms || !ready || submitting}
             className="inline-flex items-center gap-2 h-11 px-[22px] rounded-xl bg-machined text-dark font-headline text-[12px] font-bold uppercase tracking-[0.13em] shadow-machined hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-all disabled:opacity-40 disabled:pointer-events-none"
           >
             {submitting ? (
-              <><span className="w-4 h-4 border-2 border-dark/40 border-t-dark rounded-full animate-spin" /> Processing…</>
+              <><span className="w-4 h-4 border-2 border-dark/40 border-t-dark rounded-full animate-spin" /> {free ? "Registering…" : "Processing…"}</>
             ) : (
-              <><CreditCard className="w-3.5 h-3.5" /> Confirm &amp; pay {confirmAmountLabel}</>
+              <>
+                {free ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <CreditCard className="w-3.5 h-3.5" />}
+                {confirmLabel}
+              </>
             )}
           </button>
         </div>

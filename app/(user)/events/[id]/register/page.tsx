@@ -109,6 +109,8 @@ function formatEventDate(dateStr: string, timeStr?: string): string {
   }
 }
 const money = (n: number) => `$${n.toFixed(2)}`;
+/** "$0.00" reads like a mistake on a free ticket, so say what it means. */
+const priceLabel = (n: number) => (n > 0 ? money(n) : "Free");
 
 /**
  * Keep already-entered details attached to the right ticket when the buyer
@@ -193,7 +195,7 @@ function RegisterContent() {
 
   const [clientSecret, setClientSecret] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [confirmed, setConfirmed] = useState<{ ref: string; email: string; tierSummary: string; count: number; amount: string } | null>(null);
+  const [confirmed, setConfirmed] = useState<{ ref: string; email: string; tierSummary: string; count: number; amount: string; free: boolean } | null>(null);
 
   const prefilledRef = useRef(false);
 
@@ -313,11 +315,17 @@ function RegisterContent() {
   const eventSoldOut = eventRemaining <= 0;
 
   const athletePaysFee = event?.feeStructure === "athlete";
+  // The service fee is a share of a sale, so a free tier carries none of it —
+  // mirrors calculatePlatformFee on the server (issue #308).
   const feeTotal = athletePaysFee
-    ? tierLines.reduce((sum, t) => sum + (t.price * PLATFORM_FEE_PCT + PLATFORM_FEE_FIXED) * t.qty, 0)
+    ? tierLines.reduce((sum, t) => sum + (t.price > 0 ? (t.price * PLATFORM_FEE_PCT + PLATFORM_FEE_FIXED) * t.qty : 0), 0)
     : 0;
   const subtotal = tierLines.reduce((sum, t) => sum + t.price * t.qty, 0);
   const total = subtotal + feeTotal;
+  // A free order: tickets chosen, nothing to pay. It skips Stripe entirely and
+  // is written by /api/registrations/free when the athlete confirms.
+  const freeOrder = totalTickets > 0 && total === 0;
+  const totalLabel = priceLabel(total);
   const tierSummary = tierLines.map((t) => (t.qty > 1 ? `${t.qty} × ${t.label}` : t.label)).join(", ");
 
   // Refund position at the moment of paying, in dollars rather than in principle.
@@ -420,6 +428,18 @@ function RegisterContent() {
     setEmergencyContactErrors({});
   };
 
+  // The order as both the paid and the free endpoint want it.
+  const orderPayload = useCallback(
+    () => ({
+      eventId,
+      waveLabel: ticketWaves[0],
+      turnstileToken: turnstileToken ?? undefined,
+      participants: participants.map((p, i) => ({ ...p, waveLabel: ticketWaves[i] })),
+      ...(sharedContactActive && { groupRegistration: true, emergencyContact: sharedEmergencyContact }),
+    }),
+    [eventId, ticketWaves, participants, sharedContactActive, sharedEmergencyContact, turnstileToken]
+  );
+
   // ── Checkout (create PaymentIntent) ──
   const startCheckout = useCallback(async () => {
     setError("");
@@ -428,13 +448,7 @@ function RegisterContent() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId,
-          waveLabel: ticketWaves[0],
-          turnstileToken: turnstileToken ?? undefined,
-          participants: participants.map((p, i) => ({ ...p, waveLabel: ticketWaves[i] })),
-          ...(sharedContactActive && { groupRegistration: true, emergencyContact: sharedEmergencyContact }),
-        }),
+        body: JSON.stringify(orderPayload()),
       });
       const data = (await res.json()) as { clientSecret?: string; error?: string };
       if (!res.ok || !data.clientSecret) {
@@ -447,7 +461,30 @@ function RegisterContent() {
       setError("Something went wrong. Please try again.");
     }
     setProcessing(false);
-  }, [eventId, ticketWaves, participants, sharedContactActive, sharedEmergencyContact, turnstileToken]);
+  }, [orderPayload]);
+
+  // ── Free registration (no PaymentIntent, written on confirm) ──
+  // Returns the new registration id to build a reference from, or null when the
+  // attempt failed and the error banner explains why.
+  const submitFreeRegistration = useCallback(async (): Promise<string | null> => {
+    setError("");
+    try {
+      const res = await fetch("/api/registrations/free", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderPayload()),
+      });
+      const data = (await res.json()) as { registrationIds?: string[]; error?: string };
+      if (!res.ok || !data.registrationIds?.length) {
+        setError(data.error ?? "Failed to complete registration.");
+        return null;
+      }
+      return data.registrationIds[0];
+    } catch {
+      setError("Something went wrong. Please try again.");
+      return null;
+    }
+  }, [orderPayload]);
 
   // ── Step navigation ──
   const goToTicket = () => {
@@ -497,7 +534,9 @@ function RegisterContent() {
       setPayPhase("verify");
     } else {
       setPayPhase("pay");
-      startCheckout();
+      // A free order has no PaymentIntent to prepare — the review step renders
+      // straight away and the registration is written when they confirm.
+      if (!freeOrder) startCheckout();
     }
   };
   const goToNextTicket = (index: number) => {
@@ -516,12 +555,21 @@ function RegisterContent() {
   };
   const onVerified = () => {
     setPayPhase("pay");
-    startCheckout();
+    if (!freeOrder) startCheckout();
   };
 
-  const onConfirmed = (paymentIntentId: string) => {
-    const ref = "SL-" + paymentIntentId.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase();
-    setConfirmed({ ref, email: participants[0].email, tierSummary, count: participants.length, amount: money(total) });
+  // `reference` is the PaymentIntent id on a paid order, the first registration
+  // id on a free one. Either way it is only ever shown back to the athlete.
+  const onConfirmed = (reference: string) => {
+    const ref = "SL-" + reference.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase();
+    setConfirmed({
+      ref,
+      email: participants[0].email,
+      tierSummary,
+      count: participants.length,
+      amount: totalLabel,
+      free: freeOrder,
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -529,7 +577,7 @@ function RegisterContent() {
   const reviewRows: ReviewRow[] = useMemo(() => {
     const rows: ReviewRow[] = tierLines.map((t) => ({
       label: t.qty > 1 ? `${t.qty} × ${t.label}` : t.label,
-      value: money(t.price * t.qty),
+      value: priceLabel(t.price * t.qty),
     }));
     if (participants.length === 1) {
       const p = participants[0];
@@ -613,7 +661,7 @@ function RegisterContent() {
               ["Tickets", confirmed.tierSummary],
               ["Date", dateLabel],
               ["Venue", locationLabel],
-              ["Amount paid", confirmed.amount],
+              [confirmed.free ? "Cost" : "Amount paid", confirmed.amount],
             ].map(([l, v], i) => (
               <div key={l} className={cn("flex justify-between items-baseline gap-4 py-[11px]", i < 5 && "border-b border-white/[0.06]")}>
                 <span className="text-[13px] text-muted shrink-0">{l}</span>
@@ -756,7 +804,7 @@ function RegisterContent() {
                             </div>
                           )}
                           <div className={cn("justify-self-end font-headline text-[24px] font-bold italic tracking-[-0.02em]", disabled ? "text-muted-dark" : "text-primary")}>
-                            {money(parseFloat(wave.price || "0"))}
+                            {priceLabel(parseFloat(wave.price || "0"))}
                           </div>
                         </div>
                       );
@@ -948,7 +996,28 @@ function RegisterContent() {
               />
             )}
 
-            {step === 2 && payPhase === "pay" && (
+            {/* A free order goes straight to review: there is no PaymentIntent
+                to wait on, and confirming writes the registration. */}
+            {step === 2 && payPhase === "pay" && freeOrder && (
+              <ReviewPayStep
+                free
+                clientSecret=""
+                eventId={eventId}
+                reviewRows={reviewRows}
+                confirmLabel="Confirm registration"
+                refundLines={refundLines}
+                refundHeadline={refundHeadline}
+                onBack={() => {
+                  setError("");
+                  setStep(1);
+                }}
+                onConfirmed={onConfirmed}
+                onFreeSubmit={submitFreeRegistration}
+                onError={setError}
+              />
+            )}
+
+            {step === 2 && payPhase === "pay" && !freeOrder && (
               !clientSecret ? (
                 error && !processing ? (
                   // Checkout could not start (e.g. the event sold out mid-session).
@@ -980,10 +1049,11 @@ function RegisterContent() {
                 )
               ) : (
                 <ReviewPayStep
+                  free={false}
                   clientSecret={clientSecret}
                   eventId={eventId}
                   reviewRows={reviewRows}
-                  confirmAmountLabel={money(total)}
+                  confirmLabel={`Confirm & pay ${money(total)}`}
                   refundLines={refundLines}
                   refundHeadline={refundHeadline}
                   onBack={() => {
@@ -1006,10 +1076,10 @@ function RegisterContent() {
             coverImageUrl={event.coverImageUrl}
             lines={tierLines.map((t) => ({
               label: t.qty > 1 ? `${t.qty} × ${t.label}` : t.label,
-              value: money(t.price * t.qty),
+              value: priceLabel(t.price * t.qty),
             }))}
-            feeLine={totalTickets > 0 && athletePaysFee ? { label: "Service fee", value: money(feeTotal) } : null}
-            totalLabel={totalTickets > 0 ? money(total) : null}
+            feeLine={totalTickets > 0 && athletePaysFee && feeTotal > 0 ? { label: "Service fee", value: money(feeTotal) } : null}
+            totalLabel={totalTickets > 0 ? totalLabel : null}
           />
         </div>
       </div>

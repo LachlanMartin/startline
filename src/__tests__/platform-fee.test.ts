@@ -7,8 +7,15 @@ import {
 } from "@/lib/platform-fee";
 
 describe("calculatePlatformFee", () => {
-  it("charges the fixed fee even for a zero-amount ticket", () => {
-    expect(calculatePlatformFee(0)).toBe(PLATFORM_FEE_FIXED_CENTS);
+  // The fee is a share of a sale, not a subscription: charging the fixed
+  // component on a free ticket would bill the athlete A$1.45 to enter a free
+  // event, or hand Stripe a fee bigger than the charge (issue #308).
+  it("charges nothing on a free ticket", () => {
+    expect(calculatePlatformFee(0)).toBe(0);
+  });
+
+  it("charges nothing on a nonsensical negative amount", () => {
+    expect(calculatePlatformFee(-500)).toBe(0);
   });
 
   it("applies the percentage plus the fixed fee", () => {
@@ -49,5 +56,12 @@ describe("calculateTotalWithFee — organiser pays", () => {
     const { totalCents, platformFeeCents } = calculateTotalWithFee(10000, "organiser");
     expect(platformFeeCents).toBe(540);
     expect(totalCents).toBe(10000);
+  });
+});
+
+describe("calculateTotalWithFee — free ticket", () => {
+  it("costs nothing under either fee structure", () => {
+    expect(calculateTotalWithFee(0, "athlete")).toEqual({ totalCents: 0, platformFeeCents: 0 });
+    expect(calculateTotalWithFee(0, "organiser")).toEqual({ totalCents: 0, platformFeeCents: 0 });
   });
 });
