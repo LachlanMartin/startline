@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { MapPin, Calendar, ExternalLink, Trophy, Clock, Ticket, FileText } from "lucide-react";
 import BackToEventsLink from "@/components/event/BackToEventsLink";
 import { getAllEvents, getPublicEventById } from "@/lib/events";
-import { todayIso } from "@/lib/event-types";
+import { isFreeEvent, todayIso } from "@/lib/event-types";
 import { parsePrizePool } from "@/lib/prize-pool";
 import { describeTiers, parseTiers, REFUND_PROCESS_COPY } from "@/lib/refund-policy";
 import { sanitizeHtml } from "@/lib/sanitize-html";
@@ -368,6 +368,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               </div>
             )}
 
+            {/* A free event takes no money, so there is no policy to publish. */}
+            {!isFreeEvent(event.ticketDrops) && (
             <div className="bg-dark rounded-xl p-5 sm:p-6">
               <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-muted mb-2">Refund &amp; Transfer Policy</h3>
               <ul className="space-y-1">
@@ -380,6 +382,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               )}
               <p className="text-[13px] text-muted-dark leading-relaxed mt-3">{REFUND_PROCESS_COPY}</p>
             </div>
+            )}
 
           </div>
         </div>

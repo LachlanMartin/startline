@@ -109,13 +109,18 @@ export async function POST(
       data: memberIds.map((m) => ({
         userId: m.userId,
         type: "ORGANISER_REFUND_REQUEST" as const,
-        title: "Refund requested",
+        // A free entry has no money attached, so it is a cancellation rather than
+        // a refund and is described as one (issue #304).
+        title: paidCents === 0 ? "Entry cancelled" : "Refund requested",
         body:
-          `${registration.athleteName} asked for a refund on ${registration.event.title}. ` +
-          `They have left wave assignment and freed their spot. ` +
-          (percent === 0
-            ? "Your policy does not cover a refund at this date, so this is a discretionary request."
-            : `Your policy covers ${percent}% of what they paid.`),
+          paidCents === 0
+            ? `${registration.athleteName} cancelled their free entry to ${registration.event.title}. ` +
+              `They have left wave assignment and freed their spot. There is nothing to refund.`
+            : `${registration.athleteName} asked for a refund on ${registration.event.title}. ` +
+              `They have left wave assignment and freed their spot. ` +
+              (percent === 0
+                ? "Your policy does not cover a refund at this date, so this is a discretionary request."
+                : `Your policy covers ${percent}% of what they paid.`),
         eventId: registration.event.id,
       })),
     });

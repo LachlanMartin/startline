@@ -8,6 +8,7 @@ import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
 import { organiserEventPayloadSchema } from "@/lib/schemas";
 import { rateLimit } from "@/lib/rate-limit";
 import { withUniqueSlug } from "@/lib/slugs";
+import { hasAbn, ABN_REQUIRED_MESSAGE } from "@/lib/abn";
 export async function GET() {
   await archivePastEvents();
   const auth = await requireOrganiser();
@@ -96,23 +97,27 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // A missing ABN no longer blocks the organiser from finishing their event.
+  // It used to reject the whole submission at the last step, after five steps
+  // and an image upload, which read as losing the work. It now costs the event
+  // its auto-approval instead: the listing saves, and an admin has to add the
+  // missing detail before it can go live.
   const registrationType = body.registrationType ?? "startline";
-  if (registrationType === "startline") {
+  const needsAbn = registrationType === "startline";
+  let abnOk = true;
+  if (needsAbn) {
     const org = await prisma.organiser.findUnique({
       where: { id: organiserId },
       select: { abn: true },
     });
-    const abnDigits = org?.abn?.replace(/\D/g, "") ?? "";
-    if (abnDigits.length < 9) {
-      return NextResponse.json(
-        { error: "An ABN is required to host paid events on Startline. Add your ABN in Payments or onboarding, or use external registration." },
-        { status: 400 },
-      );
-    }
+    abnOk = hasAbn(org?.abn);
   }
 
+  // Verified organisers normally skip review. Not without an ABN: auto-approving
+  // would put a paid listing live with no ABN attached, which is the outcome the
+  // requirement exists to prevent, and the admin would never see it.
   const eventStatus = submit
-    ? (verified ? "APPROVED" : "PENDING")
+    ? (verified && abnOk ? "APPROVED" : "PENDING")
     : "DRAFT";
 
   try {
@@ -176,7 +181,13 @@ export async function POST(req: NextRequest) {
         .catch((err) => console.error("Follower notify failed:", err));
     }
 
-    return NextResponse.json({ id: event.id, status: event.status });
+    // The organiser finds out here, once the work is saved, rather than being
+    // turned away at the last step with nothing kept.
+    return NextResponse.json({
+      id:     event.id,
+      status: event.status,
+      ...(submit && !abnOk ? { abnRequired: true, notice: ABN_REQUIRED_MESSAGE } : {}),
+    });
   } catch (err) {
     console.error("Event create error:", err);
     return NextResponse.json({ error: "Failed to save event." }, { status: 500 });

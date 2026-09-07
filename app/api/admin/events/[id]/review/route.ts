@@ -5,6 +5,7 @@ import { sendEventApprovedEmail, sendEventRejectedEmail } from "@/lib/email";
 import { writeAuditLog } from "@/lib/audit";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
 import { idParams } from "@/lib/schemas";
+import { hasAbn } from "@/lib/abn";
 import { z } from "zod";
 
 const reviewActionSchema = z.object({
@@ -41,7 +42,7 @@ export async function POST(
       select: {
         id: true, title: true, status: true, registrationType: true,
         eventDate: true, city: true,
-        organiser: { select: { id: true, email: true, orgName: true, stripeOnboardingComplete: true } },
+        organiser: { select: { id: true, email: true, orgName: true, stripeOnboardingComplete: true, abn: true } },
       },
     });
 
@@ -52,6 +53,18 @@ export async function POST(
         { error: "Only PENDING events can be reviewed." },
         { status: 409 },
       );
+    }
+
+    // The organiser is no longer blocked from submitting without an ABN, so the
+    // requirement has to hold here instead: a marketplace listing cannot go live
+    // until the organiser's profile carries one.
+    if (action === "approve" && event.registrationType === "startline") {
+      if (!hasAbn(event.organiser.abn)) {
+        return NextResponse.json(
+          { error: "This organiser has no ABN on file. Marketplace events cannot be approved until their profile is complete.", code: "ABN_MISSING" },
+          { status: 422 },
+        );
+      }
     }
 
     // Per ToS §3.4 — marketplace listings cannot go live until Stripe onboarding is complete

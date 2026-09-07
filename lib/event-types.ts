@@ -82,6 +82,19 @@ export function waveIsOpen(wave: PublicWave, today = todayIso()): boolean {
 }
 
 /**
+ * A free event: it has ticket categories and every one of them costs nothing.
+ *
+ * Nothing is ever paid, so there is nothing to refund — the organiser is not
+ * asked for a refund policy and the athlete is not shown one (issue #304). A
+ * category with a blank or unparseable price is not free, so a half-filled draft
+ * never reads as one.
+ */
+export function isFreeEvent(waves: unknown): boolean {
+  if (!Array.isArray(waves) || waves.length === 0) return false;
+  return (waves as PublicWave[]).every((w) => parseFloat(w?.price ?? "") === 0);
+}
+
+/**
  * Lowest advertised price. Only tiers still on sale are considered, so cards
  * and the sticky bar never advertise a closed early-bird price; if every tier
  * has closed, falls back to all tiers so the event still shows a price.
