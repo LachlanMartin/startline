@@ -6,11 +6,12 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   MapPin, Calendar, Check, X, RefreshCw, ChevronDown, ChevronUp,
-  Pin, PinOff, Trash2, CheckSquare, Square, Plus, Pencil,
+  Pin, PinOff, Trash2, CheckSquare, Square, Plus, Pencil, AlertTriangle,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TableSkeleton } from "@/components/ui/skeleton";
+import { hasAbn } from "@/lib/abn";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,26 @@ interface AdminEventRow {
   coverImageUrl: string | null;
   rejectionReason: string | null;
   reviewedAt: string | null;
-  organiser: { id: string; orgName: string | null; contactName: string | null; email: string };
+  registrationType: string | null;
+  organiser: {
+    id: string;
+    orgName: string | null;
+    contactName: string | null;
+    email: string;
+    abn: string | null;
+    stripeOnboardingComplete: boolean;
+  };
+}
+
+// Why a marketplace listing cannot be approved yet, or null when it can. The
+// organiser is allowed to submit with these missing, so the review queue is
+// where the gap has to be visible: without this an admin only finds out by
+// clicking approve and reading a 422.
+function approvalBlocker(event: AdminEventRow): string | null {
+  if (event.registrationType !== "startline") return null;
+  if (!hasAbn(event.organiser.abn)) return "No ABN on file";
+  if (!event.organiser.stripeOnboardingComplete) return "Stripe onboarding incomplete";
+  return null;
 }
 
 const TABS: { status: EventStatus; label: string }[] = [
@@ -126,6 +146,7 @@ function EventRow({
 }) {
   const [approving,    setApproving]    = useState(false);
   const [approveError, setApproveError] = useState("");
+  const blocker = approvalBlocker(event);
   const [rejectOpen,   setRejectOpen]   = useState(false);
   const [rejecting,    setRejecting]    = useState(false);
   const [pinning,      setPinning]      = useState(false);
@@ -267,7 +288,8 @@ function EventRow({
             <>
               <button
                 onClick={handleApprove}
-                disabled={approving || rejecting}
+                disabled={approving || rejecting || blocker !== null}
+                title={blocker ? `Cannot approve: ${blocker}.` : undefined}
                 className="flex items-center gap-1.5 font-headline text-[12px] font-bold uppercase tracking-widest bg-primary text-dark px-3 py-2 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {approving
@@ -346,6 +368,20 @@ function EventRow({
         </div>
       </div>
 
+      {/* Organiser profile incomplete — the reason approve is unavailable */}
+      {event.status === "PENDING" && blocker && (
+        <div className="px-5 pb-4 pl-12">
+          <div className="flex items-start gap-3 bg-amber-400/[0.08] border border-amber-400/20 rounded-lg px-4 py-3">
+            <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+            <div className="text-[13px] text-amber-200">
+              <span className="font-bold">Organiser profile incomplete: {blocker}.</span>{" "}
+              This event cannot be approved until{" "}
+              {event.organiser.orgName || event.organiser.email} completes their profile.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Approve error */}
       {approveError && (
         <div className="px-5 pb-4 pl-12">
@@ -414,11 +450,13 @@ function BulkActionBar({
   const [rejectOpen,    setRejectOpen]    = useState(false);
   const [bulkReason,    setBulkReason]    = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [skipped,       setSkipped]       = useState<{ id: string; title: string; reason: string }[]>([]);
 
   const ids = Array.from(selectedIds);
 
   const run = async (action: string, reason?: string) => {
     setLoading(true);
+    setSkipped([]);
     try {
       const res = await fetch("/api/admin/events/bulk", {
         method:  "POST",
@@ -426,8 +464,16 @@ function BulkActionBar({
         body:    JSON.stringify({ ids, action, reason }),
       });
       if (res.ok) {
-        onBulkDone(ids, action);
-        onClearSelection();
+        const data = await res.json().catch(() => ({})) as {
+          blocked?: { id: string; title: string; reason: string }[];
+        };
+        const blocked = data.blocked ?? [];
+        // Only clear what actually changed. Reporting every id as done would
+        // drop events off the queue that are still sitting in PENDING.
+        const blockedIds = new Set(blocked.map((e) => e.id));
+        onBulkDone(ids.filter((id) => !blockedIds.has(id)), action);
+        setSkipped(blocked);
+        if (blocked.length === 0) onClearSelection();
         setRejectOpen(false);
         setConfirmDelete(false);
         setBulkReason("");
@@ -442,6 +488,18 @@ function BulkActionBar({
       <span className="font-headline text-[12px] font-bold uppercase tracking-widest text-muted">
         {ids.length} selected
       </span>
+
+      {skipped.length > 0 && (
+        <div className="w-full flex items-start gap-2 bg-amber-400/[0.08] border border-amber-400/20 rounded-lg px-3 py-2 order-last">
+          <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+          <div className="text-[13px] text-amber-200">
+            <span className="font-bold">
+              {skipped.length} event{skipped.length === 1 ? "" : "s"} not approved.
+            </span>{" "}
+            {skipped.map((e) => `${e.title} (${e.reason})`).join("; ")}
+          </div>
+        </div>
+      )}
 
       {activeTab === "PENDING" && !rejectOpen && !confirmDelete && (
         <>

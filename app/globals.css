@@ -8,14 +8,19 @@
   --color-dark: #1f1f1f;
   --color-darker: #141414;
   --color-dark-light: #2a2a2a;
-  --color-dark-lighter: #353535;
+  /* Also the default outline colour for inputs, cards and dividers. The old
+     #353535 was all but invisible against the dark backgrounds (issue #304). */
+  --color-dark-lighter: #4d4d4d;
 
   --color-light: #f5f7fa;
   --color-light-dark: #e8ebf0;
 
-  --color-muted: #8a8f98;
-  --color-muted-light: #a0a5ae;
-  --color-muted-dark: #6e737b;
+  /* Secondary text. These were mid-greys (#8a8f98 / #6e737b) that failed to
+     read on the dark ground, so they now sit just below --color-light: still a
+     step down in emphasis, but white enough to read (issue #304). */
+  --color-muted: #e6e9ee;
+  --color-muted-light: #f0f2f5;
+  --color-muted-dark: #bcc1ca;
 
   --font-sans: var(--font-chakra-petch), var(--font-inter), system-ui, sans-serif;
   --font-headline: var(--font-chakra-petch), sans-serif;

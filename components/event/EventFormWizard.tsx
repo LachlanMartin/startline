@@ -4,18 +4,20 @@ import { useState, useRef, useEffect, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { fetchAuthSession } from "aws-amplify/auth";
 import Image from "next/image";
+import Link from "next/link";
 import {
   ArrowLeft, ArrowRight, Check, Plus, Trash2,
   Upload, X, MapPin, Calendar, Users,
   ChevronDown, ChevronUp, Clock, Eye,
   Ticket, ExternalLink, DollarSign, Bold, Italic, Underline,
-  AlignLeft, Trophy, FileText,
+  AlignLeft, Trophy, FileText, AlertTriangle,
 } from "lucide-react";
 import { encodePrizePool, parsePrizePool, normalisePrizeAmount } from "@/lib/prize-pool";
 import { UPLOAD_LIMITS } from "@/lib/upload-limits";
 import { uploadFile, UploadError } from "@/lib/upload-client";
 import { formatDivisionLabel } from "@/lib/divisions";
 import { DEFAULT_REFUND_TIERS, REFUND_PRESETS, describeTiers, matchRefundPreset, parseTiers, tiersAreValid, type RefundTier } from "@/lib/refund-policy";
+import { isFreeEvent } from "@/lib/event-types";
 import AddressAutocomplete  from "@/components/ui/AddressAutocomplete";
 import SuburbAutocomplete   from "@/components/ui/SuburbAutocomplete";
 import LocationPreviewMap   from "@/components/organiser/LocationPreviewMap";
@@ -237,8 +239,11 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
   const [ageMode, setAgeMode] = useState<"open" | "preset" | "custom" | "none">(
     form.minAge === "" ? "none" : form.minAge === "0" ? "open" : AGE_PRESETS.includes(form.minAge) ? "preset" : "custom"
   );
-  const [capMode, setCapMode] = useState<"preset" | "custom" | "none">(
-    form.cap === "" ? "none" : CAP_PRESETS.includes(form.cap) ? "preset" : "custom"
+  // "0" is the open cap — no limit — and mirrors how minAge stores "open to all".
+  // It is saved as a null cap, which is what the rest of the app already reads as
+  // unlimited (capacity checks, the capacity bar, the organiser dashboard).
+  const [capMode, setCapMode] = useState<"open" | "preset" | "custom" | "none">(
+    form.cap === "" ? "none" : form.cap === "0" ? "open" : CAP_PRESETS.includes(form.cap) ? "preset" : "custom"
   );
   const [showCustomCat,  setShowCustomCat]  = useState(false);
   const [customCatInput, setCustomCatInput] = useState("");
@@ -347,6 +352,11 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
 
       <Field label="Participant cap" required hint="Max registrations">
         <div className="flex flex-wrap gap-2 mb-3">
+          <button type="button" onClick={() => { update({ cap: "0" }); setCapMode("open"); }}
+            className={`font-headline text-[12px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-md border transition-colors
+              ${capMode === "open" ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-light hover:border-primary/40 hover:text-light"}`}>
+            Open
+          </button>
           {CAP_PRESETS.map(c => {
             const active = capMode === "preset" && form.cap === c;
             return (
@@ -357,7 +367,7 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
               </button>
             );
           })}
-          <button type="button" onClick={() => setCapMode("custom")}
+          <button type="button" onClick={() => { if (form.cap === "0") update({ cap: "" }); setCapMode("custom"); }}
             className={`font-headline text-[12px] font-bold uppercase tracking-widest px-4 py-2.5 rounded-md border transition-colors
               ${capMode === "custom" ? "border-primary bg-primary/10 text-primary" : "border-dark-lighter text-light hover:border-primary/40 hover:text-light"}`}>
             Custom
@@ -366,6 +376,9 @@ function BasicsStep({ form, update }: { form: FormState; update: (p: Partial<For
         {capMode === "custom" && (
           <input type="number" value={form.cap} onChange={e => update({ cap: e.target.value })}
             placeholder="e.g. 4200" className={`${inputCls} w-40`} />
+        )}
+        {capMode === "open" && (
+          <p className="font-headline text-[11px] uppercase tracking-widest text-muted">No limit on registrations</p>
         )}
       </Field>
 
@@ -554,6 +567,11 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
   const activePreset = matchRefundPreset(form.refundTiers);
   const isCustom     = activePreset === null;
 
+  // Nothing is paid for a free event, so there is nothing to refund. The policy
+  // picker is replaced with a note rather than making the organiser answer a
+  // question that cannot apply to their event (issue #304).
+  const allTicketsFree = isFreeEvent(form.waves);
+
   return (
     <div>
       {/* Registration platform */}
@@ -732,7 +750,18 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
         )}
       </div>
 
-      {/* Refund policy */}
+      {/* Refund policy — priced events only */}
+      {allTicketsFree ? (
+        <Field label="Refund & transfer policy">
+          <div className="rounded-xl border border-dark-lighter bg-dark-light px-5 py-4">
+            <div className="font-headline text-[13px] font-bold uppercase tracking-widest text-light">Not needed</div>
+            <p className="text-[11.5px] text-muted leading-relaxed mt-1">
+              Every ticket category on this event is free, so there is nothing to refund. Add a price to a
+              category if you need a refund policy.
+            </p>
+          </div>
+        </Field>
+      ) : (
       <Field label="Refund & transfer policy" required>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {REFUND_PRESETS.map(preset => {
@@ -763,6 +792,7 @@ function TicketsStep({ form, update }: { form: FormState; update: (p: Partial<Fo
         <textarea rows={2} value={form.refundPolicy} onChange={e => update({ refundPolicy: e.target.value })}
           placeholder="Exceptions or extra notes, e.g. transfers to another athlete…" className={`${textareaCls} mt-4`} />
       </Field>
+      )}
     </div>
   );
 }
@@ -1007,15 +1037,16 @@ const INTENSITY_LABELS: Record<string, string> = {
   low: "Low", moderate: "Moderate", high: "High", extreme: "Extreme",
 };
 
-function ReviewStep({ form, setStep, confirmed, onConfirm }: {
+function ReviewStep({ form, setStep, confirmed, onConfirm, showAbnNotice }: {
   form: FormState; setStep: (n: number) => void; confirmed: boolean; onConfirm: (v: boolean) => void;
+  showAbnNotice: boolean;
 }) {
   const rows: { k: string; v: string; step: number }[] = [
     { k: "Title",          v: form.title || "—",                                                                   step: 0 },
     { k: "Discipline",     v: form.discipline ? form.discipline.toUpperCase() : "—",                               step: 0 },
     { k: "Format",         v: form.format || "—",                                                                  step: 0 },
     { k: "Intensity",      v: form.level ? INTENSITY_LABELS[form.level] : "—",                                    step: 0 },
-    { k: "Cap / Min age",  v: `${form.cap ? parseInt(form.cap).toLocaleString() : "—"} · ${form.minAge === "0" ? "Open to all" : form.minAge ? `${form.minAge}+` : "—"}`, step: 0 },
+    { k: "Cap / Min age",  v: `${form.cap === "0" ? "Open" : form.cap ? parseInt(form.cap).toLocaleString() : "—"} · ${form.minAge === "0" ? "Open to all" : form.minAge ? `${form.minAge}+` : "—"}`, step: 0 },
     { k: "Date",           v: form.date
         ? form.endDate && form.endDate !== form.date
           ? `${new Date(form.date + "T00:00:00").toLocaleDateString("en-AU", { day:"numeric", month:"short", year:"numeric" })} — ${new Date(form.endDate + "T00:00:00").toLocaleDateString("en-AU", { day:"numeric", month:"short", year:"numeric" })}`
@@ -1025,7 +1056,7 @@ function ReviewStep({ form, setStep, confirmed, onConfirm }: {
     { k: "Venue",          v: `${form.venue || "—"}, ${form.city || "—"}, ${form.state ? form.state.toUpperCase() : "—"}`, step: 1 },
     { k: "Tickets",        v: `${form.waves.length} categor${form.waves.length !== 1 ? "ies" : "y"}, from ${form.waves[0]?.price === "0" ? "Free" : form.waves[0]?.price ? `A$${form.waves[0].price}` : "—"}`, step: 2 },
     { k: "Registration",   v: form.registrationType === "startline" ? "Startline" : form.registrationUrl || "—",  step: 2 },
-    { k: "Refund policy",  v: describeTiers(form.refundTiers).join(" "),                   step: 2 },
+    { k: "Refund policy",  v: isFreeEvent(form.waves) ? "Not needed for a free event" : describeTiers(form.refundTiers).join(" "), step: 2 },
     { k: "Prize money",    v: form.prizeMoney ? (normalisePrizeAmount(form.prizeMoneyAmount) ? `$${normalisePrizeAmount(form.prizeMoneyAmount)} prize pool` : "Yes") : "No", step: 2 },
     { k: "Cover image",    v: form.coverImage || form.coverImageUrl ? "Uploaded" : "No image",                    step: 3 },
     { k: "Info PDFs",      v: (() => { const n = form.informationPdfs.length; return n ? `${n} PDF${n !== 1 ? "s" : ""}` : "None"; })(), step: 3 },
@@ -1055,6 +1086,22 @@ function ReviewStep({ form, setStep, confirmed, onConfirm }: {
           You&apos;ll receive a notification each time someone registers.
         </p>
       </div>
+
+      {/* Deliberately advisory, not a block. Submitting still works; the event
+          waits for review instead of going live, and the organiser is told
+          again on the confirmation screen once the work is safely saved. */}
+      {showAbnNotice && (
+        <div className="flex items-start gap-3 bg-amber-400/[0.08] border border-amber-400/20 rounded-md p-4 mb-6">
+          <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+          <div className="font-headline text-[13px] text-amber-200 leading-relaxed">
+            <span className="font-bold">Your organiser profile isn&apos;t finished.</span>{" "}
+            You can publish this listing now, but without an ABN it goes to Startline for review
+            instead of straight to live. Add yours in{" "}
+            <Link href="/organiser/payments" className="underline hover:text-amber-100">Payments</Link>{" "}
+            to publish immediately.
+          </div>
+        </div>
+      )}
 
       <label className="flex items-start gap-3 cursor-pointer">
         <input type="checkbox" checked={confirmed} onChange={e => onConfirm(e.target.checked)}
@@ -1438,12 +1485,12 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                       <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-light mb-0.5">Intensity</p>
                       <p className="font-headline text-base font-black italic text-light">{intensity}</p>
                     </div>
-                    {(cap || form.minAge !== "") && (
+                    {(cap != null || form.minAge !== "") && (
                       <div className="grid grid-cols-2 gap-3">
-                        {cap != null && cap > 0 && (
+                        {cap != null && (
                           <div>
                             <p className="font-headline text-[10px] font-medium uppercase tracking-widest text-light mb-0.5">Participant Cap</p>
-                            <p className="font-headline text-base font-black italic text-light">{cap.toLocaleString()}</p>
+                            <p className="font-headline text-base font-black italic text-light">{cap > 0 ? cap.toLocaleString() : "Open"}</p>
                           </div>
                         )}
                         {form.minAge !== "" && (
@@ -1459,6 +1506,7 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                   </div>
                 </div>
 
+                {!isFreeEvent(form.waves) && (
                 <div className="bg-dark rounded-xl p-5 sm:p-6">
                   <h3 className="font-headline text-xs font-medium uppercase tracking-widest text-light mb-2">Refund &amp; Transfer Policy</h3>
                   {describeTiers(form.refundTiers).map((line, i) => (
@@ -1468,6 +1516,7 @@ function EventFullPreview({ form, onClose }: { form: FormState; onClose: () => v
                     <p className="text-sm font-medium text-muted leading-relaxed mt-2">{form.refundPolicy}</p>
                   )}
                 </div>
+                )}
               </div>
 
             </div>
@@ -1491,6 +1540,7 @@ interface EventFormWizardProps {
   organiserId?: string;        // admin create — the organiser to create the event for
   requireOrganiser?: boolean;  // admin create — block submit until an organiser is selected
   headingLabel?: string;       // breadcrumb label, default "Create new listing"
+  organiserHasAbn?: boolean;   // false shows a non-blocking "profile incomplete" notice
 }
 
 export default function EventFormWizard({
@@ -1501,6 +1551,7 @@ export default function EventFormWizard({
   organiserId,
   requireOrganiser = false,
   headingLabel = "Create new listing",
+  organiserHasAbn = true,
 }: EventFormWizardProps) {
   const router = useRouter();
   const [step,            setStep]            = useState(0);
@@ -1512,6 +1563,7 @@ export default function EventFormWizard({
   const [visited,         setVisited]         = useState<Set<number>>(new Set());
   const [confirmed,       setConfirmed]       = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [abnNotice,       setAbnNotice]       = useState<string | null>(null);
   const [showFullPreview, setShowFullPreview] = useState(false);
   const [direction,       setDirection]       = useState<"forward" | "back">("forward");
   const [showMobilePreview, setShowMobilePreview] = useState(false);
@@ -1536,7 +1588,7 @@ export default function EventFormWizard({
           format:            e.format         ?? "",
           level:             e.level          ?? "",
           categories:        Array.isArray(e.categories) ? e.categories : [],
-          cap:               e.cap != null    ? String(e.cap)    : "",
+          cap:               e.cap != null && e.cap > 0 ? String(e.cap) : "0",
           minAge:            e.minAge != null ? String(e.minAge) : "",
           date:              e.eventDate      ?? "",
           endDate:           e.endDate        ?? "",
@@ -1681,13 +1733,13 @@ export default function EventFormWizard({
         format:            form.format,
         level:             form.level,
         categories:        form.categories,
-        cap:               form.cap ? parseInt(form.cap) : null,
+        cap:               form.cap && parseInt(form.cap) > 0 ? parseInt(form.cap) : null,
         minAge:            form.minAge ? parseInt(form.minAge) : null,
         waves:             form.waves,
         inclusions:        originalFields.current.inclusions ?? null,
         activations:       originalFields.current.activations ?? null,
         extras:            form.prizeMoney ? encodePrizePool(form.prizeMoneyAmount, form.prizeMoneyDetails) : (originalFields.current.extras ?? null),
-        refundTiers:       form.refundTiers,
+        refundTiers:       isFreeEvent(form.waves) ? [] : form.refundTiers,
         refundPolicy:      form.refundPolicy,
         registrationType:  form.registrationType,
         feeStructure:      form.feeStructure,
@@ -1713,6 +1765,12 @@ export default function EventFormWizard({
         return false;
       }
       if (asDraft && !eventId && data.id) setEventId(data.id);
+      // The event is saved. Hold the redirect so the organiser is told what the
+      // missing ABN cost them, rather than being refused before anything saved.
+      if (!asDraft && data.abnRequired) {
+        setAbnNotice(data.notice ?? "");
+        return true;
+      }
       router.push(submitRedirect);
       return true;
     } catch {
@@ -1816,7 +1874,7 @@ export default function EventFormWizard({
                 {step === 1 && <WhenStep    form={form} update={update} />}
                 {step === 2 && <TicketsStep form={form} update={update} />}
                 {step === 3 && <MediaStep   key={loadingEvent ? "loading" : (eventId ?? "new")} form={form} update={update} />}
-                {step === 4 && <ReviewStep  form={form} setStep={goTo} confirmed={confirmed} onConfirm={setConfirmed} />}
+                {step === 4 && <ReviewStep  form={form} setStep={goTo} confirmed={confirmed} onConfirm={setConfirmed} showAbnNotice={!organiserHasAbn && form.registrationType === "startline"} />}
 
                 {apiError && (
                   <div className="mt-4 px-4 py-3 rounded-md bg-red-400/10 border border-red-400/20 text-red-300 font-headline text-[13px]">
@@ -1912,6 +1970,39 @@ export default function EventFormWizard({
               <button onClick={() => setShowCancelModal(false)}
                 className="font-headline text-[12px] uppercase tracking-widest text-light hover:text-light transition-colors text-center py-1">
                 Keep editing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post-submit. The listing is already saved by the time this shows, so
+          this explains a consequence rather than refusing anything. */}
+      {abnNotice !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overlay-in">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative bg-dark border border-dark-lighter rounded-2xl shadow-2xl w-full max-w-md p-7 modal-in">
+            <div className="flex items-start gap-3 mb-2">
+              <AlertTriangle className="w-5 h-5 text-amber-400 mt-1 shrink-0" />
+              <h2 className="font-headline text-[22px] font-black italic tracking-tight text-light">
+                Event submitted, pending review
+              </h2>
+            </div>
+            <p className="font-headline text-light text-[14px] leading-relaxed mb-2">
+              Your event has been saved and submitted. It won&apos;t go live yet: your organiser
+              profile has no ABN, which Startline needs before you can take payments.
+            </p>
+            <p className="font-headline text-muted text-[13px] leading-relaxed mb-7">
+              Add your ABN and our team can approve the listing. Nothing you entered has been lost.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button onClick={() => router.push("/organiser/payments")}
+                className="w-full font-headline text-[13px] font-bold uppercase tracking-widest px-6 py-3.5 rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center justify-center gap-2">
+                <ArrowRight className="w-4 h-4" /> Add my ABN
+              </button>
+              <button onClick={() => { setAbnNotice(null); router.push(submitRedirect); }}
+                className="w-full font-headline text-[13px] font-bold uppercase tracking-widest px-6 py-3.5 rounded-md border border-dark-lighter text-light hover:border-primary/40 transition-colors">
+                I&apos;ll do it later
               </button>
             </div>
           </div>

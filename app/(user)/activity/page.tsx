@@ -151,6 +151,9 @@ function RegisteredCard({
 }) {
   const refundRequested = meta?.status === "REFUND_REQUESTED";
   const refunded = meta?.status === "REFUNDED";
+  // A free entry has no money attached, so the same flow reads as giving up the
+  // spot rather than asking for money back (issue #304).
+  const freeEntry = (meta?.paidCents ?? 0) === 0;
   return (
     <div className="flex flex-col">
       <EventCard
@@ -182,11 +185,13 @@ function RegisteredCard({
         <div className="mt-1.5 flex justify-end">
           {refunded ? (
             <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted">
-              Refunded {money(meta.refundAmountCents)}
+              {freeEntry ? "Spot released" : `Refunded ${money(meta.refundAmountCents)}`}
             </span>
           ) : refundRequested ? (
             <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-amber-300">
-              Refund requested{meta.refundAmountCents > 0 ? ` · ${money(meta.refundAmountCents)}` : ""}
+              {freeEntry
+                ? "Cancellation requested"
+                : `Refund requested${meta.refundAmountCents > 0 ? ` · ${money(meta.refundAmountCents)}` : ""}`}
             </span>
           ) : (
             <button
@@ -194,7 +199,7 @@ function RegisteredCard({
               onClick={() => onRequestRefund(meta)}
               className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted-dark hover:text-red-300 transition-colors"
             >
-              Request refund
+              {freeEntry ? "Cancel my spot" : "Request refund"}
             </button>
           )}
         </div>
@@ -331,6 +336,9 @@ export default function ActivityPage() {
       setRefunding(false);
     }
   };
+
+  // The open dialog's entry is free when nothing was paid for it.
+  const freeRefundTarget = !!refundTarget && refundTarget.meta.paidCents === 0;
 
   const markAllRead = () => {
     setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -533,7 +541,7 @@ export default function ActivityPage() {
       <Dialog open={!!refundTarget} onOpenChange={(open) => { if (!open) setRefundTarget(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Request a refund</DialogTitle>
+            <DialogTitle>{freeRefundTarget ? "Cancel my spot" : "Request a refund"}</DialogTitle>
             <DialogDescription>
               {refundTarget?.title}. You will come out of the start list and free your spot.
             </DialogDescription>
@@ -543,7 +551,17 @@ export default function ActivityPage() {
             <div className="space-y-3">
               {/* The number first. This is what the athlete is actually deciding on. */}
               <div className="rounded-md bg-dark px-4 py-3">
-                {refundTarget.meta.outsidePolicy ? (
+                {freeRefundTarget ? (
+                  <>
+                    <p className="font-headline text-[13px] font-bold uppercase tracking-widest text-light">
+                      Free entry
+                    </p>
+                    <p className="text-[13px] text-muted leading-relaxed mt-1">
+                      This entry cost nothing, so there is no refund to make. Cancelling gives your spot back
+                      to the event and takes you out of the start list.
+                    </p>
+                  </>
+                ) : refundTarget.meta.outsidePolicy ? (
                   <>
                     <p className="font-headline text-[13px] font-bold uppercase tracking-widest text-amber-300">
                       No refund at this date
@@ -570,16 +588,20 @@ export default function ActivityPage() {
                 )}
               </div>
 
-              <div>
-                <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted-dark mb-1">
-                  This event&apos;s policy
-                </p>
-                {refundTarget.meta.policyLines.map((line, i) => (
-                  <p key={i} className="text-[12px] text-muted leading-relaxed">{line}</p>
-                ))}
-              </div>
+              {!freeRefundTarget && (
+                <>
+                  <div>
+                    <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-muted-dark mb-1">
+                      This event&apos;s policy
+                    </p>
+                    {refundTarget.meta.policyLines.map((line, i) => (
+                      <p key={i} className="text-[12px] text-muted leading-relaxed">{line}</p>
+                    ))}
+                  </div>
 
-              <p className="text-[12px] text-muted-dark leading-relaxed">{REFUND_PROCESS_COPY}</p>
+                  <p className="text-[12px] text-muted-dark leading-relaxed">{REFUND_PROCESS_COPY}</p>
+                </>
+              )}
             </div>
           )}
 
@@ -588,10 +610,12 @@ export default function ActivityPage() {
             <Button variant="ghost" onClick={() => setRefundTarget(null)}>Keep my spot</Button>
             <Button onClick={confirmRefund} disabled={refunding}>
               {refunding
-                ? "Requesting…"
-                : refundTarget?.meta.outsidePolicy
-                  ? "Ask anyway"
-                  : `Request ${money(refundTarget?.meta.refundAmountCents ?? 0)}`}
+                ? freeRefundTarget ? "Cancelling…" : "Requesting…"
+                : freeRefundTarget
+                  ? "Cancel my spot"
+                  : refundTarget?.meta.outsidePolicy
+                    ? "Ask anyway"
+                    : `Request ${money(refundTarget?.meta.refundAmountCents ?? 0)}`}
             </Button>
           </DialogFooter>
         </DialogContent>

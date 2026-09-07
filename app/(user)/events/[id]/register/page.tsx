@@ -15,6 +15,7 @@ import TurnstileWidget from "@/components/TurnstileWidget";
 import { useAuthContext } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { daysUntil, describeTiers, parseTiers, refundAmountCents } from "@/lib/refund-policy";
+import { isFreeEvent } from "@/lib/event-types";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 const BOT_CHECK_HOSTS = ["startlineau.com", "www.startlineau.com", "staging.startlineau.com"];
@@ -320,12 +321,16 @@ function RegisterContent() {
   const tierSummary = tierLines.map((t) => (t.qty > 1 ? `${t.qty} × ${t.label}` : t.label)).join(", ");
 
   // Refund position at the moment of paying, in dollars rather than in principle.
+  // A free event has no policy to state — nothing is paid, so nothing comes back
+  // — and both surfaces below take an empty list as "say nothing" (issue #304).
+  const freeEvent = isFreeEvent(event?.waves);
   const refundTiers = parseTiers(event?.refundTiers);
-  const refundLines = describeTiers(refundTiers);
+  const refundLines = freeEvent ? [] : describeTiers(refundTiers);
   const daysToEvent = event ? daysUntil(event.eventDate, new Date().toISOString().slice(0, 10)) : 0;
   const refundIfCancelledNow = refundAmountCents(refundTiers, Math.round(total * 100), daysToEvent) / 100;
-  const refundHeadline =
-    refundIfCancelledNow > 0
+  const refundHeadline = freeEvent
+    ? ""
+    : refundIfCancelledNow > 0
       ? `Cancel today and you get ${money(refundIfCancelledNow)} of ${money(total)} back. The amount drops as the event gets closer.`
       : `This event's policy does not cover a refund at this date, so treat this entry as final.`;
 

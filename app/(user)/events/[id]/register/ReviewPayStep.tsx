@@ -144,10 +144,13 @@ function ReviewPayForm({
           <PaymentElement />
         </div>
 
-        {/* What cancelling would return, stated before they pay rather than buried in terms. */}
-        <div className="rounded-[12px] border border-dark-lighter bg-dark px-4 py-3 mb-4">
-          <p className="text-[12.5px] text-light leading-relaxed">{refundHeadline}</p>
-        </div>
+        {/* What cancelling would return, stated before they pay rather than buried in
+            terms. Empty on a free event, which has no refund policy to state. */}
+        {refundHeadline && (
+          <div className="rounded-[12px] border border-dark-lighter bg-dark px-4 py-3 mb-4">
+            <p className="text-[12.5px] text-light leading-relaxed">{refundHeadline}</p>
+          </div>
+        )}
 
         {/* Terms */}
         <div className="flex items-start gap-3">
@@ -194,10 +197,12 @@ function ReviewPayForm({
             </div>
             <div className="px-4 py-3 max-h-40 overflow-y-auto text-muted text-[12px] leading-relaxed space-y-2">
               <p>Event terms and conditions are set by the organiser. By registering you agree to participate in accordance with the organiser&apos;s rules and the Startline platform guidelines.</p>
-              <div>
-                <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Refund policy</p>
-                {refundLines.map((line, i) => <p key={i}>{line}</p>)}
-              </div>
+              {refundLines.length > 0 && (
+                <div>
+                  <p className="font-headline text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Refund policy</p>
+                  {refundLines.map((line, i) => <p key={i}>{line}</p>)}
+                </div>
+              )}
               <p>Ensure the details you have provided are accurate before paying.</p>
             </div>
           </div>

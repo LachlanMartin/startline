@@ -30,12 +30,17 @@ const EVENT_SELECT = {
   coverImageUrl:   true,
   rejectionReason: true,
   reviewedAt:      true,
+  registrationType: true,
   organiser: {
     select: {
       id:          true,
       orgName:     true,
       contactName: true,
       email:       true,
+      // Drives the "profile incomplete" warning on the review queue, so an
+      // admin sees why an event cannot be approved before clicking approve.
+      abn:                      true,
+      stripeOnboardingComplete: true,
     },
   },
 } as const;

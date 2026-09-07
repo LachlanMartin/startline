@@ -5,6 +5,7 @@ import { getEventCoords } from "@/lib/australia-coords";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
 import { eventPayloadSchema, idParams } from "@/lib/schemas";
 import { withUniqueSlug } from "@/lib/slugs";
+import { hasAbn, ABN_REQUIRED_MESSAGE } from "@/lib/abn";
 
 export async function GET(
   _req: NextRequest,
@@ -73,22 +74,19 @@ export async function PATCH(
       }
     }
 
+    // See the create route: a missing ABN costs the event its auto-approval
+    // rather than rejecting the edit and stranding the organiser's changes.
+    let abnOk = true;
     if ((data.registrationType ?? "startline") === "startline") {
       const org = await prisma.organiser.findUnique({
         where: { id: session.sub },
         select: { abn: true },
       });
-      const abnDigits = org?.abn?.replace(/\D/g, "") ?? "";
-      if (abnDigits.length < 9) {
-        return NextResponse.json(
-          { error: "An ABN is required to host paid events on Startline. Add your ABN in Payments or onboarding, or use external registration." },
-          { status: 400 },
-        );
-      }
+      abnOk = hasAbn(org?.abn);
     }
 
     const nextStatus = submit
-      ? (session.verified ? "APPROVED" : "PENDING")
+      ? (session.verified && abnOk ? "APPROVED" : "PENDING")
       : "DRAFT";
 
     // Only a rename reassigns the slug; every other edit leaves it alone so links
@@ -159,7 +157,11 @@ export async function PATCH(
         .catch((err) => console.error("Follower notify failed:", err));
     }
 
-    return NextResponse.json({ id: updated.id, status: updated.status });
+    return NextResponse.json({
+      id:     updated.id,
+      status: updated.status,
+      ...(submit && !abnOk ? { abnRequired: true, notice: ABN_REQUIRED_MESSAGE } : {}),
+    });
   } catch (err) {
     console.error("Event update error:", err);
     return NextResponse.json({ error: "Failed to update event." }, { status: 500 });

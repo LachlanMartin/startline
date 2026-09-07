@@ -548,7 +548,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
         {view === "signin" && userExists === null && !challengeFlow && (
           <>
             <div className="mb-6">
-              <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-2">User Portal</span>
+              <span className="font-headline text-[11px] font-bold uppercase tracking-[0.25em] text-primary block mb-2">User Portal</span>
               <h2 className="font-headline text-5xl font-black italic tracking-tighter leading-[0.9] mb-3">
                 Welcome<br /><span className="text-primary">back.</span>
               </h2>
@@ -589,7 +589,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
         {view === "signin" && userExists === false && (
           <>
             <div className="mb-6">
-              <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-2">User Portal</span>
+              <span className="font-headline text-[11px] font-bold uppercase tracking-[0.25em] text-primary block mb-2">User Portal</span>
               <h2 className="font-headline text-5xl font-black italic tracking-tighter leading-[0.9] mb-3">
                 No account<br /><span className="text-primary">found.</span>
               </h2>
@@ -613,7 +613,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
         {view === "signin" && userExists === true && userStatus === "CONFIRMED" && !challengeFlow && (
           <>
             <div className="mb-6">
-              <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-2">User Portal</span>
+              <span className="font-headline text-[11px] font-bold uppercase tracking-[0.25em] text-primary block mb-2">User Portal</span>
               <h2 className="font-headline text-5xl font-black italic tracking-tighter leading-[0.9] mb-3">
                 Welcome<br /><span className="text-primary">back.</span>
               </h2>
@@ -661,7 +661,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
         {view === "signin" && challengeFlow && (
           <>
             <div className="mb-6">
-              <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-2">Set New Password</span>
+              <span className="font-headline text-[11px] font-bold uppercase tracking-[0.25em] text-primary block mb-2">Set New Password</span>
               <h2 className="font-headline text-4xl font-black italic tracking-tighter leading-[0.9] mb-2">
                 Update your<br /><span className="text-primary">password.</span>
               </h2>
@@ -720,7 +720,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
         {view === "mfa" && (
           <>
             <div className="mb-6">
-              <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-2">Two-Factor Authentication</span>
+              <span className="font-headline text-[11px] font-bold uppercase tracking-[0.25em] text-primary block mb-2">Two-Factor Authentication</span>
               <h2 className="font-headline text-4xl font-black italic tracking-tighter leading-[0.9] mb-2">
                 {mfaStep === "select" ? <><span>Choose your</span><br /><span className="text-primary">method.</span></> :
                  mfaStep === "setup"  ? <><span>Set up</span><br /><span className="text-primary">MFA.</span></> :
@@ -811,7 +811,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
         {view === "signup" && (
           <>
             <div className="mb-4">
-              <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-2">User Portal</span>
+              <span className="font-headline text-[11px] font-bold uppercase tracking-[0.25em] text-primary block mb-2">User Portal</span>
               <h2 className="font-headline text-4xl font-black italic tracking-tighter leading-[0.9] mb-2">
                 Join<br /><span className="text-primary">Startline.</span>
               </h2>
@@ -863,7 +863,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
         {view === "onboarding" && (
           <>
             <div className="mb-5 pt-2">
-              <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-2">Account Creation</span>
+              <span className="font-headline text-[11px] font-bold uppercase tracking-[0.25em] text-primary block mb-2">Account Creation</span>
               <h2 className="font-headline text-4xl font-black italic tracking-tighter leading-[0.9] mb-2">
                 Welcome to<br /><span className="text-primary">Startline.</span>
               </h2>
@@ -1014,7 +1014,7 @@ export default function SignInModal({ isOpen, onClose, onSuccess }: SignInModalP
         {view === "username" && (
           <>
             <div className="mb-6 pt-2">
-              <span className="font-headline text-[11px] font-medium uppercase tracking-[0.25em] text-primary block mb-2">One last thing</span>
+              <span className="font-headline text-[11px] font-bold uppercase tracking-[0.25em] text-primary block mb-2">One last thing</span>
               <h2 className="font-headline text-4xl font-black italic tracking-tighter leading-[0.9] mb-2">
                 Choose your<br /><span className="text-primary">handle.</span>
               </h2>
