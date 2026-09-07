@@ -42,7 +42,7 @@ export async function rateLimit(
     `;
     row = rows[0];
   } catch {
-    // ponytail: fail-open — limiter unavailable, let the request through.
+    // Fail-open: limiter unavailable, let the request through.
     return null;
   }
 

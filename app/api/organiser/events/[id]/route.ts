@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireOrganiser } from "@/lib/organiser-api-auth";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession } from "@/lib/amplify-server";
 import { getEventCoords } from "@/lib/australia-coords";
 import { notifyOrganiserFollowers } from "@/lib/notify-organiser-followers";
 import { eventPayloadSchema, idParams } from "@/lib/schemas";
-import { uniqueSlug } from "@/lib/slugs";
+import { withUniqueSlug } from "@/lib/slugs";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   const parsedParams = idParams.safeParse(await params);
   if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
@@ -32,8 +33,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   const parsedParams = idParams.safeParse(await params);
   if (!parsedParams.success) return NextResponse.json({ error: "Invalid id." }, { status: 400 });
@@ -89,14 +91,15 @@ export async function PATCH(
       ? (session.verified ? "APPROVED" : "PENDING")
       : "DRAFT";
 
-    const slug = data.title !== undefined && data.title !== existing.title
-      ? await uniqueSlug(data.title, id)
-      : undefined;
+    // Only a rename reassigns the slug; every other edit leaves it alone so links
+    // already in the wild keep resolving, and skips the lookup entirely.
+    const renamed = data.title !== undefined && data.title !== existing.title;
 
-    const updated = await prisma.event.update({
+    const runUpdate = (slug: string | undefined) =>
+      prisma.event.update({
       where: { id },
       data: {
-        slug:              slug,
+        slug,
         title:             data.title             ?? undefined,
         discipline:        data.discipline        ?? undefined,
         description:       data.description       ?? undefined,
@@ -130,11 +133,18 @@ export async function PATCH(
         photos:            Array.isArray(data.photos) ? data.photos : undefined,
         status:            nextStatus,
       },
-    });
+      });
+
+    const updated = renamed
+      ? await withUniqueSlug(data.title!, runUpdate, { excludeId: id })
+      : await runUpdate(undefined);
 
     // Existing was DRAFT (enforced above); notify when submit goes straight to live.
     if (updated.status === "APPROVED") {
-      prisma.organiser
+      // Awaited, not fired and forgotten: Amplify's compute freezes the
+      // container once the response is returned, so a floating promise is
+      // dropped at random. A notify failure still must not fail the publish.
+      await prisma.organiser
         .findUnique({ where: { id: updated.organiserId }, select: { orgName: true } })
         .then((org) =>
           notifyOrganiserFollowers({
@@ -160,8 +170,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
   if (session.role !== "OWNER") return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const parsedParams = idParams.safeParse(await params);

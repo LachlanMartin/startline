@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ponytail: one shared Postgres container, one database per worktree.
+# One shared Postgres container, one database per worktree.
 # Migrations are tracked per-database, so worktrees never clobber each other's _prisma_migrations.
 set -euo pipefail
 
@@ -7,7 +7,7 @@ BRANCH=$(git branch --show-current)
 SLUG=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '_' | sed 's/_\+/_/g; s/^_//; s/_$//')
 DB="startline_${SLUG:-main}"
 
-# ponytail: find postgres by container name, not compose project (worktree dirnames differ from main).
+# Find postgres by container name, not compose project (worktree dirnames differ from main).
 PG=$(docker ps --format '{{.Names}}' | grep -E 'postgres' | head -1 || true)
 if [ -z "$PG" ]; then
   echo "No postgres container running. Start infra on the main checkout:" >&2

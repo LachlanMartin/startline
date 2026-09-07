@@ -76,7 +76,11 @@ test.describe("profile API", () => {
     const res = await ctx.get("/api/organiser/profile");
     expect(res.status()).toBe(401);
     const body = await res.json();
-    expect(body.error).toContain("Unauthorised");
+    // 401 is specifically "no Cognito session" now. A signed-in account that
+    // manages no organiser gets 403/NO_ORGANISER instead, so assert the code
+    // rather than prose that shifts whenever the message is reworded.
+    expect(body.code).toBe("UNAUTHENTICATED");
+    expect(body.error).toContain("sign in again");
     await ctx.dispose();
   });
 });

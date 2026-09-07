@@ -57,7 +57,7 @@ test.describe("new listing wizard", () => {
       const filledAddr = await addrInput.inputValue();
       expect(filledAddr.length).toBeGreaterThan(0);
     }
-    // ponytail: skips if AWS GeoPlaces API unavailable in test env
+    // Skips if the AWS GeoPlaces API is unavailable in the test env.
   });
 
   test("blocks an end time at or before the start time", async ({ page }) => {
@@ -148,7 +148,7 @@ test.describe("new listing wizard", () => {
     await page.getByRole("button", { name: /save draft/i }).click();
 
     await page.waitForTimeout(2000);
-    // ponytail: API save may fail in test env; wizard UX is what's being tested
+    // The API save may fail in the test env; the wizard UX is what's being tested.
   });
 
   test("step rail stays pinned while scrolling", async ({ page }) => {

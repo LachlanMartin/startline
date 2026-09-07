@@ -25,8 +25,8 @@ const nextConfig: NextConfig = {
 
   async headers() {
     // Dev needs 'unsafe-eval' for React Fast Refresh. Production drops it so
-    // script-src can actually block injected code. (ponytail: strict nonce CSP
-    // is tracked as a post-MVP issue.)
+    // script-src can actually block injected code. A strict nonce CSP is
+    // tracked as a post-MVP issue.
     const scriptSrc =
       process.env.NODE_ENV === "production"
         ? "'self' 'unsafe-inline' https://js.stripe.com https://api.mapbox.com"

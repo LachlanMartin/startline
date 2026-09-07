@@ -143,7 +143,7 @@ resource "aws_iam_user_policy_attachment" "mcp_server" {
   policy_arn = aws_iam_policy.mcp_server.arn
 }
 
-# ponytail: both access keys get created fresh after import; old keys
+# Both access keys get created fresh after import; old keys
 # are deactivated/deleted manually once the new ones are in ~/.aws/credentials.
 resource "aws_iam_access_key" "admin" {
   user = aws_iam_user.admin.name

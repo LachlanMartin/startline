@@ -34,3 +34,35 @@ export async function uniqueSlug(title: string, excludeId?: string): Promise<str
     if (!taken.has(candidate)) return candidate;
   }
 }
+
+/** True for the unique-constraint violation raised when two writes claim the
+ *  same event slug. */
+function isSlugConflict(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const { code, meta } = err as { code?: unknown; meta?: { target?: unknown } };
+  if (code !== "P2002") return false;
+  const target = meta?.target;
+  // Postgres names the index; be permissive when the driver doesn't report one.
+  if (target === undefined) return true;
+  const fields = Array.isArray(target) ? target : [target];
+  return fields.some((f) => typeof f === "string" && f.includes("slug"));
+}
+
+/** Runs `write` with a slug for `title`, retrying if a concurrent write claimed
+ *  it first. `uniqueSlug` reads the taken slugs before writing, so two events
+ *  created from the same title at the same moment resolve to the same string and
+ *  one of them used to fail the whole request with a bare 500. The retry re-runs
+ *  the lookup, which now sees the winner and picks the next free suffix. */
+export async function withUniqueSlug<T>(
+  title: string,
+  write: (slug: string) => Promise<T>,
+  { excludeId, attempts = 3 }: { excludeId?: string; attempts?: number } = {},
+): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await write(await uniqueSlug(title, excludeId));
+    } catch (err) {
+      if (attempt >= attempts || !isSlugConflict(err)) throw err;
+    }
+  }
+}

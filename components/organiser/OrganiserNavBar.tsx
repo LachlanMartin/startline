@@ -12,6 +12,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useAuthContext } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
+import SignInModal from "@/components/SignInModal";
 
 type NavItem = { href: string; label: string };
 
@@ -71,6 +72,7 @@ export default function OrganiserNavBar() {
   const [role,         setRole]         = useState<string | null>(null);
   const [memberships,  setMemberships]  = useState<{ organiserId: string; organiserName: string | null; role: string; logoUrl: string | null }[]>([]);
   const [notifOpen,    setNotifOpen]    = useState(false);
+  const [signInOpen,   setSignInOpen]   = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount,  setUnreadCount]  = useState(0);
   // Opening the panel marks everything read server-side, which would instantly
@@ -173,6 +175,11 @@ export default function OrganiserNavBar() {
 
   const displayName = orgName || user?.email || "";
   const initial     = displayName[0]?.toUpperCase() ?? "A";
+  // Your standing on the active organiser. It was fetched into `role` and then
+  // never rendered: the only OWNER/MANAGER badges live inside the switcher
+  // dropdown, one per organisation, so the portal never told you which one you
+  // held on the organiser you were actually looking at.
+  const roleLabel   = role === "OWNER" ? "Owner" : role === "MANAGER" ? "Manager" : null;
   const activePage  = ORGANISER_NAV.find(({ href }) =>
     pathname === href || (pathname?.startsWith(href + "/") ?? false)
   );
@@ -213,6 +220,30 @@ export default function OrganiserNavBar() {
               <Building2 className="w-2.5 h-2.5" /> Organiser
             </span>
 
+            {/* Your role on the active organiser. Owner carries the brand tint,
+                manager stays neutral — matching the switcher dropdown. */}
+            {roleLabel && (
+              <span className={`hidden md:inline-flex items-center font-headline text-[10px] font-bold uppercase tracking-widest rounded px-1.5 py-0.5 border
+                ${role === "OWNER"
+                  ? "text-primary border-primary/40"
+                  : "text-white/40 border-white/15"}`}>
+                {roleLabel}
+              </span>
+            )}
+
+            {/* Signed out. The organiser portal had no sign-in of its own, so a
+                returning organiser could only bounce off the redirect in
+                middleware.ts and never get back in (issue #302). */}
+            {status === "unauthenticated" ? (
+              <button
+                type="button"
+                onClick={() => setSignInOpen(true)}
+                className="font-headline text-[12px] font-bold uppercase tracking-widest text-primary border border-primary/40 rounded-md px-3 py-1.5 hover:bg-primary/10 transition-colors"
+              >
+                Sign in
+              </button>
+            ) : (
+            <>
             {/* Notifications */}
             <div ref={notifRef} className="relative">
               <button onClick={openNotifPanel}
@@ -302,7 +333,15 @@ export default function OrganiserNavBar() {
               {isUserOpen && (
                 <div className="absolute right-0 top-full mt-1 min-w-[220px] bg-dark-darker border border-primary/40 rounded-xl shadow-2xl overflow-hidden">
                   <div className="px-4 py-3 border-b border-white/10">
-                    <div className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/40 mb-0.5">{orgName || "Organisation"}</div>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/40">{orgName || "Organisation"}</span>
+                      {roleLabel && (
+                        <span className={`font-headline text-[9px] uppercase tracking-widest rounded px-1 py-0.5 border
+                          ${role === "OWNER" ? "text-primary border-primary/40" : "text-white/40 border-white/15"}`}>
+                          {roleLabel}
+                        </span>
+                      )}
+                    </div>
                     {user?.email && <div className="font-headline text-[12px] text-white/70 truncate">{user.email}</div>}
                   </div>
 
@@ -360,6 +399,8 @@ export default function OrganiserNavBar() {
                 </div>
               )}
             </div>
+            </>
+            )}
 
             {/* Mobile hamburger */}
             <button onClick={() => { setIsMenuOpen(!isMenuOpen); setNotifOpen(false); }}
@@ -377,6 +418,12 @@ export default function OrganiserNavBar() {
               <div className="flex items-center gap-1.5 px-4 py-2 mb-1">
                 <Building2 className="w-3.5 h-3.5 text-primary" />
                 <span className="font-headline text-[10px] font-bold uppercase tracking-widest text-white/30">{orgName || "Organiser"}</span>
+                {roleLabel && (
+                  <span className={`font-headline text-[9px] uppercase tracking-widest rounded px-1 py-0.5 border
+                    ${role === "OWNER" ? "text-primary border-primary/40" : "text-white/40 border-white/15"}`}>
+                    {roleLabel}
+                  </span>
+                )}
               </div>
 
               {ORGANISER_NAV.map(({ href, label }) => {
@@ -417,6 +464,12 @@ export default function OrganiserNavBar() {
           </div>
         )}
       </nav>
+
+      <SignInModal
+        isOpen={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        onSuccess={() => router.refresh()}
+      />
     </>
   );
 }

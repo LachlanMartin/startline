@@ -436,6 +436,31 @@ resource "aws_cognito_user_group" "this" {
 
 # ===== Amplify branch =====
 
+locals {
+  # Server-only values the running app reads from process.env. They cannot come
+  # from Secrets Manager: the build writes that into .env.production, and
+  # `output: "standalone"` ships only .next, so the file never reaches the
+  # server. See the note above the variables in variables.tf.
+  runtime_secrets = {
+    GUEST_EMAIL_VERIFICATION_SECRET = random_password.guest_email_verification.result
+    TURNSTILE_SECRET_KEY            = var.turnstile_secret_key
+    RESEND_API_KEY                  = var.resend_api_key
+    RESEND_FROM                     = var.resend_from
+    STRIPE_SECRET_KEY               = var.stripe_secret_key
+    STRIPE_WEBHOOK_SECRET           = var.stripe_webhook_secret
+    ABR_GUID                        = var.abr_guid
+  }
+
+  # Drop blanks rather than publishing empty entries. The app treats "" and
+  # unset the same way, but an empty variable reads as configured in the Amplify
+  # console, which is how a missing key stays missing. `try` also absorbs the
+  # null default on resend_api_key.
+  runtime_secret_variables = {
+    for name, value in local.runtime_secrets : name => value
+    if try(trimspace(value), "") != ""
+  }
+}
+
 resource "aws_amplify_branch" "this" {
   app_id      = var.amplify_app_id
   branch_name = var.branch_name
@@ -453,6 +478,7 @@ resource "aws_amplify_branch" "this" {
       NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN = var.mapbox_access_token
       NEXT_PUBLIC_TURNSTILE_SITE_KEY  = var.turnstile_site_key
     },
+    local.runtime_secret_variables,
     var.extra_branch_environment_variables,
   )
 
@@ -462,6 +488,24 @@ resource "aws_amplify_branch" "this" {
     precondition {
       condition     = contains(["PRODUCTION", "BETA", "DEVELOPMENT"], var.amplify_stage)
       error_message = "amplify_stage must be one of PRODUCTION, BETA, or DEVELOPMENT."
+    }
+
+    # This resource owns the whole environment_variables map, so anything set by
+    # hand in the Amplify console is deleted on the next apply. Before that
+    # could quietly take payments and email offline, fail the plan instead and
+    # say which key is missing from startline/ci-bootstrap.
+    precondition {
+      condition = var.name != "prod" || length(setsubtract(
+        ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "RESEND_API_KEY", "ABR_GUID"],
+        keys(local.runtime_secret_variables),
+      )) == 0
+      error_message = format(
+        "Missing prod runtime secrets: %s. Add the matching keys to the startline/ci-bootstrap secret (stripe_secret_key_prod, stripe_webhook_secret_prod, resend_api_key, abr_guid) — applying without them would strip the values from the Amplify branch and break checkout, email and ABN lookup.",
+        join(", ", setsubtract(
+          ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "RESEND_API_KEY", "ABR_GUID"],
+          keys(local.runtime_secret_variables),
+        )),
+      )
     }
   }
 

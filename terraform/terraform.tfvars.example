@@ -3,7 +3,19 @@
 # The following values are now sourced from AWS Secrets Manager (startline/ci-bootstrap):
 #   - amplify_repository_access_token
 #   - cloudflare_api_token
+#   - mapbox_access_token
+#
+# Runtime app secrets live there too. These become Amplify branch environment
+# variables, which is the only place the running server can read them from:
+# Secrets Manager reaches the build, not the deployed artefact.
+#   - stripe_secret_key_prod / stripe_secret_key_staging
+#   - stripe_webhook_secret_prod / stripe_webhook_secret_staging
 #   - resend_api_key
+#   - resend_from            (optional; falls back to the address in lib/email.ts)
+#   - abr_guid
+# A prod apply fails its precondition if any required one is missing, rather
+# than clearing whatever the Amplify console currently holds.
+#
 # Set them via: aws secretsmanager put-secret-value --secret-id startline/ci-bootstrap ...
 #
 # aws_region   = "ap-southeast-2"

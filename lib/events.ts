@@ -51,7 +51,7 @@ export async function getAllEvents() {
 
     const ratings = await getOrganiserRatings(events.map((e) => e.organiserId));
 
-    // ponytail: `any` avoids Prisma type dependency; `pnpm build` verifies correctness
+    // `any` avoids a Prisma type dependency; `pnpm build` verifies correctness.
     return events.map((e: any) => ({
       ...e,
       fromPrice: lowestPrice(e.waves),

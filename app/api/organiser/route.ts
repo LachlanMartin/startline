@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireOrganiser } from "@/lib/organiser-api-auth";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession } from "@/lib/amplify-server";
 
 // DELETE /api/organiser
 // Deletes the active organiser. Owner only. Memberships cascade.
 export async function DELETE() {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
   if (session.role !== "OWNER") {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }

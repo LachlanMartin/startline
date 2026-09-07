@@ -21,8 +21,8 @@ export function turnstileConfigured(): boolean {
 // Hostnames where bot checks are enforced. Everywhere else (Amplify preview
 // URLs, localhost, staging aliases) we fail open — those hostnames aren't
 // whitelisted on the Cloudflare Turnstile widget, so the widget errors out and
-// no token is ever produced. ponytail: preview hostnames are dynamic and can't
-// be enumerated; gate on the known production set instead.
+// no token is ever produced. Preview hostnames are dynamic and can't be
+// enumerated, so the gate is the known production set instead.
 const BOT_CHECK_HOSTS = new Set([
   "startlineau.com",
   "www.startlineau.com",
@@ -42,7 +42,7 @@ export async function verifyTurnstileToken(
   req?: NextRequest,
 ): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return true; // ponytail: not configured → fail open (dev/test)
+  if (!secret) return true; // not configured, fail open (dev/test)
 
   if (!token) return false;
 
@@ -59,9 +59,9 @@ export async function verifyTurnstileToken(
     const data = (await res.json()) as VerifyResult;
     return data.success === true;
   } catch {
-    // ponytail: siteverify unreachable → fail closed (don't trust a token we
-    // couldn't check). A transient outage blocks the form rather than letting
-    // bots through.
+    // siteverify unreachable, fail closed: don't trust a token we couldn't
+    // check. A transient outage blocks the form rather than letting bots
+    // through.
     return false;
   }
 }

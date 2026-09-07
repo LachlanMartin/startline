@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify, createRemoteJWKSet } from "jose";
 import type { JWTPayload } from "jose";
+import { USER_DOMAIN, ORGANISER_DOMAIN, ADMIN_DOMAIN } from "@/lib/portal-domains";
 
 const region   = process.env.NEXT_PUBLIC_AWS_REGION          ?? "";
 const userPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID ?? "";
@@ -36,9 +37,10 @@ const ADMIN_PROTECTED = [
   "/admin/security",
 ];
 
-const USER_DOMAIN = "startlineau.com";
-const ORGANISER_DOMAIN = "organiser.startlineau.com";
-const ADMIN_DOMAIN = "admin.startlineau.com";
+// The paths the organiser sign-up flow needs on the athlete site. The organiser
+// portal's landing page sends people here, so the waitlist gate below has to let
+// them through or the only route into the product dead-ends (issue #302).
+const ORGANISER_SIGNUP_PATHS = ["/organiser-setup", "/api/organiser/setup"];
 
 async function getVerifiedPayload(req: NextRequest): Promise<JWTPayload | null> {
   const lastAuthUser = req.cookies.get(
@@ -84,18 +86,25 @@ export async function middleware(req: NextRequest) {
 
     if (ORGANISER_PROTECTED.some((p) => pathname.startsWith(p))) {
       const payload = await getVerifiedPayload(req);
-      if (!payload) return NextResponse.redirect(new URL("https://startlineau.com"));
+      // Stay on this host. Sending them to the athlete site landed them on the
+      // waitlist with no way back and no way to sign in, which read as "clicking
+      // organiser just reverts me to the home page" (issue #302).
+      if (!payload) return NextResponse.redirect(new URL("/organiser-landing", req.url));
       return NextResponse.next();
     }
 
     if (
       !pathname.startsWith("/organiser") &&
+      // Sign-in on the organiser landing page hands off to these for an
+      // unverified email or a password reset; bouncing them to the athlete site
+      // stranded the flow half-finished.
+      !pathname.startsWith("/auth") &&
       !pathname.startsWith("/_next") &&
       !pathname.startsWith("/api") &&
       !pathname.startsWith("/images") &&
       !pathname.startsWith("/favicon")
     ) {
-      return NextResponse.redirect(new URL("https://startlineau.com"));
+      return NextResponse.redirect(new URL(`https://${USER_DOMAIN}`));
     }
 
     return NextResponse.next();
@@ -118,6 +127,7 @@ export async function middleware(req: NextRequest) {
         || pathname.startsWith("/api/waitlist")
         || pathname.startsWith("/checkin")
         || pathname.startsWith("/api/checkin")
+        || ORGANISER_SIGNUP_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
         || pathname.startsWith("/_next")
         || pathname.startsWith("/images")
         || pathname.startsWith("/favicon")) {

@@ -242,8 +242,55 @@ async function fetchCognitoSubs(): Promise<{
   return { subsByEmail, adminSubs };
 }
 
+// Hosts the seed is allowed to truncate without being asked twice. Everything
+// else — RDS, or anything reached through a tunnel — is treated as somebody's
+// real data.
+const LOCAL_DB_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "host.docker.internal", "db", "postgres"]);
+
+function databaseHost(): string {
+  const url = process.env.DATABASE_URL ?? "";
+  try {
+    return new URL(url).hostname.replace(/^\[|\]$/g, "");
+  } catch {
+    return "";
+  }
+}
+
+// The seed truncates users, organisers, events and registrations before it
+// writes, and it creates 15 Cognito accounts that all share PASSWORD — one of
+// them in the `admins` group. Running it against a deployed environment wipes
+// real accounts and leaves signed-in browsers holding a valid Cognito session
+// with no matching user row, which is what turned "publish event" into a 401
+// (issue #302). Remote targets therefore need an explicit ALLOW_REMOTE_SEED.
+function assertSeedTargetIsSafe(): void {
+  if (process.env.ALLOW_REMOTE_SEED === "true") {
+    console.warn("  ⚠  ALLOW_REMOTE_SEED=true — seeding a non-local database, existing data will be destroyed\n");
+    return;
+  }
+
+  const host = databaseHost();
+  if (!host) {
+    throw new Error(
+      "Refusing to seed: DATABASE_URL is missing or not a URL, so the target database can't be identified.",
+    );
+  }
+  if (LOCAL_DB_HOSTS.has(host)) return;
+
+  throw new Error(
+    [
+      `Refusing to seed "${host}" — it is not a local database.`,
+      "",
+      "The seed deletes every user, organiser, event and registration before it",
+      "writes, and it resets the shared Cognito seed passwords. If you really",
+      "mean to destroy that environment's data, re-run with ALLOW_REMOTE_SEED=true.",
+    ].join("\n"),
+  );
+}
+
 async function main() {
   console.log("🌱 Seeding database…\n");
+
+  assertSeedTargetIsSafe();
 
   // CI (e2e) uses the __e2e_bypass cookie keyed on mock subs — never touch
   // Cognito there.

@@ -53,6 +53,27 @@ resource "aws_iam_role_policy" "amplify_secrets" {
 locals {
   connect_repository = var.amplify_repository_url != null ? trimspace(var.amplify_repository_url) != "" : false
 
+  # Deploy-time database handling (issue #302). Two rules, both deliberate:
+  #
+  #   1. `migrate deploy` has no fallback. It used to fall back to
+  #      `migrate reset --force`, which DROPS the whole database — on prod as
+  #      well as staging. A failed migration must fail the build, not wipe the
+  #      environment.
+  #   2. Seeding is opt-in via the SEED_DATABASE branch variable, never
+  #      automatic. `prisma db seed` deletes every user, organiser, event and
+  #      registration before it writes, so running it on each deploy erased
+  #      real accounts and left signed-in browsers holding a Cognito session
+  #      with no matching user row — which surfaced as "session expired" 401s
+  #      when publishing an event. Flip SEED_DATABASE to "true" in the Amplify
+  #      console only when a deliberate reseed is wanted.
+  #
+  # ENV defaults through a parameter expansion rather than `[ -n "$ENV" ] ||
+  # export ENV=staging`. && and || are equal precedence and associate left to
+  # right, so that form parsed as `(everything-before-it || export) && rest`:
+  # a failed `pnpm install` fell into the export instead of aborting the build,
+  # which on a prod build retargeted ENV at staging and pulled staging secrets
+  # into .env.production. The doubled $$ escapes the Terraform template so the
+  # shell receives a single ${...}.
   build_spec = <<-EOT
     version: 1
     frontend:
@@ -62,12 +83,13 @@ locals {
             - >
               corepack enable && pnpm install --frozen-lockfile
               && npx prisma generate
-              && [ -n "$ENV" ] || export ENV=staging
+              && export ENV="$${ENV:-staging}"
               && aws secretsmanager get-secret-value
               --secret-id startline/$ENV/app
               --query SecretString --output text
               | node -e "const s=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8').trim());for(const[k,v]of Object.entries(s))console.log(k+'='+v)" >> .env.production
-              && ( [ -z "$AWS_PULL_REQUEST_ID" ] && ( npx prisma migrate deploy || npx prisma migrate reset --force ) && ( [ "$ENV" != "prod" ] && npx prisma db seed ; true ) ; true )
+              && ( [ -n "$AWS_PULL_REQUEST_ID" ] || npx prisma migrate deploy )
+              && ( [ "$SEED_DATABASE" != "true" ] || ALLOW_REMOTE_SEED=true npx prisma db seed )
         build:
           commands:
             - pnpm run build
@@ -145,8 +167,11 @@ locals {
       database_backup_retention_period = 0
       cognito_deletion_protection      = false
       bucket_cors_allowed_origins      = ["*"]
-      site_url                         = "https://staging.startlineau.com"
-      enable_daily_stop                = false
+      # Ignored — staging.startlineau.com has never been delegated, so the real
+      # value is computed from the Amplify branch domain below. Kept here as the
+      # intended hostname for whenever that DNS record is created.
+      site_url          = "https://staging.startlineau.com"
+      enable_daily_stop = false
     }
   }
 
@@ -185,8 +210,24 @@ module "env" {
 
   cognito_deletion_protection = each.value.cognito_deletion_protection
 
-  resend_api_key = local.bootstrap.resend_api_key
-  site_url       = each.value.site_url
+  # Runtime server-side secrets. These land on the Amplify branch environment,
+  # not in Secrets Manager, because the build writes Secrets Manager into
+  # .env.production and the standalone artefact never carries that file. Stripe
+  # is per-environment (live keys on prod, test keys on staging); the rest are
+  # shared. A missing prod key fails the plan in the module rather than silently
+  # clearing the value the console currently holds.
+  resend_api_key        = try(local.bootstrap.resend_api_key, "")
+  resend_from           = try(local.bootstrap.resend_from, "")
+  stripe_secret_key     = try(local.bootstrap["stripe_secret_key_${each.key}"], "")
+  stripe_webhook_secret = try(local.bootstrap["stripe_webhook_secret_${each.key}"], "")
+  abr_guid              = try(local.bootstrap.abr_guid, "")
+
+  # NEXT_PUBLIC_SITE_URL has to resolve: event share links, check-in QR codes,
+  # email buttons and the organiser sign-up gate are all absolute URLs built
+  # from it. staging.startlineau.com is NXDOMAIN, which sent anyone following
+  # one of those links to a browser error page (issue #302), so staging points
+  # at the Amplify branch domain instead.
+  site_url = each.key == "staging" ? "https://${each.value.branch_name}.${aws_amplify_app.this.default_domain}" : each.value.site_url
 
   mapbox_access_token = local.bootstrap.mapbox_access_token
 
@@ -195,6 +236,9 @@ module "env" {
 
   extra_branch_environment_variables = {
     ENV = each.key == "prod" ? "prod" : "staging"
+    # Off for both environments. Set to "true" in the Amplify console for a
+    # one-off reseed, then set it back — the seed truncates every table.
+    SEED_DATABASE = "false"
   }
 
   bucket_cors_allowed_origins = each.value.bucket_cors_allowed_origins

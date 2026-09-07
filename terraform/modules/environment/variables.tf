@@ -127,11 +127,47 @@ variable "cognito_deletion_protection" {
   type        = bool
 }
 
+# Runtime server-side secrets.
+#
+# These are read by the running app, not by the build, so they have to live on
+# the Amplify branch environment. The build writes Secrets Manager into
+# .env.production, but `output: "standalone"` ships only `.next` — that file
+# never reaches the server, so a value that exists only in Secrets Manager is
+# undefined at runtime. NEXT_PUBLIC_* is exempt because Next inlines it at
+# build time; everything below is not.
+
 variable "resend_api_key" {
-  description = "Resend API key passed to the custom email sender Lambda."
+  description = "Resend API key. Sends every transactional email; without it lib/email.ts silently skips them and /api/contact 500s."
   type        = string
   sensitive   = true
   default     = null
+}
+
+variable "resend_from" {
+  description = "Overrides the transactional From address. Blank falls back to the default in lib/email.ts."
+  type        = string
+  default     = ""
+}
+
+variable "stripe_secret_key" {
+  description = "Stripe secret key for this environment (live for prod, test for staging). lib/stripe.ts throws without it, so checkout and refunds fail closed."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_webhook_secret" {
+  description = "Stripe webhook signing secret for this environment. Without it every webhook delivery is rejected and paid registrations are never confirmed."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "abr_guid" {
+  description = "Australian Business Register lookup GUID. Without it /api/abn returns 503 and organisers cannot verify the ABN that hosting paid events requires."
+  type        = string
+  sensitive   = true
+  default     = ""
 }
 
 variable "site_url" {

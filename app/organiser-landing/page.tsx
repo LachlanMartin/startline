@@ -1,16 +1,19 @@
-import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { Building2, ArrowRight } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { getOrganiserSession } from "@/lib/amplify-server";
-
-const CUSTOMER_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.NODE_ENV === "development" ? "" : "https://startlineau.com")
-).replace(/\/$/, "");
+import { customerHref } from "@/lib/portal-domains";
+import OrganiserLandingActions from "@/components/organiser/OrganiserLandingActions";
 
 export default async function OrganiserLandingPage() {
   const session = await getOrganiserSession();
   if (session) redirect("/organiser/dashboard");
+
+  // `/organiser-setup` lives on the athlete site, which is a different host only
+  // in production. Every other deployment serves all three portals from one
+  // host, where an absolute customer URL points at a hostname that doesn't
+  // resolve (issue #302).
+  const setupHref = customerHref("/organiser-setup", (await headers()).get("host"));
 
   return (
     <main className="min-h-screen bg-dark-darker flex items-center justify-center px-6">
@@ -24,16 +27,7 @@ export default async function OrganiserLandingPage() {
         <p className="text-muted text-[15px] leading-relaxed mb-8">
           Sign up for a free user account, then set up your organiser profile to start publishing events on Australia&apos;s fitness calendar.
         </p>
-        <Link
-          href={`${CUSTOMER_URL}/organiser-setup`}
-          className="bg-machined shadow-machined inline-flex items-center gap-2 text-dark font-headline text-sm font-bold uppercase tracking-widest py-4 px-8 rounded-md hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-0 active:translate-y-0 active:shadow-none transition-transform"
-        >
-          Get started <ArrowRight className="w-4 h-4" />
-        </Link>
-        <p className="mt-6 font-headline text-[11px] uppercase tracking-widest text-muted">
-          Already have an organiser profile?{" "}
-          <Link href="/organiser/dashboard" className="text-primary hover:underline">Go to Dashboard</Link>
-        </p>
+        <OrganiserLandingActions setupHref={setupHref} />
       </div>
     </main>
   );

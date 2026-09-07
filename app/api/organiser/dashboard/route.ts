@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireOrganiser } from "@/lib/organiser-api-auth";
 import prisma from "@/lib/prisma";
-import { getOrganiserSession } from "@/lib/amplify-server";
 import { archivePastEvents } from "@/lib/archive-events";
 import {
   buildTrendDays,
@@ -8,8 +8,9 @@ import {
 } from "@/lib/organiser-dashboard";
 
 export async function GET(req: NextRequest) {
-  const session = await getOrganiserSession();
-  if (!session) return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  const auth = await requireOrganiser();
+  if (auth.error) return auth.error;
+  const session = auth.session;
 
   await archivePastEvents();
 

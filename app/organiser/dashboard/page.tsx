@@ -15,8 +15,6 @@ import DashboardTrendChart, {
 import CapacityBar from "@/components/ui/CapacityBar";
 import { formatAudFromCents } from "@/lib/organiser-dashboard";
 
-export const dynamic = "force-dynamic";
-
 type EventStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "ARCHIVED";
 
 const STATUS_ORDER: Record<EventStatus, number> = {
