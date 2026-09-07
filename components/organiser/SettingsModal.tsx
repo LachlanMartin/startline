@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useSettings, type SettingsSection } from "@/context/SettingsContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { uploadFile } from "@/lib/upload-client";
 
 // ── shared form primitives ──────────────────────────────────────────────────
 
@@ -264,17 +265,7 @@ function PersonalInfoForm() {
 
   const patch = (p: Partial<ProfileForm>) => setForm(f => ({ ...f, ...p }));
 
-  const uploadImage = async (file: File, type: "logo" | "cover") => {
-    const fd = new FormData();
-    fd.append("file", file); fd.append("type", type);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || "Upload failed.");
-    }
-    const { fileUrl } = await res.json();
-    return fileUrl as string;
-  };
+  const uploadImage = (file: File, type: "logo" | "cover") => uploadFile(file, type);
 
   const handleLogoUpload = async (file: File) => {
     setLogoUploading(true);

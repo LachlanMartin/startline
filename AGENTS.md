@@ -50,6 +50,55 @@ Amplify console is deleted on the next apply. Add new runtime secrets to the
 `stripe_webhook_secret_staging`, `resend_api_key`, `resend_from`, `abr_guid`.
 A prod apply fails its precondition rather than silently clearing a missing one.
 
+## Uploads
+
+**File bytes must never pass through a route handler on a deployed
+environment.** Amplify runs on `platform = "WEB_COMPUTE"`, which is Lambda
+backed, and a multipart request body is base64-encoded into the invocation
+payload. The 6 MB payload ceiling therefore lands just under **4.5 MB of actual
+file**, well below the 10 MB `lib/upload-limits.ts` allows. Anything in between
+is rejected by the platform before the handler runs, and the reply is a **413
+with a zero-length body**, so the client cannot even read a reason off it.
+
+`pnpm upload:probe [base-url]` measures this against a deployed environment
+(staging by default). It needs no credentials: an unauthenticated POST that
+reaches the handler answers `401` with JSON, so the status says which layer
+replied. Measured on staging:
+
+```
+ 4.30 MB -> 401  reached our handler
+ 4.50 MB -> 413  killed by the platform, empty body
+```
+
+The probe also checks that `/api/upload/presign` exists, which is the real
+regression test. **A 404 there means the environment is proxying uploads again
+and anything over ~4.5 MB will fail.** It exits non-zero on either failure, so
+it can gate a deploy.
+
+The browser uploads straight to S3 instead:
+
+| Step | Endpoint | Does |
+|---|---|---|
+| 1 | `POST /api/upload/presign` | Authenticates, checks type/MIME/size, signs a POST scoped to `uploads/{sub}/{type}/{uuid}.{ext}` |
+| 2 | `POST` to the S3 URL | Browser sends the bytes. No size ceiling |
+| 3 | `POST /api/upload/complete` | Ranged GET of the first 16 bytes, magic-byte check, deletes the object if it fails |
+
+`lib/upload-client.ts` (`uploadFile`) drives all three and is the only thing
+UI should call. `/api/upload` still exists and still reads bytes itself, but
+only serves local dev and the Docker image, where there is no bucket — presign
+answers `{mode:"proxy"}` and the client falls back to it.
+
+Two things break this silently if forgotten:
+
+- **CSP.** `connect-src` in `next.config.ts` must list the S3 origin. Without
+  it the browser blocks the upload and nothing reaches the server logs.
+- **Bucket CORS.** `bucket_cors_allowed_origins` in `terraform/main.tf` must
+  cover the portal origins. Prod lists the three domains; staging is `*`.
+
+Step 3 is not optional. Direct-to-S3 means the server never sees the bytes in
+flight, so it is the only remaining check that a file matching an image
+Content-Type is actually an image.
+
 ## Portals and hostnames
 
 Production splits the three portals across `startlineau.com`,

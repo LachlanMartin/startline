@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { encodePrizePool, parsePrizePool, normalisePrizeAmount } from "@/lib/prize-pool";
 import { UPLOAD_LIMITS } from "@/lib/upload-limits";
+import { uploadFile, UploadError } from "@/lib/upload-client";
 import { formatDivisionLabel } from "@/lib/divisions";
 import { DEFAULT_REFUND_TIERS, REFUND_PRESETS, describeTiers, matchRefundPreset, parseTiers, tiersAreValid, type RefundTier } from "@/lib/refund-policy";
 import AddressAutocomplete  from "@/components/ui/AddressAutocomplete";
@@ -1609,11 +1610,11 @@ export default function EventFormWizard({
   };
 
   // Distinguishes an expired session from a rejected file, and passes the
-  // route's specific reason through instead of a blanket "failed to upload".
-  const uploadErrorText = async (res: Response, fallback: string): Promise<string> => {
-    if (res.status === 401) return SESSION_EXPIRED_MESSAGE;
-    const data: { error?: string } = await res.json().catch(() => ({}));
-    return data.error ? `${fallback} ${data.error}` : `${fallback} Please try again or remove it.`;
+  // upload's specific reason through instead of a blanket "failed to upload".
+  const uploadErrorText = (err: unknown, fallback: string): string => {
+    if (err instanceof UploadError && err.status === 401) return SESSION_EXPIRED_MESSAGE;
+    const reason = err instanceof Error ? err.message : "";
+    return reason ? `${fallback} ${reason}` : `${fallback} Please try again or remove it.`;
   };
 
   const submitToApi = async (asDraft: boolean, overrideTitle?: string): Promise<boolean> => {
@@ -1634,36 +1635,33 @@ export default function EventFormWizard({
 
       let coverImageUrl: string | null = null;
       if (form.coverImage) {
-        const fd = new FormData();
-        fd.append("file", form.coverImage);
-        fd.append("type", "cover");
-        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-        if (!uploadRes.ok) { setApiError(await uploadErrorText(uploadRes, "Cover image upload failed.")); return false; }
-        const { fileUrl } = await uploadRes.json(); coverImageUrl = fileUrl;
+        try {
+          coverImageUrl = await uploadFile(form.coverImage, "cover");
+        } catch (err) {
+          setApiError(uploadErrorText(err, "Cover image upload failed.")); return false;
+        }
       }
 
       const informationPdfs: { url: string; label: string; name: string }[] = [];
       for (const pdf of form.informationPdfs) {
         let url = pdf.url;
         if (pdf.file) {
-          const fd = new FormData();
-          fd.append("file", pdf.file);
-          fd.append("type", "document");
-          const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-          if (!uploadRes.ok) { setApiError(await uploadErrorText(uploadRes, `PDF "${pdf.file.name}" failed to upload.`)); return false; }
-          const { fileUrl } = await uploadRes.json(); url = fileUrl;
+          try {
+            url = await uploadFile(pdf.file, "document");
+          } catch (err) {
+            setApiError(uploadErrorText(err, `PDF "${pdf.file.name}" failed to upload.`)); return false;
+          }
         }
         if (url) informationPdfs.push({ url, label: pdf.label.trim(), name: pdf.name });
       }
 
       const photoUrls: string[] = [...form.photoUrls];
       for (const photo of form.photos) {
-        const fd = new FormData();
-        fd.append("file", photo);
-        fd.append("type", "photo");
-        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-        if (!uploadRes.ok) { setApiError(await uploadErrorText(uploadRes, `Gallery photo "${photo.name}" failed to upload.`)); return false; }
-        const { fileUrl } = await uploadRes.json(); photoUrls.push(fileUrl);
+        try {
+          photoUrls.push(await uploadFile(photo, "photo"));
+        } catch (err) {
+          setApiError(uploadErrorText(err, `Gallery photo "${photo.name}" failed to upload.`)); return false;
+        }
       }
 
       const payload = {

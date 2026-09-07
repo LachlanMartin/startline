@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { AlertCircle, Check, CheckCircle, Upload, X } from "lucide-react";
 import { GENDER_OPTIONS, maxDateOfBirthForMinAge } from "@/lib/registration-form";
+import { uploadFile } from "@/lib/upload-client";
 
 const inputCls =
   "w-full bg-dark-light border border-dark-lighter rounded-lg px-3 py-2.5 text-[14px] text-light placeholder:text-muted-dark focus:border-primary focus:outline-none transition-colors";
@@ -191,18 +192,7 @@ export default function UserEditProfileModal({ open, initial, onClose, onSaved }
 
   const patch = (p: Partial<ProfileDraft>) => setForm((f) => ({ ...f, ...p }));
 
-  const uploadImage = async (file: File, type: "avatar") => {
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("type", type);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || "Upload failed.");
-    }
-    const { fileUrl } = await res.json();
-    return fileUrl as string;
-  };
+  const uploadImage = (file: File, type: "avatar") => uploadFile(file, type);
 
   const handleAvatarUpload = async (file: File) => {
     setAvatarUploading(true);
